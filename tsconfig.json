@@ -19,7 +19,13 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/app/*": ["./src/app/*"],
+      "@/config/*": ["./src/app/config/*"],
+      "@/services/*": ["./src/app/services/*"],
+      "@/types/*": ["./src/app/types/*"],
+      "@/utils/*": ["./src/app/utils/*"],
+      "@/actions/*": ["./src/app/actions/*"]
     }
   },
   "include": [
