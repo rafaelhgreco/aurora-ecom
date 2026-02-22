@@ -1,30 +1,40 @@
 import { Box, Flex, Image, Text } from "@chakra-ui/react";
+import { useRouter } from "next/navigation";
+import { formatPrice } from "@/app/utils/price-formatter";
 
 export interface ProductCardProps {
+  id: string;
   imageUrl: string;
   title: string;
-  price: string | number;
+  price: number;
   subtitle?: string;
   alt?: string;
 }
 
 export const ProductCard = ({
+  id,
   imageUrl,
   title,
   price,
   subtitle,
   alt,
 }: ProductCardProps) => {
-  const formattedPrice =
-    typeof price === "number"
-      ? new Intl.NumberFormat("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-        }).format(price)
-      : price;
+  const router = useRouter();
+
+  const handleClick = () => {
+    router.push(`/produto/${id}`);
+  };
+
+  const formatted_price_value = formatPrice(price);
 
   return (
-    <Box position="relative" cursor="pointer" className="group" w="full">
+    <Box
+      position="relative"
+      cursor="pointer"
+      className="group"
+      w="full"
+      onClick={handleClick}
+    >
       <Box overflow="hidden" aspectRatio="3/4" w="full">
         <Image
           src={imageUrl}
@@ -54,7 +64,7 @@ export const ProductCard = ({
           </Text>
         )}
         <Text fontWeight="semibold" fontSize="sm" color="gray.900" mt="1">
-          {formattedPrice}
+          {formatted_price_value}
         </Text>
       </Flex>
     </Box>
