@@ -1,6 +1,6 @@
 import type { UserRole } from "@/types/auth";
 
-export const publicRoutes = ["/", "/login", "/not-found"] as const;
+export const publicRoutes = ["/", "/login", "/not-found", "/sobre"] as const;
 
 export const authRoutes = ["/login", "/cadastro", "/recuperar-senha"] as const;
 
