@@ -1,9 +1,9 @@
 "use client";
-import { Box, Spinner, Text } from "@chakra-ui/react";
 import { usePathname } from "next/navigation";
 import { MemoryRouter as Router } from "react-router-dom";
 import { Header } from "storybook-react";
 import { ProductGrid } from "./components/product-grid";
+import { EmptyState, ErrorState, LoadingState } from "./components/states";
 import { NextRouterSync } from "./hooks/use-next-router-sync";
 import { useProducts } from "./hooks/use-products";
 import styles from "./page.module.css";
@@ -13,6 +13,29 @@ export default function Home() {
   const nextPathname = usePathname();
 
   const { products, loading, error } = useProducts();
+
+  if (loading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        title="Erro ao carregar produtos"
+        message={error}
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <EmptyState
+        title="Nenhum produto encontrado"
+        description="Não há produtos disponíveis no momento. Volte mais tarde para conferir nossas novidades!"
+      />
+    );
+  }
 
   return (
     <Router initialEntries={[nextPathname]}>
@@ -28,19 +51,7 @@ export default function Home() {
             ]}
           />
 
-          {loading && (
-            <Box display="flex" justifyContent="center" py={10}>
-              <Spinner size="xl" />
-            </Box>
-          )}
-
-          {error && (
-            <Box textAlign="center" py={10}>
-              <Text color="red.500">Erro ao carregar produtos: {error}</Text>
-            </Box>
-          )}
-
-          {!loading && !error && <ProductGrid products={products} />}
+          <ProductGrid products={products} />
         </main>
       </div>
     </Router>

@@ -1,5 +1,5 @@
 "use client";
-import { Box, Button, Container, Grid, Spinner, Text } from "@chakra-ui/react";
+import { Box, Button, Container, Grid } from "@chakra-ui/react";
 import { usePathname, useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import { IoArrowBack } from "react-icons/io5";
@@ -8,6 +8,7 @@ import { Header } from "storybook-react";
 import { getProductByIdAction } from "@/app/actions/products";
 import { ProductImageGallery } from "@/app/components/product-image-gallery";
 import { ProductInfo } from "@/app/components/product-info";
+import { ErrorState, LoadingState } from "@/app/components/states";
 import { NextRouterSync } from "@/app/hooks/use-next-router-sync";
 import styles from "@/app/page.module.css";
 import type { Product } from "@/core/schemas/product.schema";
@@ -53,39 +54,21 @@ export default function ProdutoPage({
     console.log("Comprar:", { id, size, quantity });
   };
 
+  // 🔥 Usando componente reutilizável
   if (loading) {
-    return (
-      <div className={styles.page}>
-        <main className={styles.main}>
-          <Container maxW="container.xl" py={8}>
-            <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              minH="400px"
-            >
-              <Spinner size="xl" />
-            </Box>
-          </Container>
-        </main>
-      </div>
-    );
+    return <LoadingState />;
   }
 
+  // 🔥 Usando componente reutilizável com retry
   if (error || !product) {
     return (
-      <div className={styles.page}>
-        <main className={styles.main}>
-          <Container maxW="container.xl" py={8}>
-            <Box textAlign="center">
-              <Text color="red.500" fontSize="xl" mb={4}>
-                {error || "Produto não encontrado"}
-              </Text>
-              <Button onClick={() => router.push("/")}>Voltar para Home</Button>
-            </Box>
-          </Container>
-        </main>
-      </div>
+      <ErrorState
+        title="Produto não encontrado"
+        message={error || "Não foi possível encontrar este produto."}
+        backUrl="/"
+        backText="Voltar para Home"
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 

@@ -1,4 +1,4 @@
-import { Provider } from "@/app/components/ui/provider";
+import { Provider } from "./components/ui";
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   const { children } = props;
