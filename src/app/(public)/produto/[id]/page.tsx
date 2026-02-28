@@ -1,36 +1,16 @@
 "use client";
-import { Box, Button, Container, Grid } from "@chakra-ui/react";
+import { Box, Button, Container, Grid, Spinner, Text } from "@chakra-ui/react";
 import { usePathname, useRouter } from "next/navigation";
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import { IoArrowBack } from "react-icons/io5";
 import { MemoryRouter as Router } from "react-router-dom";
 import { Header } from "storybook-react";
+import { getProductByIdAction } from "@/app/actions/products";
 import { ProductImageGallery } from "@/app/components/product-image-gallery";
 import { ProductInfo } from "@/app/components/product-info";
 import { NextRouterSync } from "@/app/hooks/use-next-router-sync";
 import styles from "@/app/page.module.css";
-
-// Mock data - futuramente virá de uma API
-const mockProduct = {
-  title: 'SLIPPER "VIGA X CLASS" BLACK',
-  price: 1300.0,
-  description: `SAPATO MOCASSIM "VIGA X CLASS" COURO PRETO
-100% COURO LEGÍTIMO MACIO / 100% SOFT GENUINE LEATHER
-AJUSTE EM ELÁSTICO NA PARTE SUPERIOR COM REGULADOR METAL CLASS PRETO / ELASTIC ADJUSTMENT AT THE TOP WITH BLACK METAL CORD LOCK BY CLASS
-PAR DE REGULADOR METAL CLASS AÇO ESCOVADO EXTRA / EXTRA BRUSHED STEEL CORD LOCK BY CLASS
-SOLADO DE BORRACHA / RUBBER SOLE
-INTERIOR FORRADO EM COURO MACIO / INTERIOR LINED WITH SOFT LEATHER
-PALMILHA ANATÔMICA / ANATOMIC INSOLE
-FEITO NO BRASIL / MADE IN BRAZIL`,
-  sizes: ["34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44"],
-  availableSizes: ["34", "35", "36", "37", "38", "39", "40"],
-  images: [
-    "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=800",
-    "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?q=80&w=800",
-    "https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800",
-    "https://images.unsplash.com/photo-1608231387042-66d1773070a5?q=80&w=800",
-  ],
-};
+import type { Product } from "@/core/schemas/product.schema";
 
 export default function ProdutoPage({
   params,
@@ -42,9 +22,80 @@ export default function ProdutoPage({
   const nextPathname = usePathname();
   const router = useRouter();
 
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadProduct() {
+      try {
+        setLoading(true);
+        const result = await getProductByIdAction(id);
+
+        if (result.success) {
+          setProduct(result.data);
+        } else {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Erro ao carregar produto",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProduct();
+  }, [id]);
+
   const handleBuy = (size: string, quantity: number) => {
     console.log("Comprar:", { id, size, quantity });
-    // Implementar lógica de compra aqui
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <main className={styles.main}>
+          <Container maxW="container.xl" py={8}>
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              minH="400px"
+            >
+              <Spinner size="xl" />
+            </Box>
+          </Container>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className={styles.page}>
+        <main className={styles.main}>
+          <Container maxW="container.xl" py={8}>
+            <Box textAlign="center">
+              <Text color="red.500" fontSize="xl" mb={4}>
+                {error || "Produto não encontrado"}
+              </Text>
+              <Button onClick={() => router.push("/")}>Voltar para Home</Button>
+            </Box>
+          </Container>
+        </main>
+      </div>
+    );
+  }
+
+  const productData = {
+    title: product.title,
+    price: product.price,
+    description: product.description,
+    sizes: product.sizes || [],
+    availableSizes: product.sizes || [], // Pode adicionar lógica de estoque aqui
+    images: product.images || [product.imageUrl],
   };
 
   return (
@@ -77,18 +128,18 @@ export default function ProdutoPage({
             >
               <Box>
                 <ProductImageGallery
-                  images={mockProduct.images}
-                  alt={mockProduct.title}
+                  images={productData.images}
+                  alt={productData.title}
                 />
               </Box>
 
               <Box>
                 <ProductInfo
-                  title={mockProduct.title}
-                  price={mockProduct.price}
-                  description={mockProduct.description}
-                  sizes={mockProduct.sizes}
-                  availableSizes={mockProduct.availableSizes}
+                  title={productData.title}
+                  price={productData.price}
+                  description={productData.description}
+                  sizes={productData.sizes}
+                  availableSizes={productData.availableSizes}
                   maxQuantity={10}
                   onBuy={handleBuy}
                 />

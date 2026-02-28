@@ -1,13 +1,6 @@
 import { SimpleGrid } from "@chakra-ui/react";
+import type { Product } from "@/core/schemas/product.schema";
 import { ProductCard } from "./product-card";
-
-interface Product {
-  id: string;
-  imageUrl: string;
-  title: string;
-  subtitle?: string;
-  price: number;
-}
 
 interface ProductGridProps {
   products: Product[];
@@ -24,7 +17,7 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
       {products.map((product) => (
         <ProductCard
           key={product.id}
-          id={product.id}
+          id={product.id || ""}
           imageUrl={product.imageUrl}
           title={product.title}
           subtitle={product.subtitle}

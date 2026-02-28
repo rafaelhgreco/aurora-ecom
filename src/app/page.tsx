@@ -1,49 +1,19 @@
 "use client";
+import { Box, Spinner, Text } from "@chakra-ui/react";
 import { usePathname } from "next/navigation";
 import { MemoryRouter as Router } from "react-router-dom";
 import { Header } from "storybook-react";
 import { ProductGrid } from "./components/product-grid";
 import { NextRouterSync } from "./hooks/use-next-router-sync";
+import { useProducts } from "./hooks/use-products";
 import styles from "./page.module.css";
-
-const products = [
-  {
-    id: "1",
-    imageUrl:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop",
-    title: "Camiseta Básica Branca",
-    subtitle: "Algodão Premium",
-    price: 89.9,
-  },
-  {
-    id: "2",
-    imageUrl:
-      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop",
-    title: "Camiseta Preta Estampada",
-    subtitle: "Coleção Verão",
-    price: 119.9,
-  },
-  {
-    id: "3",
-    imageUrl:
-      "https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=800&auto=format&fit=crop",
-    title: "Camiseta Cinza Mescla",
-    subtitle: "Algodão Premium",
-    price: 89.9,
-  },
-  {
-    id: "4",
-    imageUrl:
-      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=800&auto=format&fit=crop",
-    title: "Camiseta Listrada",
-    subtitle: "Edição Limitada",
-    price: 149.9,
-  },
-];
 
 export default function Home() {
   const logoSrc = "/logo.svg";
   const nextPathname = usePathname();
+
+  // 🔥 Agora os produtos vêm do backend via Server Actions!
+  const { products, loading, error } = useProducts();
 
   return (
     <Router initialEntries={[nextPathname]}>
@@ -56,9 +26,23 @@ export default function Home() {
               { label: "SHOP", path: "/" },
               { label: "ARQUIVO", path: "/dashboard" },
               { label: "SOBRE", path: "/sobre" },
+              { label: "TEST BACKEND", path: "/test-backend" },
             ]}
           />
-          <ProductGrid products={products} />
+
+          {loading && (
+            <Box display="flex" justifyContent="center" py={10}>
+              <Spinner size="xl" />
+            </Box>
+          )}
+
+          {error && (
+            <Box textAlign="center" py={10}>
+              <Text color="red.500">Erro ao carregar produtos: {error}</Text>
+            </Box>
+          )}
+
+          {!loading && !error && <ProductGrid products={products} />}
         </main>
       </div>
     </Router>
