@@ -11,10 +11,10 @@ export const productSchema = z.object({
 
   subtitle: z
     .string()
-    .min(3, "Subtítulo deve ter no mínimo 3 caracteres")
     .max(200, "Subtítulo deve ter no máximo 200 caracteres")
     .trim()
-    .optional(),
+    .optional()
+    .or(z.literal("")),
 
   description: z
     .string({ message: "Descrição é obrigatória" })
@@ -65,6 +65,11 @@ export const productSchema = z.object({
   updatedAt: z.date().optional(),
 });
 
+export const serializedProductSchema = productSchema.extend({
+  createdAt: z.union([z.date(), z.string()]).optional(),
+  updatedAt: z.union([z.date(), z.string()]).optional(),
+});
+
 export const createProductSchema = productSchema.omit({
   id: true,
   createdAt: true,
@@ -85,6 +90,7 @@ export const productFilterSchema = z.object({
 });
 
 export type Product = z.infer<typeof productSchema>;
+export type SerializedProduct = z.infer<typeof serializedProductSchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ProductFilter = z.infer<typeof productFilterSchema>;

@@ -22,8 +22,14 @@ export function middleware(request: NextRequest) {
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
 
-  if (isAuthRoute && isAuthenticated) {
-    return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, request.url));
+  if (isAuthRoute) {
+    if (isAuthenticated) {
+      return NextResponse.redirect(
+        new URL(DEFAULT_LOGIN_REDIRECT, request.url),
+      );
+    }
+
+    return NextResponse.next();
   }
 
   if (isPublicRoute) {
@@ -32,7 +38,10 @@ export function middleware(request: NextRequest) {
 
   if (!isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
+
+    if (!isAuthRoute) {
+      loginUrl.searchParams.set("callbackUrl", pathname);
+    }
     return NextResponse.redirect(loginUrl);
   }
 

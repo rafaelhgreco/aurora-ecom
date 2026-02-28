@@ -15,8 +15,9 @@ export class ProductEntity implements Product {
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  deletedAt?: Date | null;
 
-  constructor(data: Product) {
+  constructor(data: Product & { deletedAt?: Date | null }) {
     this.id = data.id;
     this.title = data.title;
     this.subtitle = data.subtitle;
@@ -29,8 +30,9 @@ export class ProductEntity implements Product {
     this.sizes = data.sizes;
     this.colors = data.colors;
     this.isActive = data.isActive ?? true;
-    this.createdAt = data.createdAt;
-    this.updatedAt = data.updatedAt;
+    this.createdAt = data.createdAt || new Date();
+    this.updatedAt = data.updatedAt || new Date();
+    this.deletedAt = data.deletedAt || null;
   }
 
   isAvailable(): boolean {

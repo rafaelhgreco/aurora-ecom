@@ -54,12 +54,10 @@ export default function ProdutoPage({
     console.log("Comprar:", { id, size, quantity });
   };
 
-  // 🔥 Usando componente reutilizável
   if (loading) {
     return <LoadingState />;
   }
 
-  // 🔥 Usando componente reutilizável com retry
   if (error || !product) {
     return (
       <ErrorState
@@ -77,7 +75,7 @@ export default function ProdutoPage({
     price: product.price,
     description: product.description,
     sizes: product.sizes || [],
-    availableSizes: product.sizes || [], // Pode adicionar lógica de estoque aqui
+    availableSizes: product.sizes || [],
     images: product.images || [product.imageUrl],
   };
 

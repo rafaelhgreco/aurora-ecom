@@ -15,7 +15,6 @@ export async function loginAction(formData: FormData) {
     return { error: "A senha deve ter no mínimo 3 caracteres" };
   }
 
-  // Simulação de autenticação (substituir por chamada real ao backend)
   let token = `token_user_${Date.now()}`;
 
   if (email.includes("admin")) {
@@ -26,14 +25,6 @@ export async function loginAction(formData: FormData) {
     token = `token_user_${Date.now()}`;
   }
 
-  // TODO: Substituir por chamada real ao backend
-  // const response = await fetch('https://api.exemplo.com/auth/login', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ email, password })
-  // });
-  // const { token, role } = await response.json();
-
   try {
     const cookieStore = await cookies();
     cookieStore.set("auth_token", token, {
@@ -43,7 +34,6 @@ export async function loginAction(formData: FormData) {
       maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
-    // TODO: Validar e sanitizar callbackUrl se vier de query params
   } catch (error) {
     console.error("Erro ao fazer login:", error);
     return { error: "Erro ao processar login. Tente novamente." };

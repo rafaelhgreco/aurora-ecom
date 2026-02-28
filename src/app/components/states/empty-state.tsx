@@ -1,7 +1,6 @@
 import { Box, Button, Container, Text, VStack } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { IoAddCircleOutline, IoSearchOutline } from "react-icons/io5";
-import styles from "@/app/page.module.css";
 
 interface EmptyStateProps {
   title: string;
@@ -77,9 +76,5 @@ export function EmptyState({
     return content;
   }
 
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>{content}</main>
-    </div>
-  );
+  return <Box minH="100vh">{content}</Box>;
 }

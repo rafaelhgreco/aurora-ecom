@@ -1,5 +1,4 @@
 import { Box, Container, Spinner, type SpinnerProps } from "@chakra-ui/react";
-import styles from "@/app/page.module.css";
 
 interface LoadingStateProps {
   size?: SpinnerProps["size"];
@@ -34,9 +33,5 @@ export function LoadingState({
     return content;
   }
 
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>{content}</main>
-    </div>
-  );
+  return <Box minH="100vh">{content}</Box>;
 }

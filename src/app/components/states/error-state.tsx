@@ -1,7 +1,6 @@
 import { Box, Button, Container, Text, VStack } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { IoAlertCircleOutline, IoArrowBack, IoRefresh } from "react-icons/io5";
-import styles from "@/app/page.module.css";
 
 interface ErrorStateProps {
   message: string;
@@ -89,9 +88,5 @@ export function ErrorState({
     return content;
   }
 
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>{content}</main>
-    </div>
-  );
+  return <Box minH="100vh">{content}</Box>;
 }

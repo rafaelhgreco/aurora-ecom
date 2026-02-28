@@ -3,6 +3,7 @@ import type { UserRole } from "@/types/auth";
 export const publicRoutes = [
   "/",
   "/login",
+  "/logout",
   "/not-found",
   "/sobre",
   "/produto",
@@ -23,12 +24,8 @@ export const privateRoutes: Record<string, RouteConfig> = {
   "/dashboard": {
     roles: ["admin", "manager", "user"],
   },
-  "/admin": {
+  "/produtos/novo": {
     roles: ["admin"],
-    redirect: "/dashboard",
-  },
-  "/hello-world": {
-    roles: ["admin", "manager"],
-    redirect: "/not-found",
+    redirect: "/admin-produtos",
   },
 };

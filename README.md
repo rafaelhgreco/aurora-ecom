@@ -1,57 +1,131 @@
-# 🏗️ Guia de Arquitetura - Backend Next.js
+# 🚀 Aurora E-Commerce - Backend Next.js com Firebase
 
-## 📚 Índice
-1. [Visão Geral da Arquitetura](#visão-geral)
-2. [Camadas da Aplicação](#camadas)
-3. [Fluxo de Desenvolvimento](#fluxo)
-4. [Boas Práticas](#boas-práticas)
-5. [Como Testar](#como-testar)
+Backend moderno construído com **Clean Architecture**, **Next.js Server Actions** e **Firebase Storage**.
+
+## 📋 O que foi implementado?
+
+- ✅ **Clean Architecture** com camadas Core, Infrastructure e App
+- ✅ **Server Actions** (sem API Routes!)
+- ✅ **Zod** para validação end-to-end
+- ✅ **Repository Pattern** com implementação in-memory
+- ✅ **Firebase Storage** para upload de imagens
+- ✅ **Formulário Completo** de cadastro de produtos
+- ✅ **React Hook Form** + Zod resolver
+- ✅ **Chakra UI v3** componentes
+- ✅ **Componentes de Estado** reutilizáveis (Loading/Error/Empty)
+
+---
+
+## 🏃 Quick Start
+
+### 1. Instalar dependências
+```bash
+npm install
+```
+
+### 2. Configurar Firebase
+Siga o guia rápido: **[QUICK-START.md](./QUICK-START.md)** (5 minutos)
+
+### 3. Rodar o projeto
+```bash
+npm run dev
+```
+
+### 4. Acessar
+
+- **Homepage:** http://localhost:3001
+- **Página de Teste:** http://localhost:3001/test-backend
+- **Novo Produto:** http://localhost:3001/admin/produtos/novo
+
+---
+
+## 📖 Documentação
+
+### Para Começar
+- **[QUICK-START.md](./QUICK-START.md)** - Setup rápido do Firebase (5 min)
+- **[BACKEND-QUICKSTART.md](./BACKEND-QUICKSTART.md)** - Guia rápido da arquitetura
+
+### Arquitetura
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Arquitetura completa e padrões
+- **[EXAMPLES.md](./EXAMPLES.md)** - Exemplos práticos de uso
+
+### Features
+- **[PRODUCT-FORM-GUIDE.md](./PRODUCT-FORM-GUIDE.md)** - Guia completo do formulário com upload
+- **[STATE-COMPONENTS.md](./STATE-COMPONENTS.md)** - Componentes de estado reutilizáveis
 
 ---
 
 ## 🎯 Visão Geral da Arquitetura
 
-Este projeto segue os princípios de **Clean Architecture** adaptados para Next.js 14+, utilizando:
+### Clean Architecture + Server Actions
 
-- ✅ **Server Actions** ao invés de API Routes
-- ✅ **Zod** para validação de dados
-- ✅ **Repository Pattern** para abstração de dados
-- ✅ **Use Cases** para lógica de negócio
-- ✅ **Type Safety** end-to-end com TypeScript
-
-### Por que Server Actions?
-
-```typescript
-// ❌ ANTES: API Routes (boilerplate, não type-safe)
-// /app/api/products/route.ts
-export async function GET() {
-  const products = await getProducts();
-  return Response.json(products);
-}
-
-// Client precisa fazer fetch manualmente
-const response = await fetch('/api/products');
-const products = await response.json(); // Sem tipos!
-
-// ✅ AGORA: Server Actions (direto, type-safe)
-"use server"
-export async function listProductsAction() {
-  return await getProducts();
-}
-
-// Client usa diretamente
-const products = await listProductsAction(); // Totalmente tipado!
 ```
+┌─────────────────────────────────────────────────┐
+│              Frontend (RSC/Client)              │
+│  ┌──────────────────────────────────────────┐  │
+│  │        Server Actions (Type-Safe)        │  │
+│  └──────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────┐
+│              Use Cases (Business)               │
+│     ┌────────────┬────────────┬─────────────┐  │
+│     │   Create   │   List     │   Update    │  │
+│     └────────────┴────────────┴─────────────┘  │
+└─────────────────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────┐
+│         Repository (Data Abstraction)           │
+│              In-Memory / Database               │
+└─────────────────────────────────────────────────┘
+```
+
+### Benefícios
+
+- ✅ **Type-Safe:** TypeScript end-to-end
+- ✅ **Sem Boilerplate:** Sem API Routes
+- ✅ **Validação Dupla:** Client + Server com Zod
+- ✅ **Testável:** Camadas isoladas
+- ✅ **Escalável:** Fácil trocar implementações
 
 ---
 
-## 📁 Camadas da Aplicação
-
-### 1. **Core** - Camada de Domínio (Regras de Negócio)
+## 📁 Estrutura do Projeto
 
 ```
-src/core/
-├── entities/         # Entidades de domínio com comportamentos
+aurora-ecom/
+├── src/
+│   ├── app/                         # Next.js App Router
+│   │   ├── (admin)/                # Rotas administrativas
+│   │   │   ├── dashboard/
+│   │   │   └── produtos/
+│   │   │       └── novo/           # Formulário de novo produto
+│   │   ├── (public)/               # Rotas públicas
+│   │   ├── actions/                # Server Actions
+│   │   │   └── products.ts         # CRUD de produtos
+│   │   └── components/
+│   │       ├── product-form.tsx    # Formulário com upload
+│   │       └── states/             # Loading/Error/Empty
+│   ├── core/                       # Camada de domínio
+│   │   ├── entities/               # Entidades de negócio
+│   │   ├── repositories/           # Interfaces de repositórios
+│   │   ├── schemas/                # Validação Zod
+│   │   └── use-cases/              # Lógica de negócio
+│   ├── infrastructure/             # Implementações
+│   │   └── repositories/           # Repositórios concretos
+│   ├── lib/                        # Utilitários
+│   │   ├── firebase.ts             # Config Firebase (Firestore)
+│   │   └── cloudinary.service.ts   # Upload Cloudinary
+│   └── components/ui/              # Componentes Chakra UI
+├── docs/
+│   ├── ARCHITECTURE.md             # Arquitetura detalhada
+│   ├── BACKEND-QUICKSTART.md       # Guia rápido backend
+│   ├── EXAMPLES.md                 # Exemplos práticos
+│   ├── PRODUCT-FORM-GUIDE.md       # Guia do formulário
+│   ├── QUICK-START.md              # Setup Firebase
+│   └── STATE-COMPONENTS.md         # Componentes de estado
+├── .env.local.example              # Template de variáveis
+└── package.json
 ├── schemas/          # Validações Zod (FONTE DA VERDADE)
 ├── use-cases/        # Casos de uso (lógica de negócio)
 └── repositories/     # Interfaces (contratos)

@@ -1,11 +1,9 @@
-// src/app/login/page.tsx
-"use client"; // Necessário para interatividade (botões, inputs)
+"use client";
 
 import { useState } from "react";
-import { useFormStatus } from "react-dom"; // Hook para estado de loading
+import { useFormStatus } from "react-dom";
 import { loginAction } from "@/actions/auth";
 
-// Pequeno componente para o botão mostrar "Carregando..."
 function SubmitButton() {
   const { pending } = useFormStatus();
 
@@ -23,11 +21,9 @@ function SubmitButton() {
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Wrapper para capturar erros da Server Action
   async function handleSubmit(formData: FormData) {
     const result = await loginAction(formData);
 
-    // Se a action retornar algo, é erro (pois o sucesso faz redirect)
     if (result?.error) {
       setErrorMessage(result.error);
     }
