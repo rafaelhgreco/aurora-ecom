@@ -12,7 +12,6 @@ export default function Home() {
   const logoSrc = "/logo.svg";
   const nextPathname = usePathname();
 
-  // 🔥 Agora os produtos vêm do backend via Server Actions!
   const { products, loading, error } = useProducts();
 
   return (
@@ -26,7 +25,6 @@ export default function Home() {
               { label: "SHOP", path: "/" },
               { label: "ARQUIVO", path: "/dashboard" },
               { label: "SOBRE", path: "/sobre" },
-              { label: "TEST BACKEND", path: "/test-backend" },
             ]}
           />
 
