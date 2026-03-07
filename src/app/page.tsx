@@ -1,8 +1,8 @@
 "use client";
 import { usePathname } from "next/navigation";
 import { MemoryRouter as Router } from "react-router-dom";
-import { Header } from "storybook-react";
-import { ProductGrid } from "./components/product-grid";
+import { ProductGrid } from "./components/public/product-grid";
+import { ProductPageHeader } from "./components/public/product-page-header";
 import { EmptyState, ErrorState, LoadingState } from "./components/states";
 import { NextRouterSync } from "./hooks/use-next-router-sync";
 import { useProducts } from "./hooks/use-products";
@@ -42,14 +42,7 @@ export default function Home() {
       <NextRouterSync />
       <div className={styles.page}>
         <main className={styles.main}>
-          <Header
-            logo={logoSrc}
-            items={[
-              { label: "SHOP", path: "/" },
-              { label: "ARQUIVO", path: "/dashboard" },
-              { label: "SOBRE", path: "/sobre" },
-            ]}
-          />
+          <ProductPageHeader logoSrc={logoSrc} />
 
           <ProductGrid products={products} />
         </main>

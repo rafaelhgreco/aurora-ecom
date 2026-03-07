@@ -17,7 +17,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import type { Product } from "@/app/types/product";
-import { formatDateTime, formatPrice } from "@/app/utils/format-price";
+import { formatDateTime, formatPrice } from "@/app/utils/price-formatter";
 import {
   DialogBody,
   DialogCloseTrigger,

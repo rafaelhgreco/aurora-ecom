@@ -1,4 +1,4 @@
-import type { Product } from "../schemas/product.schema";
+import type { Product, ProductSize } from "../schemas/product.schema";
 
 export class ProductEntity implements Product {
   id?: string;
@@ -10,7 +10,7 @@ export class ProductEntity implements Product {
   images: string[];
   category?: string;
   stock: number;
-  sizes?: Array<"PP" | "P" | "M" | "G" | "GG" | "XG">;
+  sizes?: ProductSize[];
   colors?: string[];
   isActive: boolean;
   createdAt?: Date;

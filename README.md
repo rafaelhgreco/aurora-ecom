@@ -7,12 +7,13 @@ Backend moderno construído com **Clean Architecture**, **Next.js Server Actions
 - ✅ **Clean Architecture** com camadas Core, Infrastructure e App
 - ✅ **Server Actions** (sem API Routes!)
 - ✅ **Zod** para validação end-to-end
-- ✅ **Repository Pattern** com implementação in-memory
-- ✅ **Firebase Storage** para upload de imagens
+- ✅ **Repository Pattern** com Firestore
+- ✅ **Cloudinary** para upload de imagens
 - ✅ **Formulário Completo** de cadastro de produtos
 - ✅ **React Hook Form** + Zod resolver
 - ✅ **Chakra UI v3** componentes
 - ✅ **Componentes de Estado** reutilizáveis (Loading/Error/Empty)
+- ✅ **WhatsApp Checkout** integração segura
 
 ---
 
@@ -36,6 +37,7 @@ npm run dev
 - **Homepage:** http://localhost:3001
 - **Página de Teste:** http://localhost:3001/test-backend
 - **Novo Produto:** http://localhost:3001/admin/produtos/novo
+- **Teste Checkout:** http://localhost:3001/teste-checkout
 
 ---
 
@@ -52,6 +54,7 @@ npm run dev
 ### Features
 - **[PRODUCT-FORM-GUIDE.md](./PRODUCT-FORM-GUIDE.md)** - Guia completo do formulário com upload
 - **[STATE-COMPONENTS.md](./STATE-COMPONENTS.md)** - Componentes de estado reutilizáveis
+- **[WHATSAPP_CHECKOUT.md](./docs/WHATSAPP_CHECKOUT.md)** - Integração com WhatsApp para checkout
 
 ---
 
@@ -483,6 +486,46 @@ async function test() {
 3. **Cache com React Server Components**
 4. **Testes Unitários** para Use Cases
 5. **Testes E2E** com Playwright
+6. **Carrinho de Compras** com Context API
+7. **Página de Confirmação** pós-checkout
+
+---
+
+## 🛒 WhatsApp Checkout
+
+O projeto inclui integração com WhatsApp para checkout seguro:
+
+### Características
+- 🔒 **Seguro**: Preços calculados no servidor
+- 💬 **Simples**: Redirecionamento direto para WhatsApp
+- 📱 **Mobile-First**: Funciona em qualquer dispositivo
+- ✅ **Validado**: Verifica estoque e disponibilidade
+
+### Como Usar
+
+1. **Adicione ao .env.local:**
+```bash
+NEXT_PUBLIC_SHOP_WHATSAPP_NUMBER=5511999999999
+```
+
+2. **Use o componente:**
+```tsx
+import { WhatsAppCheckoutButton } from "@/app/components/whatsapp-checkout-button";
+
+<WhatsAppCheckoutButton
+  cart={[
+    { productId: "abc123", quantity: 2 },
+    { productId: "def456", quantity: 1 }
+  ]}
+  onSuccess={(total) => console.log("Total:", total)}
+/>
+```
+
+3. **Teste:**
+- Acesse: http://localhost:3001/teste-checkout
+- Substitua os IDs por produtos reais do Firestore
+
+📖 **Documentação completa:** [docs/WHATSAPP_CHECKOUT.md](./docs/WHATSAPP_CHECKOUT.md)
 
 ---
 

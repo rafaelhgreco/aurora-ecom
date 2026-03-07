@@ -1,5 +1,28 @@
 import { z } from "zod";
 
+/**
+ * Constantes de Produto
+ * Fonte única da verdade para valores permitidos
+ */
+export const PRODUCT_SIZES = ["PP", "P", "M", "G", "GG", "XG"] as const;
+export type ProductSize = (typeof PRODUCT_SIZES)[number];
+
+export const PRODUCT_CATEGORIES = [
+  "camisetas",
+  "calcas",
+  "shorts",
+  "vestidos",
+  "acessorios",
+  "calcados",
+] as const;
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+
+/**
+ * Validações Zod para Produto
+ */
+export const productSizeSchema = z.enum(PRODUCT_SIZES);
+export const productCategorySchema = z.enum(PRODUCT_CATEGORIES);
+
 export const productSchema = z.object({
   id: z.string().uuid("ID deve ser um UUID válido").optional(),
 
@@ -52,7 +75,7 @@ export const productSchema = z.object({
     .default(0),
 
   sizes: z
-    .array(z.enum(["PP", "P", "M", "G", "GG", "XG"]))
+    .array(productSizeSchema)
     .min(1, "Produto deve ter pelo menos um tamanho disponível")
     .optional(),
 
@@ -84,7 +107,7 @@ export const productFilterSchema = z.object({
   category: z.string().optional(),
   minPrice: z.number().positive().optional(),
   maxPrice: z.number().positive().optional(),
-  sizes: z.array(z.enum(["PP", "P", "M", "G", "GG", "XG"])).optional(),
+  sizes: z.array(productSizeSchema).optional(),
   isActive: z.boolean().optional(),
   search: z.string().optional(),
 });

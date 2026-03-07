@@ -9,9 +9,9 @@
 import { Box, Container } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { DeleteConfirmDialog } from "@/app/components/products/delete-confirm-dialog";
-import { ProductList } from "@/app/components/products/product-list";
-import { ProductViewDialog } from "@/app/components/products/product-view-dialog";
+import { DeleteConfirmDialog } from "@/app/components/admin/delete-confirm-dialog";
+import { ProductList } from "@/app/components/admin/product-list";
+import { ProductViewDialog } from "@/app/components/admin/product-view-dialog";
 import { useProductCRUD } from "@/app/hooks/use-product-crud";
 import type { Product } from "@/app/types/product";
 import { toaster } from "@/components/ui/toaster";

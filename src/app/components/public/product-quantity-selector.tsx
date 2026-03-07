@@ -28,7 +28,7 @@ export const ProductQuantitySelector = ({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Number.parseInt(e.target.value);
+    const value = Number.parseInt(e.target.value, 10);
     if (validateQuantity(value, min, max)) {
       onQuantityChange(value);
     }

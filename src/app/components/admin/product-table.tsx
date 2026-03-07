@@ -16,7 +16,7 @@ import {
 } from "@chakra-ui/react";
 import { IoEye, IoPencil, IoTrash } from "react-icons/io5";
 import type { Product } from "@/app/types/product";
-import { formatPrice } from "@/app/utils/format-price";
+import { formatPrice } from "@/app/utils/price-formatter";
 
 interface ProductTableProps {
   products: Product[];

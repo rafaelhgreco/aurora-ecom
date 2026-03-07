@@ -4,10 +4,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import { IoArrowBack } from "react-icons/io5";
 import { MemoryRouter as Router } from "react-router-dom";
-import { Header } from "storybook-react";
 import { getProductByIdAction } from "@/app/actions/products";
-import { ProductImageGallery } from "@/app/components/product-image-gallery";
-import { ProductInfo } from "@/app/components/product-info";
+import { ProductImageGallery } from "@/app/components/public/product-image-gallery";
+import { ProductInfo } from "@/app/components/public/product-info";
+import { ProductPageHeader } from "@/app/components/public/product-page-header";
 import { ErrorState, LoadingState } from "@/app/components/states";
 import { NextRouterSync } from "@/app/hooks/use-next-router-sync";
 import styles from "@/app/page.module.css";
@@ -50,10 +50,6 @@ export default function ProdutoPage({
     loadProduct();
   }, [id]);
 
-  const handleBuy = (size: string, quantity: number) => {
-    console.log("Comprar:", { id, size, quantity });
-  };
-
   if (loading) {
     return <LoadingState />;
   }
@@ -71,12 +67,14 @@ export default function ProdutoPage({
   }
 
   const productData = {
+    id: product.id || id, // Usa o ID do produto ou o da URL
     title: product.title,
     price: product.price,
     description: product.description,
     sizes: product.sizes || [],
     availableSizes: product.sizes || [],
     images: product.images || [product.imageUrl],
+    stock: product.stock,
   };
 
   return (
@@ -84,14 +82,7 @@ export default function ProdutoPage({
       <NextRouterSync />
       <div className={styles.page}>
         <main className={styles.main}>
-          <Header
-            logo={logoSrc}
-            items={[
-              { label: "SHOP", path: "/" },
-              { label: "ARQUIVO", path: "/dashboard" },
-              { label: "SOBRE", path: "/sobre" },
-            ]}
-          />
+          <ProductPageHeader logoSrc={logoSrc} />
           <Container maxW="1200px" mt="8">
             <Button
               variant="ghost"
@@ -116,13 +107,14 @@ export default function ProdutoPage({
 
               <Box>
                 <ProductInfo
+                  productId={productData.id}
                   title={productData.title}
                   price={productData.price}
                   description={productData.description}
                   sizes={productData.sizes}
                   availableSizes={productData.availableSizes}
                   maxQuantity={10}
-                  onBuy={handleBuy}
+                  stock={productData.stock}
                 />
               </Box>
             </Grid>
