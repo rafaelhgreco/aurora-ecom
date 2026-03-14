@@ -120,7 +120,8 @@ export function CartModal({
     <DialogRoot
       open={isOpen}
       onOpenChange={(e) => !e.open && onClose()}
-      size="lg"
+      size={{ base: "full", md: "lg" }}
+      placement="center"
     >
       <DialogBackdrop />
       <DialogContent>
@@ -136,6 +137,7 @@ export function CartModal({
                   size="sm"
                   colorScheme="red"
                   onClick={onClearCart}
+                  mr="8"
                 >
                   Limpar Carrinho
                 </Button>
@@ -146,7 +148,7 @@ export function CartModal({
 
         <DialogCloseTrigger />
 
-        <DialogBody>
+        <DialogBody display="flex" flexDirection="column" gap="4">
           {loading && (
             <Text textAlign="center" py="8" color="gray.500">
               Carregando...
@@ -154,7 +156,7 @@ export function CartModal({
           )}
 
           {!loading && isEmpty && (
-            <VStack py="12" gap="4">
+            <VStack py="12" gap="4" flex="1" justify="center">
               <Text fontSize="4xl">🛒</Text>
               <Text fontSize="lg" color="gray.600">
                 Seu carrinho está vazio
@@ -166,7 +168,13 @@ export function CartModal({
           )}
 
           {!loading && !isEmpty && (
-            <Stack gap="4" maxH="400px" overflowY="auto">
+            <Stack
+              gap="4"
+              flex="1"
+              maxH={{ base: "none", md: "500px" }}
+              overflowY="auto"
+              pb="4"
+            >
               {items.map((enrichedItem) => {
                 const { item, product, subtotal, error } = enrichedItem;
                 const itemKey = item.getUniqueKey();
@@ -174,33 +182,43 @@ export function CartModal({
                 return (
                   <Box
                     key={itemKey}
-                    p="4"
+                    p="3"
                     borderWidth="1px"
                     borderRadius="md"
                     bg={error ? "red.50" : "white"}
                   >
-                    <Flex gap="4">
+                    <Flex gap="3" direction={{ base: "column", sm: "row" }}>
                       {/* Imagem */}
-                      <Box flexShrink={0}>
-                        <Image
-                          src={product?.imageUrl || "/placeholder.png"}
-                          alt={product?.title || "Produto"}
-                          width="80px"
-                          height="80px"
-                          objectFit="cover"
-                          borderRadius="md"
-                        />
-                      </Box>
+                      <Flex justify="center" flexShrink={0}>
+                        <Box
+                          position="relative"
+                          w={{ base: "full", sm: "80px" }}
+                          h={{ base: "140px", sm: "80px" }}
+                        >
+                          <Image
+                            src={product?.imageUrl || "/placeholder.png"}
+                            alt={product?.title || "Produto"}
+                            w="full"
+                            h="full"
+                            objectFit="cover"
+                            borderRadius="md"
+                          />
+                        </Box>
+                      </Flex>
 
                       {/* Informações */}
                       <VStack align="stretch" flex="1" gap="2">
                         <Flex justify="space-between" align="start">
-                          <Box>
-                            <Text fontWeight="semibold" fontSize="md">
+                          <Box flex="1" pr="2">
+                            <Text
+                              fontWeight="semibold"
+                              fontSize={{ base: "md", sm: "sm" }}
+                              lineClamp={2}
+                            >
                               {product?.title || "Carregando..."}
                             </Text>
                             {product && (
-                              <Text fontSize="sm" color="gray.600">
+                              <Text fontSize="sm" color="gray.600" mt="1">
                                 R$ {product.price.toFixed(2)}
                               </Text>
                             )}
@@ -217,45 +235,52 @@ export function CartModal({
                           </IconButton>
                         </Flex>
 
-                        {/* Seletor de Tamanho */}
-                        {product?.sizes && product.sizes.length > 0 && (
-                          <SelectRoot
-                            collection={createListCollection({
-                              items: product.sizes.map((size) => ({
-                                label: size,
-                                value: size,
-                              })),
-                            })}
-                            value={[item.variants?.size || ""]}
-                            onValueChange={(details) => {
-                              const size = details.value[0];
-                              if (size) {
-                                onUpdateSize(itemKey, size as ProductSize);
-                              }
-                            }}
-                            size="sm"
-                            width="120px"
-                          >
-                            <SelectTrigger>
-                              <SelectValueText placeholder="Tamanho" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {product.sizes.map((size) => (
-                                <SelectItem key={size} item={size}>
-                                  {size}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </SelectRoot>
-                        )}
+                        <Flex
+                          direction="row"
+                          align="center"
+                          justify="space-between"
+                          mt="1"
+                          flexWrap="wrap"
+                          gap="2"
+                        >
+                          {/* Seletor de Tamanho */}
+                          {product?.sizes && product.sizes.length > 0 && (
+                            <SelectRoot
+                              collection={createListCollection({
+                                items: product.sizes.map((size) => ({
+                                  label: size,
+                                  value: size,
+                                })),
+                              })}
+                              value={[item.variants?.size || ""]}
+                              onValueChange={(details) => {
+                                const size = details.value[0];
+                                if (size) {
+                                  onUpdateSize(itemKey, size as ProductSize);
+                                }
+                              }}
+                              size="sm"
+                              width={{ base: "100%", sm: "90px" }}
+                            >
+                              <SelectTrigger>
+                                <SelectValueText placeholder="Tamanho" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {product.sizes.map((size) => (
+                                  <SelectItem key={size} item={size}>
+                                    {size}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </SelectRoot>
+                          )}
 
-                        {/* Controles de Quantidade */}
-                        <Flex align="center" justify="space-between">
-                          <HStack>
+                          {/* Controles de Quantidade */}
+                          <HStack bg="gray.50" borderRadius="md" p="1">
                             <IconButton
                               aria-label="Diminuir quantidade"
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
                               onClick={() =>
                                 onUpdateQuantity(
                                   itemKey,
@@ -279,8 +304,10 @@ export function CartModal({
                                 );
                               }}
                               size="sm"
-                              width="60px"
+                              width="40px"
                               textAlign="center"
+                              bg="transparent"
+                              border="none"
                               type="number"
                               min={1}
                               max={product?.stock}
@@ -289,7 +316,7 @@ export function CartModal({
                             <IconButton
                               aria-label="Aumentar quantidade"
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
                               onClick={() =>
                                 onUpdateQuantity(itemKey, item.quantity + 1)
                               }
@@ -300,8 +327,14 @@ export function CartModal({
                               <FiPlus />
                             </IconButton>
                           </HStack>
+                        </Flex>
 
-                          <Text fontWeight="bold" fontSize="md">
+                        <Flex justify="flex-end" mt={{ base: 2, sm: 0 }}>
+                          <Text
+                            fontWeight="bold"
+                            fontSize="md"
+                            color="green.600"
+                          >
                             R$ {subtotal.toFixed(2)}
                           </Text>
                         </Flex>
@@ -315,7 +348,7 @@ export function CartModal({
 
                         {product && item.quantity > product.stock && (
                           <Text fontSize="xs" color="orange.600">
-                            ⚠️ Estoque: apenas {product.stock} disponíveis
+                            ⚠️ Apenas {product.stock} em estoque
                           </Text>
                         )}
                       </VStack>
@@ -327,13 +360,21 @@ export function CartModal({
           )}
         </DialogBody>
 
-        <DialogFooter flexDirection="column" gap="3" alignItems="stretch">
+        <DialogFooter
+          display="flex"
+          flexDirection="column"
+          gap="4"
+          bg="white"
+          borderTopWidth="1px"
+          p="4"
+        >
           {/* Total */}
           {!isEmpty && (
             <Flex
               justify="space-between"
               align="center"
-              p="3"
+              p="4"
+              w="full"
               bg="gray.50"
               borderRadius="md"
             >
@@ -350,6 +391,7 @@ export function CartModal({
           {!isEmpty && !canCheckout && checkoutBlockReason && (
             <Box
               p="3"
+              w="full"
               bg="orange.50"
               borderRadius="md"
               borderWidth="1px"
@@ -361,24 +403,17 @@ export function CartModal({
               <Text fontSize="sm" color="orange.600" mt="1">
                 {checkoutBlockReason}
               </Text>
-              <Text fontSize="xs" color="orange.500" mt="2">
-                Ajuste as quantidades ou remova itens antes de continuar.
-              </Text>
             </Box>
           )}
 
           {/* Botões */}
-          <Flex gap="2" width="full">
-            <Button variant="outline" onClick={onClose} flex="1">
-              Continuar Comprando
-            </Button>
-
+          <Flex gap="3" width="full" direction="column">
             {!isEmpty && (
-              <Box flex="1">
+              <Box w="full">
                 <WhatsAppCheckoutButton
                   cart={cartItems}
                   buttonText="Finalizar pelo WhatsApp"
-                  size="md"
+                  size="lg"
                   disabled={!canCheckout}
                   onSuccess={(total: number) => {
                     console.log("Pedido finalizado! Total:", total);
@@ -387,6 +422,10 @@ export function CartModal({
                 />
               </Box>
             )}
+
+            <Button variant="outline" onClick={onClose} size="lg" w="full">
+              Continuar Comprando
+            </Button>
           </Flex>
         </DialogFooter>
       </DialogContent>
