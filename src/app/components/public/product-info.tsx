@@ -145,8 +145,7 @@ export const ProductInfo = ({
       type: "success",
     });
 
-    // Abrir carrinho
-    openCart();
+    // Não abrir carrinho automaticamente
   };
 
   return (
@@ -254,20 +253,39 @@ export const ProductInfo = ({
       )}
 
       <Box w="full">
-        <HStack gap="2" w="full">
-          <Button
-            flex="1"
-            size="lg"
-            onClick={handleAddToCart}
-            disabled={!canCheckout}
-            colorScheme="gray"
-            variant="outline"
+        <VStack gap="3" w="full">
+          <HStack
+            gap={{ base: 3, sm: 2 }}
+            w="full"
+            flexDirection={{ base: "column", sm: "row" }}
+            alignItems="stretch"
           >
-            <FiShoppingCart style={{ marginRight: "8px" }} />
-            Adicionar ao Carrinho
-          </Button>
+            <Button
+              flex="1"
+              size="lg"
+              w="full"
+              onClick={handleAddToCart}
+              disabled={!canCheckout}
+              colorScheme="gray"
+              variant="outline"
+            >
+              <FiShoppingCart style={{ marginRight: "8px" }} />
+              Adicionar ao Carrinho
+            </Button>
 
-          <Box flex="1">
+            <Button
+              flex="1"
+              size="lg"
+              w="full"
+              onClick={openCart}
+              colorScheme="blue"
+              variant="solid"
+            >
+              Ir até o Carrinho
+            </Button>
+          </HStack>
+
+          <Box w="full">
             <WhatsAppCheckoutButton
               cart={cart}
               onSuccess={handleSuccess}
@@ -276,7 +294,7 @@ export const ProductInfo = ({
               buttonText="Comprar Direto"
             />
           </Box>
-        </HStack>
+        </VStack>
 
         {/* Mensagem de ajuda quando botão desabilitado */}
         {!canCheckout && disabledReason && (
