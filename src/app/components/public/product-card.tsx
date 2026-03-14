@@ -9,6 +9,7 @@ export interface ProductCardProps {
   price: number;
   subtitle?: string;
   alt?: string;
+  sizes?: string[];
 }
 
 export const ProductCard = ({
@@ -18,6 +19,7 @@ export const ProductCard = ({
   price,
   subtitle,
   alt,
+  sizes,
 }: ProductCardProps) => {
   const router = useRouter();
 
@@ -35,7 +37,7 @@ export const ProductCard = ({
       w="full"
       onClick={handleClick}
     >
-      <Box overflow="hidden" aspectRatio="3/4" w="full">
+      <Box position="relative" overflow="hidden" aspectRatio="3/4" w="full">
         <Image
           src={imageUrl}
           alt={alt || title}
@@ -45,6 +47,40 @@ export const ProductCard = ({
           transition="transform 0.4s ease"
           _groupHover={{ transform: "scale(1.05)" }}
         />
+
+        {sizes && sizes.length > 0 && (
+          <Flex
+            position="absolute"
+            bottom="0"
+            left="0"
+            w="full"
+            p="2"
+            gap="2"
+            flexWrap="wrap"
+            justify="center"
+            bg="blackAlpha.600"
+            backdropFilter="blur(2px)"
+            opacity={{ base: 1, md: 0 }}
+            transform={{ base: "translateY(0)", md: "translateY(100%)" }}
+            transition="all 0.3s ease"
+            _groupHover={{ opacity: 1, transform: "translateY(0)" }}
+          >
+            {sizes.map((size) => (
+              <Box
+                key={size}
+                px="2"
+                py="0.5"
+                bg="whiteAlpha.400"
+                color="white"
+                fontSize="xs"
+                fontWeight="semibold"
+                borderRadius="md"
+              >
+                {size}
+              </Box>
+            ))}
+          </Flex>
+        )}
       </Box>
 
       <Flex

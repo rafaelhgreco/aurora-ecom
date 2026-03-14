@@ -1,18 +1,15 @@
-import { Box, Button, Heading, HStack, Text, VStack } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Text, VStack } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import { FiShoppingCart } from "react-icons/fi";
 import { calculateInstallment, formatPrice } from "@/app/utils/price-formatter";
 import { toaster } from "@/components/ui/toaster";
 import type { ProductSize } from "@/core/entities";
-import { useCartContext } from "../../contexts/cart-context";
+import { useCart } from "../../hooks/use-cart";
 import { ProductQuantitySelector } from "./product-quantity-selector";
 import { ProductSizeSelector } from "./product-size-selector";
 import { WhatsAppCheckoutButton } from "./whatsapp-checkout-button";
 
 interface ProductInfoProps {
-  /**
-   * ID do produto no Firestore
-   */
   productId: string;
 
   title: string;
@@ -21,10 +18,6 @@ interface ProductInfoProps {
   sizes: string[];
   availableSizes?: string[];
   maxQuantity?: number;
-
-  /**
-   * Estoque disponível do produto
-   */
   stock: number;
 }
 
@@ -40,7 +33,7 @@ export const ProductInfo = ({
 }: ProductInfoProps) => {
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const { addItem, openCart } = useCartContext();
+  const { addItem, openCart, itemCount } = useCart();
 
   const formattedPrice = formatPrice(price);
   const formattedInstallment = calculateInstallment(price, 6);
@@ -143,9 +136,9 @@ export const ProductInfo = ({
       title: "Produto adicionado ao carrinho!",
       description: `${quantity}x ${title}${selectedSize ? ` - Tamanho ${selectedSize}` : ""}`,
       type: "success",
-    });
-
-    // Não abrir carrinho automaticamente
+      closable: true,
+      duration: 4000,
+    }); // Não abrir carrinho automaticamente
   };
 
   return (
@@ -253,38 +246,54 @@ export const ProductInfo = ({
       )}
 
       <Box w="full">
-        <VStack gap="3" w="full">
-          <HStack
-            gap={{ base: 3, sm: 2 }}
+        <VStack gap={{ base: 4, sm: 3 }} w="full">
+          <Flex
+            gap={{ base: 4, sm: 3 }}
             w="full"
-            flexDirection={{ base: "column", sm: "row" }}
-            alignItems="stretch"
+            direction={{ base: "column", sm: "row" }}
+            align="stretch"
           >
             <Button
               flex="1"
-              size="lg"
+              h={{ base: "70px", md: "60px" }}
+              fontSize={{ base: "lg", md: "md" }}
+              textTransform="uppercase"
               w="full"
               onClick={handleAddToCart}
               disabled={!canCheckout}
-              colorScheme="gray"
-              variant="outline"
+              bg="black"
+              color="white"
+              _hover={{
+                bg: "gray.800",
+                transform: "translateY(-2px)",
+                shadow: "md",
+              }}
+              _active={{ bg: "gray.900", transform: "translateY(0)" }}
+              transition="all 0.2s"
             >
-              <FiShoppingCart style={{ marginRight: "8px" }} />
+              <Box as="span" fontSize={{ base: "24px", md: "20px" }} mr="3">
+                <FiShoppingCart />
+              </Box>
               Adicionar ao Carrinho
             </Button>
 
-            <Button
-              flex="1"
-              size="lg"
-              w="full"
-              onClick={openCart}
-              colorScheme="blue"
-              variant="solid"
-            >
-              Ir até o Carrinho
-            </Button>
-          </HStack>
-
+            {itemCount > 0 && (
+              <Button
+                flex="1"
+                h={{ base: "70px", md: "60px" }}
+                fontSize={{ base: "lg", md: "md" }}
+                w="full"
+                onClick={openCart}
+                variant="outline"
+                borderWidth="2px"
+                borderColor="gray.200"
+                color="gray.700"
+                _hover={{ bg: "gray.50", borderColor: "gray.300" }}
+              >
+                Ir até o Carrinho ({itemCount})
+              </Button>
+            )}
+          </Flex>
           <Box w="full">
             <WhatsAppCheckoutButton
               cart={cart}

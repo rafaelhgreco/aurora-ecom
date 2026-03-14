@@ -33,24 +33,35 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
     toWhatsAppCartItems,
     itemCount,
     canCheckout,
-    checkoutBlockReason,
   } = useCart();
 
   return (
     <>
-      <Flex align="center" justify="space-between" w="full" px="4">
-        <Box flex="1">
-          <Header
-            logo={logoSrc}
-            items={[
-              { label: "SHOP", path: "/" },
-              { label: "ARQUIVO", path: "/dashboard" },
-              { label: "SOBRE", path: "/sobre" },
-            ]}
-          />
-        </Box>
-        <CartIcon itemCount={itemCount} onClick={openCart} size="lg" />
-      </Flex>
+      <Box>
+        <Header
+          logo={logoSrc}
+          items={[
+            { label: "SHOP", path: "/" },
+            { label: "ARQUIVO", path: "/arquivo" },
+            { label: "SOBRE", path: "/sobre" },
+          ]}
+        />
+
+        <Flex
+          position="fixed"
+          top="3px"
+          right="0"
+          h={{ base: "50px", md: "60px" }}
+          px={{ base: "4", md: "6" }}
+          align="center"
+          zIndex="1050"
+          pointerEvents="none"
+        >
+          <Box pointerEvents="auto">
+            <CartIcon itemCount={itemCount} onClick={openCart} size="md" />
+          </Box>
+        </Flex>
+      </Box>
 
       <CartModal
         isOpen={isOpen}
@@ -64,7 +75,6 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
         onClearCart={clearCart}
         cartItems={toWhatsAppCartItems()}
         canCheckout={canCheckout}
-        checkoutBlockReason={checkoutBlockReason}
       />
     </>
   );

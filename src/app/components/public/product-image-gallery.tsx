@@ -13,14 +13,36 @@ export const ProductImageGallery = ({
   const [selectedImage, setSelectedImage] = useState(0);
 
   return (
-    <Flex gap="4" w="full">
-      {/* Thumbnails verticais */}
-      <Flex direction="column" gap="2" maxH="600px" overflowY="auto">
+    <Flex gap="4" w="full" direction={{ base: "column-reverse", md: "row" }}>
+      {/* Thumbnails */}
+      <Flex
+        direction={{ base: "row", md: "column" }}
+        gap="2"
+        maxH={{ base: "auto", md: "600px" }}
+        w={{ base: "full", md: "auto" }}
+        overflowY={{ base: "hidden", md: "auto" }}
+        overflowX={{ base: "auto", md: "hidden" }}
+        css={{
+          "&::-webkit-scrollbar": {
+            width: "4px",
+            height: "4px",
+          },
+          "&::-webkit-scrollbar-track": {
+            width: "6px",
+            height: "6px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "#CBD5E0",
+            borderRadius: "24px",
+          },
+        }}
+      >
         {images.map((image, index) => (
           <Box
             key={`thumb-${image}`}
-            w="80px"
-            h="80px"
+            flexShrink={0}
+            w={{ base: "60px", md: "80px" }}
+            h={{ base: "60px", md: "80px" }}
             cursor="pointer"
             border="2px solid"
             borderColor={selectedImage === index ? "gray.900" : "gray.200"}
@@ -42,7 +64,14 @@ export const ProductImageGallery = ({
       </Flex>
 
       {/* Imagem principal */}
-      <Box flex="1" aspectRatio="1" overflow="hidden" borderRadius="md">
+      <Box
+        flex="1"
+        aspectRatio="3/4"
+        w="full"
+        maxH={{ base: "500px", md: "700px" }}
+        overflow="hidden"
+        borderRadius="md"
+      >
         <Image
           src={images[selectedImage]}
           alt={alt}

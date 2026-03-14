@@ -22,6 +22,7 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
           title={product.title}
           subtitle={product.subtitle}
           price={product.price}
+          sizes={product.sizes}
         />
       ))}
     </SimpleGrid>

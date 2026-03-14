@@ -5,7 +5,19 @@
 
 import type { CartItemVariants, ProductEntity } from "@/core/entities";
 import { CartItemEntity } from "@/core/entities";
-import type { CartItemJSON, EnrichedCartItem } from "./checkout.d";
+import type {
+  CartItem,
+  CartItemJSON,
+  EnrichedCartItem,
+  WhatsAppCheckoutResult,
+} from "./checkout.d";
+
+export type {
+  CartItemJSON,
+  EnrichedCartItem,
+  WhatsAppCheckoutResult,
+  CartItem,
+};
 
 /**
  * Helper para converter CartItemEntity em formato JSON

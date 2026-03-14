@@ -7,6 +7,7 @@ export const publicRoutes = [
   "/not-found",
   "/sobre",
   "/produto",
+  "/arquivo",
 ] as const;
 
 export const authRoutes = ["/login", "/cadastro", "/recuperar-senha"] as const;

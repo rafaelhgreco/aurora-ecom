@@ -1,5 +1,5 @@
 "use client";
-import { Box, Button, Container, Grid } from "@chakra-ui/react";
+import { Box, Button, Container, Flex, Grid } from "@chakra-ui/react";
 import { usePathname, useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import { IoArrowBack } from "react-icons/io5";
@@ -10,7 +10,6 @@ import { ProductInfo } from "@/app/components/public/product-info";
 import { ProductPageHeader } from "@/app/components/public/product-page-header";
 import { ErrorState, LoadingState } from "@/app/components/states";
 import { NextRouterSync } from "@/app/hooks/use-next-router-sync";
-import styles from "@/app/page.module.css";
 import type { Product } from "@/core/schemas/product.schema";
 
 export default function ProdutoPage({
@@ -80,10 +79,18 @@ export default function ProdutoPage({
   return (
     <Router initialEntries={[nextPathname]}>
       <NextRouterSync />
-      <div className={styles.page}>
-        <main className={styles.main}>
+      <Flex minH="100vh" align="center" justify="center" bg="white">
+        <Flex
+          as="main"
+          direction="column"
+          w="full"
+          maxW="1440px"
+          minH="100vh"
+          p={{ base: "4", md: "8", lg: "10" }}
+          bg="white"
+        >
           <ProductPageHeader logoSrc={logoSrc} />
-          <Container maxW="1200px" mt="8">
+          <Container maxW="1200px" mt="8" p={{ base: "0", md: "4" }}>
             <Button
               variant="ghost"
               onClick={() => router.back()}
@@ -98,14 +105,14 @@ export default function ProdutoPage({
               gap={{ base: "8", md: "12" }}
               w="full"
             >
-              <Box>
+              <Box w="full" overflow="hidden">
                 <ProductImageGallery
                   images={productData.images}
                   alt={productData.title}
                 />
               </Box>
 
-              <Box>
+              <Box w="full">
                 <ProductInfo
                   productId={productData.id}
                   title={productData.title}
@@ -119,8 +126,8 @@ export default function ProdutoPage({
               </Box>
             </Grid>
           </Container>
-        </main>
-      </div>
+        </Flex>
+      </Flex>
     </Router>
   );
 }

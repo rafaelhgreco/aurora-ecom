@@ -105,7 +105,8 @@ async function enrichCartItems(
 function buildOrderMessage(items: EnrichedCartItem[], total: number): string {
   const lines: string[] = [];
 
-  lines.push("🛍️ *Olá! Gostaria de finalizar o seguinte pedido:*");
+  lines.push("*NOVO PEDIDO*");
+  lines.push("Olá! Gostaria de finalizar o seguinte pedido:");
   lines.push("");
 
   for (const item of items) {
@@ -117,18 +118,20 @@ function buildOrderMessage(items: EnrichedCartItem[], total: number): string {
     let variants = "";
     if (item.variants) {
       const parts: string[] = [];
-      if (item.variants.size) parts.push(`Tam: ${item.variants.size}`);
+      if (item.variants.size) parts.push(`Tamanho: ${item.variants.size}`);
       if (item.variants.color) parts.push(`Cor: ${item.variants.color}`);
       if (parts.length > 0) variants = ` (${parts.join(", ")})`;
     }
 
-    lines.push(`• ${qty}x *${name}*${variants} - ${subtotal}`);
+    lines.push(`- ${qty}x ${name}${variants} | Subtotal: ${subtotal}`);
   }
 
   lines.push("");
-  lines.push(`💰 *Total: ${formatCurrency(total)}*`);
+  lines.push("----------------------------------------");
+  lines.push(`*Total do Pedido: ${formatCurrency(total)}*`);
+  lines.push("----------------------------------------");
   lines.push("");
-  lines.push("Aguardo as instruções de pagamento e entrega! 😊");
+  lines.push("Aguardo as instruções para pagamento e opções de entrega.");
 
   return lines.join("\n");
 }
