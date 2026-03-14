@@ -158,25 +158,30 @@ export function CartModal({
                         borderRadius="md"
                         bg={error ? "red.50" : "white"}
                       >
-                        <Flex gap="4" direction={{ base: "column", sm: "row" }}>
+                        <Flex gap="3" direction="row" align="flex-start">
                           {/* Imagem */}
-                          <Flex justify={{ base: "center", sm: "flex-start" }}>
-                            <Box
-                              flexShrink={0}
-                              position="relative"
-                              w={{ base: "full", sm: "100px" }}
-                              h={{ base: "140px", sm: "100px" }}
-                            >
-                              <Image
-                                src={product?.imageUrl || "/placeholder.png"}
-                                alt={product?.title || "Produto"}
-                                w="full"
-                                h="full"
-                                objectFit="cover"
-                                borderRadius="md"
-                              />
-                            </Box>
-                          </Flex>
+                          <Box
+                            flexShrink={0}
+                            position="relative"
+                            w="80px"
+                            h="80px"
+                            bg="gray.50"
+                            borderRadius="md"
+                            borderWidth="1px"
+                            borderColor="gray.100"
+                            overflow="hidden"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                          >
+                            <Image
+                              src={product?.imageUrl || "/placeholder.png"}
+                              alt={product?.title || "Produto"}
+                              w="full"
+                              h="full"
+                              objectFit="contain"
+                            />
+                          </Box>
 
                           {/* Informações */}
                           <VStack align="stretch" flex="1" gap="2">
