@@ -31,12 +31,14 @@ export function CartIcon({ itemCount, onClick, size = "md" }: CartIconProps) {
     size === "sm" ? "10px" : size === "md" ? "11px" : "12px";
 
   return (
-    <Box position="relative" display="inline-block">
+    <Box position="relative" display="inline-block" p="2">
       <IconButton
         aria-label="Abrir carrinho"
         onClick={onClick}
         variant="ghost"
         size={size}
+        _hover={{ bg: "gray.100" }}
+        borderRadius="full"
       >
         <FiShoppingCart size={size === "sm" ? 18 : size === "md" ? 20 : 24} />
       </IconButton>
@@ -44,8 +46,8 @@ export function CartIcon({ itemCount, onClick, size = "md" }: CartIconProps) {
       {/* Badge de quantidade */}
       <Box
         position="absolute"
-        top="-4px"
-        right="-4px"
+        top="2px"
+        right="2px"
         bg={itemCount > 0 ? "red.500" : "gray.400"}
         color="white"
         borderRadius="full"
