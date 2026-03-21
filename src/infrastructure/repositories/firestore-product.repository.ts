@@ -14,14 +14,8 @@ import {
 } from "firebase/firestore";
 import { ProductEntity } from "@/core/entities/product.entity";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
+import type { ProductFilter } from "@/core/schemas/product.schema";
 import { db } from "@/infrastructure/lib/firebase";
-
-interface ProductFilters {
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  isActive?: boolean;
-}
 
 /**
  * Implementação do repositório de produtos usando Firebase Firestore
@@ -96,7 +90,7 @@ export class FirestoreProductRepository implements IProductRepository {
     return docSnap.exists();
   }
 
-  async findAll(filters?: ProductFilters): Promise<ProductEntity[]> {
+  async findAll(filters?: ProductFilter): Promise<ProductEntity[]> {
     const constraints: QueryConstraint[] = [];
 
     constraints.push(where("deletedAt", "==", null));
@@ -122,7 +116,26 @@ export class FirestoreProductRepository implements IProductRepository {
     const q = query(collection(db, this.collectionName), ...constraints);
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((doc) => this.docToEntity(doc.id, doc.data()));
+    let results = snapshot.docs.map((doc) =>
+      this.docToEntity(doc.id, doc.data()),
+    );
+
+    if (filters?.search) {
+      const needle = filters.search.toLowerCase();
+      results = results.filter(
+        (p) =>
+          p.title.toLowerCase().includes(needle) ||
+          p.description.toLowerCase().includes(needle),
+      );
+    }
+
+    if (filters?.sizes && filters.sizes.length > 0) {
+      results = results.filter((p) =>
+        p.sizes?.some((size) => filters.sizes?.includes(size)),
+      );
+    }
+
+    return results;
   }
 
   async findById(id: string): Promise<ProductEntity | null> {

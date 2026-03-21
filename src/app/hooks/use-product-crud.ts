@@ -15,9 +15,9 @@ import {
   updateProductAction,
 } from "@/app/actions/products";
 import type {
-  CreateProductData,
+  CreateProductInput,
   Product,
-  UpdateProductData,
+  UpdateProductInput,
 } from "@/app/types/product";
 
 export function useProductCRUD() {
@@ -61,7 +61,7 @@ export function useProductCRUD() {
   }, []);
 
   const createProduct = useCallback(
-    async (data: CreateProductData) => {
+    async (data: CreateProductInput) => {
       setIsLoading(true);
       setError(null);
       try {
@@ -88,7 +88,7 @@ export function useProductCRUD() {
   );
 
   const updateProduct = useCallback(
-    async (data: UpdateProductData) => {
+    async (data: UpdateProductInput) => {
       setIsLoading(true);
       setError(null);
       try {

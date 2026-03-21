@@ -36,7 +36,7 @@ npm run dev
 
 - **Homepage:** http://localhost:3001
 - **Página de Teste:** http://localhost:3001/test-backend
-- **Novo Produto:** http://localhost:3001/admin/produtos/novo
+- **Novo Produto (admin):** http://localhost:3001/admin-produtos/novo
 - **Teste Checkout:** http://localhost:3001/teste-checkout
 
 ---
@@ -101,8 +101,8 @@ aurora-ecom/
 │   ├── app/                         # Next.js App Router
 │   │   ├── (admin)/                # Rotas administrativas
 │   │   │   ├── dashboard/
-│   │   │   └── produtos/
-│   │   │       └── novo/           # Formulário de novo produto
+│   │   │   └── admin-produtos/     # CRUD de produtos (middleware: só admin)
+│   │   │       └── novo/
 │   │   ├── (public)/               # Rotas públicas
 │   │   ├── actions/                # Server Actions
 │   │   │   └── products.ts         # CRUD de produtos

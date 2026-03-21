@@ -40,10 +40,10 @@ import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import {
   type CreateProductInput,
   createProductSchema,
+  PRODUCT_SIZES,
+  type ProductSize,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
-
-const SIZES = ["PP", "P", "M", "G", "GG", "XG"] as const;
 
 export function ProductForm() {
   const [isUploading, setIsUploading] = useState(false);
@@ -141,12 +141,12 @@ export function ProductForm() {
   /**
    * Toggle size selection
    */
-  const handleToggleSize = (size: string) => {
+  const handleToggleSize = (size: ProductSize) => {
     const current = selectedSizes || [];
-    const newSizes = current.includes(size as (typeof SIZES)[number])
+    const newSizes = current.includes(size)
       ? current.filter((s) => s !== size)
-      : [...current, size as (typeof SIZES)[number]];
-    setValue("sizes", newSizes as (typeof SIZES)[number][]);
+      : [...current, size];
+    setValue("sizes", newSizes);
   };
 
   /**
@@ -431,7 +431,7 @@ export function ProductForm() {
               </Card.Header>
               <Card.Body>
                 <Flex gap={4} wrap="wrap">
-                  {SIZES.map((size) => (
+                  {PRODUCT_SIZES.map((size) => (
                     <Checkbox
                       key={size}
                       checked={selectedSizes.includes(size)}

@@ -21,6 +21,8 @@ interface CartContextValue {
   updateItemQuantity: (itemKey: string, quantity: number) => void;
   updateItemVariants: (itemKey: string, variants?: CartItemVariants) => void;
   clearCart: () => void;
+  /** Substitui o carrinho por outra instância (ex.: após remover itens inválidos). */
+  replaceCart: (next: CartEntity) => void;
   getItemCount: () => number;
   getTotalQuantity: () => number;
   isOpen: boolean;
@@ -94,6 +96,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart(new CartEntity());
   };
 
+  const replaceCart = (next: CartEntity) => {
+    setCart(next.clone());
+  };
+
   const getItemCount = () => cart.getItemCount();
   const getTotalQuantity = () => cart.getTotalQuantity();
 
@@ -109,6 +115,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updateItemQuantity,
         updateItemVariants,
         clearCart,
+        replaceCart,
         getItemCount,
         getTotalQuantity,
         isOpen,

@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatPrice } from "@/app/utils/price-formatter";
 import type { CartItemEntity, ProductSize } from "@/core/entities";
 import { ProductEntity } from "@/core/entities";
 import { getProductByIdAction } from "../actions/products";
@@ -107,12 +108,7 @@ export function useCart() {
     const removedCount = newCart.removeInvalidItems(productsMapRef.current);
 
     if (removedCount > 0) {
-      // Atualiza o carrinho no contexto
-      // Como não temos acesso direto ao setCart, vamos limpar e readicionar
-      context.clearCart();
-      for (const item of newCart.getItems()) {
-        context.addItem(item.productId, item.quantity, item.variants);
-      }
+      context.replaceCart(newCart);
     }
 
     return removedCount;
@@ -153,8 +149,7 @@ export function useCart() {
    * Total formatado
    */
   const formattedTotal = useMemo(() => {
-    const total = calculateTotal();
-    return `R$ ${total.toFixed(2)}`;
+    return formatPrice(calculateTotal());
   }, [calculateTotal]);
 
   /**

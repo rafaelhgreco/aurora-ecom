@@ -12,21 +12,12 @@ import type {
   EnrichedCartItem,
   WhatsAppCheckoutResult,
 } from "@/app/types/checkout";
+import { formatPrice } from "@/app/utils/price-formatter";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
 
 // Número do WhatsApp da loja (formato internacional sem sinais: 55DDDNUMERO)
 const SHOP_WHATSAPP_NUMBER =
   process.env.NEXT_PUBLIC_SHOP_WHATSAPP_NUMBER || "5511999999999";
-
-/**
- * Formata valor monetário para BRL
- */
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
-}
 
 /**
  * Valida o array de itens do carrinho
@@ -112,7 +103,7 @@ function buildOrderMessage(items: EnrichedCartItem[], total: number): string {
   for (const item of items) {
     const name = item.product.title;
     const qty = item.quantity;
-    const subtotal = formatCurrency(item.subtotal);
+    const subtotal = formatPrice(item.subtotal);
 
     // Adiciona variações se existirem
     let variants = "";
@@ -128,7 +119,7 @@ function buildOrderMessage(items: EnrichedCartItem[], total: number): string {
 
   lines.push("");
   lines.push("----------------------------------------");
-  lines.push(`*Total do Pedido: ${formatCurrency(total)}*`);
+  lines.push(`*Total do Pedido: ${formatPrice(total)}*`);
   lines.push("----------------------------------------");
   lines.push("");
   lines.push("Aguardo as instruções para pagamento e opções de entrega.");

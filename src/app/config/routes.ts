@@ -25,8 +25,12 @@ export const privateRoutes: Record<string, RouteConfig> = {
   "/dashboard": {
     roles: ["admin", "manager", "user"],
   },
-  "/produtos/novo": {
+  /**
+   * CRUD e área administrativa de produtos — apenas admin.
+   * Cobre /admin-produtos, /admin-produtos/novo, etc. (middleware usa startsWith).
+   */
+  "/admin-produtos": {
     roles: ["admin"],
-    redirect: "/admin-produtos",
+    redirect: "/dashboard",
   },
 };

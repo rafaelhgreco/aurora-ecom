@@ -31,15 +31,18 @@ import { type SubmitHandler, useForm } from "react-hook-form";
 import { IoArrowBack, IoClose, IoCloudUpload } from "react-icons/io5";
 import { z } from "zod";
 import { useProductCRUD } from "@/app/hooks/use-product-crud";
-import type { CreateProductData } from "@/app/types/product";
+import type { CreateProductInput } from "@/app/types/product";
 import { Alert } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import { toaster } from "@/components/ui/toaster";
+import {
+  PRODUCT_SIZES,
+  type ProductSize,
+  productSizeSchema,
+} from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
-
-const SIZES = ["PP", "P", "M", "G", "GG", "XG"] as const;
 
 const formSchema = z.object({
   title: z
@@ -57,7 +60,7 @@ const formSchema = z.object({
     .multipleOf(0.01, "Preço deve ter no máximo 2 casas decimais"),
   category: z.string().optional(),
   stock: z.number().int().nonnegative().default(0),
-  sizes: z.array(z.enum(["PP", "P", "M", "G", "GG", "XG"])).optional(),
+  sizes: z.array(productSizeSchema).optional(),
   colors: z
     .union([z.string(), z.array(z.string())])
     .optional()
@@ -178,12 +181,12 @@ export default function NovoProductPage() {
   /**
    * Toggle size selection
    */
-  const handleToggleSize = (size: string) => {
+  const handleToggleSize = (size: ProductSize) => {
     const current = selectedSizes || [];
-    const newSizes = current.includes(size as (typeof SIZES)[number])
+    const newSizes = current.includes(size)
       ? current.filter((s) => s !== size)
-      : [...current, size as (typeof SIZES)[number]];
-    setValue("sizes", newSizes as (typeof SIZES)[number][]);
+      : [...current, size];
+    setValue("sizes", newSizes);
   };
 
   /**
@@ -196,7 +199,7 @@ export default function NovoProductPage() {
 
       const imageUrls = await handleUploadImages();
 
-      const productData: CreateProductData = {
+      const productData: CreateProductInput = {
         title: data.title,
         subtitle: data.subtitle,
         description: data.description,
@@ -522,7 +525,7 @@ export default function NovoProductPage() {
                     templateColumns="repeat(auto-fill, minmax(80px, 1fr))"
                     gap={2}
                   >
-                    {SIZES.map((size) => (
+                    {PRODUCT_SIZES.map((size) => (
                       <Checkbox
                         key={size}
                         checked={selectedSizes.includes(size)}

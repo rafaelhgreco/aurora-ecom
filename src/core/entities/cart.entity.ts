@@ -223,18 +223,21 @@ export class CartEntity {
    * Remove itens inativos ou sem estoque
    */
   removeInvalidItems(products: Map<string, ProductEntity>): number {
-    let removedCount = 0;
+    const keysToRemove: string[] = [];
 
     for (const item of this.items.values()) {
       const product = products.get(item.productId);
 
       if (!product || !product.isActive || !item.hasStock(product)) {
-        this.removeItem(item);
-        removedCount++;
+        keysToRemove.push(item.getUniqueKey());
       }
     }
 
-    return removedCount;
+    for (const key of keysToRemove) {
+      this.items.delete(key);
+    }
+
+    return keysToRemove.length;
   }
 
   /**
