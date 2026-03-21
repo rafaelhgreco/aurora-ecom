@@ -4,7 +4,7 @@
  * Server Action: WhatsApp Checkout
  *
  * Gera URL segura do WhatsApp com mensagem formatada do pedido.
- * O servidor busca os preços reais no Firestore para evitar fraudes.
+ * Salva o pedido na coleção orders do Firestore e retorna o link.
  */
 
 import type {
@@ -13,7 +13,9 @@ import type {
   WhatsAppCheckoutResult,
 } from "@/app/types/checkout";
 import { formatPrice } from "@/app/utils/price-formatter";
+import type { OrderItem } from "@/core/schemas/order.schema";
 import type { ProductSize } from "@/core/schemas/product.schema";
+import { createOrder } from "@/infrastructure/repositories/firestore-order.repository";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
 
 // Número do WhatsApp da loja (formato internacional sem sinais: 55DDDNUMERO)
@@ -157,19 +159,33 @@ export async function createWhatsAppCheckoutLink(
     // 3. Calcula total
     const total = enrichedItems.reduce((sum, item) => sum + item.subtotal, 0);
 
-    // 4. Monta mensagem formatada
+    // 4. Salva pedido no Firestore (para gestão no admin)
+    const orderItems: OrderItem[] = enrichedItems.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      variants: item.variants,
+      title: item.product.title,
+      price: item.product.price,
+      subtotal: item.subtotal,
+    }));
+
+    // Cria pedido (estoque só é decrementado quando o admin finaliza)
+    const order = await createOrder(orderItems, total);
+
+    // 5. Monta mensagem formatada
     const message = buildOrderMessage(enrichedItems, total);
 
-    // 5. Codifica mensagem para URL
+    // 6. Codifica mensagem para URL
     const encodedMessage = encodeURIComponent(message);
 
-    // 6. Gera URL do WhatsApp
+    // 7. Gera URL do WhatsApp
     const whatsappUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodedMessage}`;
 
     return {
       success: true,
       url: whatsappUrl,
       total,
+      orderId: order.id,
     };
   } catch (error) {
     const errorMessage =

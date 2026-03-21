@@ -31,6 +31,8 @@ export interface WhatsAppCheckoutResult {
   url?: string;
   error?: string;
   total?: number;
+  /** ID do pedido criado no Firestore (para gestão no admin) */
+  orderId?: string;
 }
 
 /**

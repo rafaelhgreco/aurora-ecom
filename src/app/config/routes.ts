@@ -27,4 +27,8 @@ export const privateRoutes: Record<string, RouteConfig> = {
     roles: ["admin"],
     redirect: "/not-found",
   },
+  "/admin-pedidos": {
+    roles: ["admin"],
+    redirect: "/not-found",
+  },
 };
