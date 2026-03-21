@@ -4,11 +4,15 @@
  */
 
 import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, initializeFirestore } from "firebase-admin/firestore";
+
+/** Usar REST em vez de gRPC — evita erro DECODER routines::unsupported na Vercel */
+const FIRESTORE_SETTINGS = { preferRest: true };
 
 function initFirebaseAdmin() {
   if (getApps().length > 0) {
-    return getFirestore();
+    const app = getApps()[0];
+    return getFirestore(app);
   }
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -16,19 +20,19 @@ function initFirebaseAdmin() {
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
   if (projectId && clientEmail && privateKey) {
-    initializeApp({
+    const app = initializeApp({
       credential: cert({
         projectId,
         clientEmail,
         privateKey,
       }),
     });
-    return getFirestore();
+    return initializeFirestore(app, FIRESTORE_SETTINGS);
   }
 
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    initializeApp();
-    return getFirestore();
+    const app = initializeApp();
+    return initializeFirestore(app, FIRESTORE_SETTINGS);
   }
 
   return null;
