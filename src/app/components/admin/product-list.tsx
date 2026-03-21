@@ -29,6 +29,7 @@ interface ProductListProps {
   onEdit?: (product: Product) => void;
   onDelete?: (product: Product) => void;
   onAdd?: () => void;
+  onInventoryChange?: () => void;
 }
 
 export function ProductList({
@@ -38,6 +39,7 @@ export function ProductList({
   onEdit,
   onDelete,
   onAdd,
+  onInventoryChange,
 }: ProductListProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
@@ -114,6 +116,7 @@ export function ProductList({
           onView={onView}
           onEdit={onEdit}
           onDelete={onDelete}
+          onInventoryChange={onInventoryChange}
         />
       )}
     </Box>

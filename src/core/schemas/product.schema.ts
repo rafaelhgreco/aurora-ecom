@@ -24,7 +24,8 @@ export const productSizeSchema = z.enum(PRODUCT_SIZES);
 export const productCategorySchema = z.enum(PRODUCT_CATEGORIES);
 
 export const productSchema = z.object({
-  id: z.string().uuid("ID deve ser um UUID válido").optional(),
+  /** IDs do Firestore não são UUID; aceita qualquer string não vazia */
+  id: z.string().min(1, "ID inválido").optional(),
 
   title: z
     .string({ message: "Título é obrigatório" })
@@ -74,6 +75,22 @@ export const productSchema = z.object({
     .nonnegative("Estoque não pode ser negativo")
     .default(0),
 
+  /**
+   * Estoque por tamanho. Quando definido e produto tem sizes, é a fonte de verdade.
+   * Caso contrário usa `stock` global (produtos sem tamanhos).
+   * Chaves devem ser ProductSize; valores inteiros >= 0.
+   */
+  stockBySize: z
+    .record(z.string(), z.number().int().nonnegative())
+    .refine(
+      (val) =>
+        Object.keys(val).every((k) =>
+          (PRODUCT_SIZES as readonly string[]).includes(k),
+        ),
+      { message: "Chaves de stockBySize devem ser tamanhos válidos" },
+    )
+    .optional(),
+
   sizes: z
     .array(productSizeSchema)
     .min(1, "Produto deve ter pelo menos um tamanho disponível")
@@ -102,6 +119,27 @@ export const createProductSchema = productSchema.omit({
 export const updateProductSchema = productSchema
   .partial()
   .required({ id: true });
+
+/** Formulário de edição admin: mesmo shape de criação + id do Firestore */
+export const productEditFormSchema = createProductSchema.extend({
+  id: z.string().min(1, "ID do produto é obrigatório"),
+});
+
+export type ProductEditFormInput = z.infer<typeof productEditFormSchema>;
+
+/**
+ * Formulário admin: imagens tratadas no componente (URLs existentes + upload);
+ * cores como texto livre (vírgulas).
+ */
+export const productAdminEditFormSchema = productEditFormSchema
+  .omit({ colors: true, images: true, imageUrl: true })
+  .extend({
+    colorsText: z.string().optional(),
+  });
+
+export type ProductAdminEditFormValues = z.infer<
+  typeof productAdminEditFormSchema
+>;
 
 export const productFilterSchema = z.object({
   category: z.string().optional(),

@@ -56,7 +56,7 @@ export default function AdminProductsPage() {
   };
 
   const handleEdit = (product: Product) => {
-    router.push(`/admin/produtos/editar/${product.id}`);
+    router.push(`/admin-produtos/editar/${product.id}`);
   };
 
   const handleDeleteClick = (product: Product) => {
@@ -106,6 +106,7 @@ export default function AdminProductsPage() {
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
           onAdd={handleAdd}
+          onInventoryChange={loadProducts}
         />
       </Box>
 

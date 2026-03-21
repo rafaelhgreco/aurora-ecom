@@ -6,6 +6,7 @@
 export { ActionButton } from "./action-button";
 export { DeleteConfirmDialog } from "./delete-confirm-dialog";
 export { ProductCard } from "./product-card";
+export { ProductEditForm } from "./product-edit-form";
 export { ProductForm } from "./product-form";
 export { ProductList } from "./product-list";
 export { ProductTable } from "./product-table";

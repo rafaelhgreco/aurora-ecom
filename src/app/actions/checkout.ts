@@ -13,6 +13,7 @@ import type {
   WhatsAppCheckoutResult,
 } from "@/app/types/checkout";
 import { formatPrice } from "@/app/utils/price-formatter";
+import type { ProductSize } from "@/core/schemas/product.schema";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
 
 // Número do WhatsApp da loja (formato internacional sem sinais: 55DDDNUMERO)
@@ -65,9 +66,13 @@ async function enrichCartItems(
       throw new Error(`Produto "${product.title}" não está disponível`);
     }
 
-    if (product.stock < item.quantity) {
+    const available =
+      item.variants?.size != null
+        ? product.getStockForSize(item.variants.size as ProductSize)
+        : product.getTotalStock();
+    if (available < item.quantity) {
       throw new Error(
-        `Estoque insuficiente para "${product.title}". Disponível: ${product.stock}`,
+        `Estoque insuficiente para "${product.title}". Disponível: ${available}`,
       );
     }
 

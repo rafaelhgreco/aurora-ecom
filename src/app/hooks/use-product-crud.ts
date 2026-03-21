@@ -46,6 +46,7 @@ export function useProductCRUD() {
   const loadProduct = useCallback(async (id: string) => {
     setIsLoading(true);
     setError(null);
+    setSelectedProduct(null);
     try {
       const result = await getProductByIdAction(id);
       if (result.success && result.data) {
@@ -93,12 +94,16 @@ export function useProductCRUD() {
       setError(null);
       try {
         const result = await updateProductAction(data);
-        if (result.success) {
-          await loadProducts();
-          return { success: true };
+        if (!result.success) {
+          const errMsg = result.error || "Erro ao atualizar produto";
+          setError(errMsg);
+          return { success: false, error: errMsg };
         }
-        setError(result.error || "Erro ao atualizar produto");
-        return { success: false, error: result.error };
+        await loadProducts();
+        if (result.data) {
+          setSelectedProduct(result.data);
+        }
+        return { success: true, data: result.data };
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Erro desconhecido";

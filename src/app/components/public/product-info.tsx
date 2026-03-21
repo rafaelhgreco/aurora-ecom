@@ -7,7 +7,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiShoppingCart } from "react-icons/fi";
 import { calculateInstallment, formatPrice } from "@/app/utils/price-formatter";
 import { toaster } from "@/components/ui/toaster";
@@ -49,6 +49,10 @@ interface ProductInfoProps {
   availableSizes?: string[];
   maxQuantity?: number;
   stock: number;
+  /** Estoque por tamanho; quando presente, stock efetivo depende do tamanho selecionado */
+  stockBySize?: Partial<Record<string, number>>;
+  /** false = pausado na vitrine; não permite compra nem carrinho */
+  isActive?: boolean;
 }
 
 export const ProductInfo = ({
@@ -60,10 +64,21 @@ export const ProductInfo = ({
   availableSizes,
   maxQuantity = 10,
   stock,
+  stockBySize,
+  isActive = true,
 }: ProductInfoProps) => {
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null);
   const [quantity, setQuantity] = useState(1);
   const { addItem, openCart, itemCount } = useCart();
+
+  const effectiveStock =
+    stockBySize && selectedSize ? (stockBySize[selectedSize] ?? 0) : stock;
+
+  useEffect(() => {
+    if (quantity > effectiveStock) {
+      setQuantity(Math.max(1, effectiveStock));
+    }
+  }, [effectiveStock, quantity]);
 
   const formattedPrice = formatPrice(price);
   const formattedInstallment = calculateInstallment(price, 6);
@@ -72,30 +87,34 @@ export const ProductInfo = ({
    * Valida se pode finalizar a compra
    */
   const canCheckout = useMemo(() => {
-    // Tamanho deve estar selecionado (se houver tamanhos)
-    const hasSizeSelected = sizes.length === 0 || selectedSize !== null;
+    if (!isActive) {
+      return false;
+    }
 
-    // Quantidade deve ser válida e não exceder estoque
-    const hasValidQuantity = quantity > 0 && quantity <= stock;
+    const hasSizeSelected = sizes.length === 0 || selectedSize !== null;
+    const hasValidQuantity = quantity > 0 && quantity <= effectiveStock;
 
     return hasSizeSelected && hasValidQuantity;
-  }, [sizes.length, selectedSize, quantity, stock]);
+  }, [isActive, sizes.length, selectedSize, quantity, effectiveStock]);
 
   /**
    * Mensagem de erro para o botão desabilitado
    */
   const disabledReason = useMemo(() => {
+    if (!isActive) {
+      return "Produto indisponível no momento";
+    }
     if (sizes.length > 0 && !selectedSize) {
       return "Selecione um tamanho";
     }
     if (quantity <= 0) {
       return "Quantidade inválida";
     }
-    if (quantity > stock) {
-      return `Estoque insuficiente (disponível: ${stock})`;
+    if (quantity > effectiveStock) {
+      return `Estoque insuficiente (disponível: ${effectiveStock})`;
     }
     return "";
-  }, [sizes.length, selectedSize, quantity, stock]);
+  }, [isActive, sizes.length, selectedSize, quantity, effectiveStock]);
 
   /**
    * Constrói o carrinho dinamicamente baseado nas seleções do usuário
@@ -136,6 +155,15 @@ export const ProductInfo = ({
    * Handler para adicionar ao carrinho
    */
   const handleAddToCart = () => {
+    if (!isActive) {
+      toaster.create({
+        title: "Indisponível",
+        description: "Este produto não está à venda no momento.",
+        type: "warning",
+      });
+      return;
+    }
+
     // Validação
     if (sizes.length > 0 && !selectedSize) {
       toaster.create({
@@ -145,10 +173,10 @@ export const ProductInfo = ({
       return;
     }
 
-    if (quantity > stock) {
+    if (quantity > effectiveStock) {
       toaster.create({
         title: "Estoque insuficiente",
-        description: `Apenas ${stock} ${stock === 1 ? "unidade disponível" : "unidades disponíveis"}`,
+        description: `Apenas ${effectiveStock} ${effectiveStock === 1 ? "unidade disponível" : "unidades disponíveis"}`,
         type: "error",
       });
       return;
@@ -196,6 +224,25 @@ export const ProductInfo = ({
         </Text>
       </Box>
 
+      {!isActive && (
+        <Box
+          w="full"
+          p="4"
+          bg="orange.50"
+          borderRadius="md"
+          borderWidth="1px"
+          borderColor="orange.200"
+        >
+          <Text fontSize="sm" color="orange.900" fontWeight="semibold">
+            Indisponível para compra
+          </Text>
+          <Text fontSize="sm" color="orange.800" mt={1}>
+            Este produto está pausado na loja. Você pode ver os detalhes, mas
+            não é possível adicionar ao carrinho nem finalizar pelo WhatsApp.
+          </Text>
+        </Box>
+      )}
+
       <Box w="full">
         <Text fontWeight="semibold" mb="3" textTransform="uppercase">
           Tamanho
@@ -212,30 +259,41 @@ export const ProductInfo = ({
         <Text fontWeight="semibold" mb="3" textTransform="uppercase">
           Quantidade
         </Text>
-        <ProductQuantitySelector
-          quantity={quantity}
-          onQuantityChange={setQuantity}
-          max={Math.min(maxQuantity, stock)} // Limita pela quantidade em estoque
-        />
+        {isActive ? (
+          <>
+            <ProductQuantitySelector
+              quantity={quantity}
+              onQuantityChange={setQuantity}
+              max={Math.min(maxQuantity, effectiveStock)}
+            />
 
-        {/* Aviso de estoque baixo */}
-        {stock <= 5 && stock > 0 && (
-          <Text fontSize="sm" color="orange.600" mt="2">
-            Apenas {stock}{" "}
-            {stock === 1 ? "unidade disponível" : "unidades disponíveis"}
-          </Text>
-        )}
+            {/* Aviso de estoque baixo */}
+            {effectiveStock <= 5 && effectiveStock > 0 && (
+              <Text fontSize="sm" color="orange.600" mt="2">
+                Apenas {effectiveStock}{" "}
+                {effectiveStock === 1
+                  ? "unidade disponível"
+                  : "unidades disponíveis"}
+              </Text>
+            )}
 
-        {/* Aviso de sem estoque */}
-        {stock === 0 && (
-          <Text fontSize="sm" color="red.600" mt="2" fontWeight="semibold">
-            ❌ Produto fora de estoque
+            {/* Aviso de sem estoque */}
+            {effectiveStock === 0 && (
+              <Text fontSize="sm" color="red.600" mt="2" fontWeight="semibold">
+                ❌ Produto fora de estoque
+              </Text>
+            )}
+          </>
+        ) : (
+          <Text fontSize="sm" color="gray.600">
+            Não é possível escolher quantidade enquanto o produto estiver
+            indisponível.
           </Text>
         )}
       </Box>
 
       {/* Aviso quando quantidade excede estoque */}
-      {quantity > stock && stock > 0 && (
+      {isActive && quantity > effectiveStock && effectiveStock > 0 && (
         <Box
           w="full"
           p="4"
@@ -249,8 +307,8 @@ export const ProductInfo = ({
           </Text>
           <Text fontSize="sm" color="red.600">
             Você selecionou {quantity} {quantity === 1 ? "unidade" : "unidades"}
-            , mas temos apenas <strong>{stock}</strong>{" "}
-            {stock === 1 ? "disponível" : "disponíveis"} em estoque.
+            , mas temos apenas <strong>{effectiveStock}</strong>{" "}
+            {effectiveStock === 1 ? "disponível" : "disponíveis"} em estoque.
           </Text>
           <Text fontSize="sm" color="red.600" mt="2">
             Por favor, ajuste a quantidade ou entre em contato para verificar
@@ -260,7 +318,7 @@ export const ProductInfo = ({
       )}
 
       {/* Aviso de tamanho não selecionado */}
-      {sizes.length > 0 && !selectedSize && (
+      {isActive && sizes.length > 0 && !selectedSize && (
         <Box
           w="full"
           p="3"

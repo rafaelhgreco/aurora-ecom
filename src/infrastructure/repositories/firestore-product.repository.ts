@@ -47,6 +47,9 @@ export class FirestoreProductRepository implements IProductRepository {
       images: (data.images as string[]) || [],
       category: data.category as string | undefined,
       stock: data.stock as number,
+      stockBySize: data.stockBySize as
+        | Partial<Record<"PP" | "P" | "M" | "G" | "GG" | "XG", number>>
+        | undefined,
       sizes: data.sizes as
         | Array<"PP" | "P" | "M" | "G" | "GG" | "XG">
         | undefined,
@@ -71,6 +74,7 @@ export class FirestoreProductRepository implements IProductRepository {
       images: entity.images,
       category: entity.category,
       stock: entity.stock,
+      stockBySize: entity.stockBySize,
       sizes: entity.sizes,
       colors: entity.colors,
       isActive: entity.isActive,
@@ -184,6 +188,8 @@ export class FirestoreProductRepository implements IProductRepository {
     if (product.images !== undefined) updateData.images = product.images;
     if (product.category !== undefined) updateData.category = product.category;
     if (product.stock !== undefined) updateData.stock = product.stock;
+    if (product.stockBySize !== undefined)
+      updateData.stockBySize = product.stockBySize;
     if (product.sizes !== undefined) updateData.sizes = product.sizes;
     if (product.colors !== undefined) updateData.colors = product.colors;
     if (product.isActive !== undefined) updateData.isActive = product.isActive;

@@ -12,7 +12,8 @@ export const publicRoutes = [
 
 export const authRoutes = ["/login", "/cadastro", "/recuperar-senha"] as const;
 
-export const DEFAULT_LOGIN_REDIRECT = "/dashboard";
+/** Após login com sessão válida em rota de auth */
+export const DEFAULT_LOGIN_REDIRECT = "/admin-produtos";
 
 export const ACCESS_DENIED_REDIRECT = "/not-found";
 
@@ -22,15 +23,8 @@ type RouteConfig = {
 };
 
 export const privateRoutes: Record<string, RouteConfig> = {
-  "/dashboard": {
-    roles: ["admin", "manager", "user"],
-  },
-  /**
-   * CRUD e área administrativa de produtos — apenas admin.
-   * Cobre /admin-produtos, /admin-produtos/novo, etc. (middleware usa startsWith).
-   */
   "/admin-produtos": {
     roles: ["admin"],
-    redirect: "/dashboard",
+    redirect: "/not-found",
   },
 };

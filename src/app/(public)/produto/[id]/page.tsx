@@ -11,6 +11,10 @@ import { ProductPageHeader } from "@/app/components/public/product-page-header";
 import { ErrorState, LoadingState } from "@/app/components/states";
 import { NextRouterSync } from "@/app/hooks/use-next-router-sync";
 import type { Product } from "@/core/schemas/product.schema";
+import {
+  getAvailableSizes,
+  getTotalStock,
+} from "@/shared/product-stock-helpers";
 
 export default function ProdutoPage({
   params,
@@ -66,14 +70,15 @@ export default function ProdutoPage({
   }
 
   const productData = {
-    id: product.id || id, // Usa o ID do produto ou o da URL
+    id: product.id || id,
     title: product.title,
     price: product.price,
     description: product.description,
     sizes: product.sizes || [],
-    availableSizes: product.sizes || [],
+    availableSizes: getAvailableSizes(product),
     images: product.images || [product.imageUrl],
-    stock: product.stock,
+    stock: getTotalStock(product),
+    stockBySize: product.stockBySize,
   };
 
   return (
@@ -122,6 +127,8 @@ export default function ProdutoPage({
                   availableSizes={productData.availableSizes}
                   maxQuantity={10}
                   stock={productData.stock}
+                  stockBySize={productData.stockBySize}
+                  isActive={product.isActive !== false}
                 />
               </Box>
             </Grid>

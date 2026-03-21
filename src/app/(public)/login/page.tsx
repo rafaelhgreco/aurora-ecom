@@ -1,81 +1,121 @@
 "use client";
 
-import { useState } from "react";
-import { useFormStatus } from "react-dom";
-import { loginAction } from "@/actions/auth";
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition disabled:bg-blue-300"
-    >
-      {pending ? "Entrando..." : "Acessar Conta"}
-    </button>
-  );
-}
+import {
+  Box,
+  Button,
+  Card,
+  Container,
+  Heading,
+  Input,
+  Stack,
+  Text,
+} from "@chakra-ui/react";
+import Link from "next/link";
+import { useState, useTransition } from "react";
+import { loginAction } from "@/app/actions/auth";
+import { Field } from "@/components/ui/field";
+import { toaster } from "@/components/ui/toaster";
 
 export default function LoginPage() {
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [formKey, setFormKey] = useState(0);
 
-  async function handleSubmit(formData: FormData) {
-    const result = await loginAction(formData);
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
 
-    if (result?.error) {
-      setErrorMessage(result.error);
-    }
-  }
+    startTransition(async () => {
+      const result = await loginAction(formData);
+
+      if (result?.error) {
+        toaster.create({
+          title: "Não foi possível entrar",
+          description: result.error,
+          type: "error",
+          duration: 6000,
+          closable: true,
+        });
+        setFormKey((k) => k + 1);
+      }
+    });
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-md w-96">
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">
-          Login do Sistema
-        </h1>
+    <Box minH="100vh" bg="gray.50" py={{ base: 10, md: 16 }} px={4}>
+      <Container maxW="md">
+        <Card.Root shadow="md" borderRadius="lg">
+          <Card.Body p={{ base: 6, md: 10 }}>
+            <Stack gap={8} align="stretch">
+              <Box textAlign="center">
+                <Heading size="xl" fontWeight="semibold" letterSpacing="tight">
+                  Acesso administrativo
+                </Heading>
+                <Text color="gray.600" mt={2} fontSize="sm">
+                  Entre com email e senha para gerenciar produtos.
+                </Text>
+              </Box>
 
-        {errorMessage && (
-          <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">
-            {errorMessage}
-          </div>
-        )}
+              <form key={formKey} onSubmit={handleSubmit}>
+                <Stack gap={5}>
+                  <Field label="Email" required>
+                    <Input
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="seu@email.com"
+                      required
+                      size="lg"
+                    />
+                  </Field>
 
-        <form action={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="admin@exemplo.com"
-              required
-              className="mt-1 block w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Dica: use "admin@" para testar acesso total.
-            </p>
-          </div>
-          <div>
-            <label htmlFor="password">Senha</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="******"
-              required
-              className="mt-1 block w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+                  <Field label="Senha" required>
+                    <Input
+                      name="password"
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="••••••••"
+                      required
+                      minLength={3}
+                      size="lg"
+                    />
+                  </Field>
 
-          <SubmitButton />
-        </form>
+                  <Button
+                    type="submit"
+                    colorScheme="blue"
+                    size="lg"
+                    width="full"
+                    loading={isPending}
+                    loadingText="Entrando..."
+                  >
+                    Entrar
+                  </Button>
+                </Stack>
+              </form>
 
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Esqueceu a senha? Contate o suporte.</p>
-        </div>
-      </div>
-    </div>
+              <Text fontSize="sm" color="gray.500" textAlign="center">
+                Problemas com acesso?{" "}
+                <Text as="span" fontWeight="medium">
+                  Contate o suporte.
+                </Text>
+              </Text>
+
+              <Box textAlign="center">
+                <Link href="/">
+                  <Text
+                    fontSize="sm"
+                    color="blue.600"
+                    _hover={{ textDecoration: "underline" }}
+                  >
+                    Voltar à loja
+                  </Text>
+                </Link>
+              </Box>
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+      </Container>
+    </Box>
   );
 }

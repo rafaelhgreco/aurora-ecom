@@ -91,10 +91,10 @@ export class CartItemEntity {
   }
 
   /**
-   * Verifica se o item tem estoque suficiente
+   * Verifica se o item tem estoque suficiente (por tamanho quando aplicável)
    */
   hasStock(product: ProductEntity): boolean {
-    return product.hasStock(this.quantity);
+    return product.hasStock(this.quantity, this.variants?.size);
   }
 
   /**
@@ -106,9 +106,13 @@ export class CartItemEntity {
     }
 
     if (!this.hasStock(product)) {
+      const available =
+        this.variants?.size != null
+          ? product.getStockForSize(this.variants.size)
+          : product.getTotalStock();
       return {
         valid: false,
-        error: `Estoque insuficiente. Disponível: ${product.stock}`,
+        error: `Estoque insuficiente. Disponível: ${available}`,
       };
     }
 
