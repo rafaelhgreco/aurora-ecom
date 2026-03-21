@@ -48,10 +48,6 @@ import {
   type UpdateProductInput,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
-import {
-  canPauseProductOnVitrine,
-  pauseProductOnVitrineBlockedReason,
-} from "@/shared/product-vitrine-rules";
 
 function parseColorsText(text: string | undefined): string[] | undefined {
   if (!text?.trim()) return undefined;
@@ -124,7 +120,6 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
 
   const selectedSizes = watch("sizes") || [];
   const stockBySize = watch("stockBySize") ?? {};
-  const isActive = watch("isActive") ?? true;
 
   useEffect(() => {
     if (selectedSizes.length === 0) return;
@@ -239,30 +234,6 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
       }
 
       const colors = parseColorsText(data.colorsText);
-
-      const sizesForPauseRule =
-        data.sizes && data.sizes.length > 0 ? data.sizes : [];
-
-      if (
-        data.isActive === false &&
-        !canPauseProductOnVitrine({
-          stock: data.stock,
-          stockBySize: data.stockBySize,
-          sizes: sizesForPauseRule,
-        })
-      ) {
-        setSubmitStatus({
-          type: "error",
-          message:
-            pauseProductOnVitrineBlockedReason({
-              stock: data.stock,
-              stockBySize: data.stockBySize,
-              sizes: sizesForPauseRule,
-            }) || "Não é possível pausar na vitrine com estes dados.",
-        });
-        setIsSubmitting(false);
-        return;
-      }
 
       const payload: UpdateProductInput = {
         id: data.id,
@@ -612,30 +583,6 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
                     {errors.sizes.message}
                   </Text>
                 )}
-              </Card.Body>
-            </Card.Root>
-
-            <Card.Root>
-              <Card.Header>
-                <Heading size="lg">Visibilidade na loja</Heading>
-              </Card.Header>
-              <Card.Body>
-                <VStack align="stretch" gap={3}>
-                  <Checkbox
-                    checked={isActive}
-                    onCheckedChange={(e) => {
-                      setValue("isActive", e.checked === true);
-                    }}
-                  >
-                    Produto ativo na vitrine
-                  </Checkbox>
-                  <Text fontSize="sm" color="gray.600">
-                    Para <strong>pausar</strong> (inativo), é obrigatório
-                    estoque zerado e nenhum tamanho cadastrado — remova os
-                    tamanhos e zere o estoque antes de desmarcar. Na loja,
-                    inativo aparece como indisponível.
-                  </Text>
-                </VStack>
               </Card.Body>
             </Card.Root>
 

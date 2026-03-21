@@ -11,6 +11,27 @@ export const ProductImageGallery = ({
   alt,
 }: ProductImageGalleryProps) => {
   const [selectedImage, setSelectedImage] = useState(0);
+  const safeImages = images?.length ? images : [];
+  const currentSrc = safeImages[selectedImage] ?? safeImages[0];
+
+  if (safeImages.length === 0) {
+    return (
+      <Box
+        aspectRatio="3/4"
+        w="full"
+        maxH={{ base: "500px", md: "700px" }}
+        bg="gray.100"
+        borderRadius="md"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Box color="gray.400" fontSize="sm">
+          Sem imagem
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Flex gap="4" w="full" direction={{ base: "column-reverse", md: "row" }}>
@@ -37,7 +58,7 @@ export const ProductImageGallery = ({
           },
         }}
       >
-        {images.map((image, index) => (
+        {safeImages.map((image, index) => (
           <Box
             key={`thumb-${image}`}
             flexShrink={0}
@@ -72,13 +93,7 @@ export const ProductImageGallery = ({
         overflow="hidden"
         borderRadius="md"
       >
-        <Image
-          src={images[selectedImage]}
-          alt={alt}
-          w="full"
-          h="full"
-          objectFit="cover"
-        />
+        <Image src={currentSrc} alt={alt} w="full" h="full" objectFit="cover" />
       </Box>
     </Flex>
   );

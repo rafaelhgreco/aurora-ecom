@@ -69,6 +69,13 @@ export default function ProdutoPage({
     );
   }
 
+  const productImages =
+    product.images?.length > 0
+      ? product.images
+      : product.imageUrl
+        ? [product.imageUrl]
+        : [];
+
   const productData = {
     id: product.id || id,
     title: product.title,
@@ -76,7 +83,7 @@ export default function ProdutoPage({
     description: product.description,
     sizes: product.sizes || [],
     availableSizes: getAvailableSizes(product),
-    images: product.images || [product.imageUrl],
+    images: productImages,
     stock: getTotalStock(product),
     stockBySize: product.stockBySize,
   };

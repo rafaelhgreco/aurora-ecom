@@ -17,40 +17,8 @@ import { ListProductsUseCase } from "@/core/use-cases/list-products.use-case";
 import { UpdateProductUseCase } from "@/core/use-cases/update-product.use-case";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
 import { NotFoundError, ValidationError } from "@/shared/errors/domain-errors";
-import {
-  canPauseProductOnVitrine,
-  pauseProductOnVitrineBlockedReason,
-} from "@/shared/product-vitrine-rules";
 
 const productRepository = new FirestoreProductRepository();
-
-async function validatePauseVitrineFromUpdate(
-  input: UpdateProductInput,
-): Promise<string | null> {
-  if (input.isActive !== false) return null;
-  const getUseCase = new GetProductByIdUseCase(productRepository);
-  const current = await getUseCase.execute(input.id);
-  const nextStock = input.stock !== undefined ? input.stock : current.stock;
-  const nextStockBySize =
-    input.stockBySize !== undefined ? input.stockBySize : current.stockBySize;
-  const nextSizes = input.sizes !== undefined ? input.sizes : current.sizes;
-  if (
-    !canPauseProductOnVitrine({
-      stock: nextStock,
-      stockBySize: nextStockBySize,
-      sizes: nextSizes,
-    })
-  ) {
-    return (
-      pauseProductOnVitrineBlockedReason({
-        stock: nextStock,
-        stockBySize: nextStockBySize,
-        sizes: nextSizes,
-      }) || "Não é possível pausar este produto na vitrine."
-    );
-  }
-  return null;
-}
 
 function serializeProductForClient(p: Product): Product {
   return {
@@ -161,13 +129,14 @@ export async function updateProductAction(
   input: UpdateProductInput,
 ): Promise<ActionResult<Product>> {
   try {
-    const pauseError = await validatePauseVitrineFromUpdate(input);
-    if (pauseError) {
-      return { success: false, error: pauseError };
+    const payload: UpdateProductInput = { ...input };
+    if (input.isActive === false) {
+      payload.stock = 0;
+      payload.stockBySize = {};
     }
 
     const useCase = new UpdateProductUseCase(productRepository);
-    const product = await useCase.execute(input);
+    const product = await useCase.execute(payload);
 
     return {
       success: true,
@@ -296,32 +265,24 @@ export async function setProductActiveFlagAction(
   }
 
   try {
+    const updateUseCase = new UpdateProductUseCase(productRepository);
+
     if (isActive === false) {
-      const getUseCase = new GetProductByIdUseCase(productRepository);
-      const current = await getUseCase.execute(trimmedId);
-      if (
-        !canPauseProductOnVitrine({
-          stock: current.stock,
-          stockBySize: current.stockBySize,
-          sizes: current.sizes,
-        })
-      ) {
-        return {
-          success: false,
-          error:
-            pauseProductOnVitrineBlockedReason({
-              stock: current.stock,
-              stockBySize: current.stockBySize,
-              sizes: current.sizes,
-            }) || "Não é possível pausar este produto na vitrine.",
-        };
-      }
+      const product = await updateUseCase.execute({
+        id: trimmedId,
+        isActive: false,
+        stock: 0,
+        stockBySize: {},
+      });
+      return {
+        success: true,
+        data: serializeProductForClient(product as Product),
+      };
     }
 
-    const updateUseCase = new UpdateProductUseCase(productRepository);
     const product = await updateUseCase.execute({
       id: trimmedId,
-      isActive,
+      isActive: true,
     });
     return {
       success: true,
