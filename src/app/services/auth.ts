@@ -1,27 +1,24 @@
 import type { RequestCookie } from "next/dist/compiled/@edge-runtime/cookies";
+import { verifyAdminToken } from "@/app/lib/jwt";
 import type { UserRole } from "@/types/auth";
 
-export function getUserRole(token: RequestCookie | undefined): UserRole | null {
+export async function getSession(
+  token: RequestCookie | undefined,
+): Promise<{ role: UserRole; sub: string } | null> {
   if (!token?.value) return null;
-
-  try {
-    if (token.value.includes("admin")) return "admin";
-    if (token.value.includes("manager")) return "manager";
-    if (token.value.includes("user")) return "user";
-
-    return "user";
-  } catch (error) {
-    console.error("Erro ao decodificar token:", error);
-    return null;
-  }
+  const payload = await verifyAdminToken(token.value);
+  return payload ? { role: payload.role, sub: payload.sub } : null;
 }
 
-export function isValidToken(token: RequestCookie | undefined): boolean {
-  if (!token?.value) return false;
+export async function getUserRole(
+  token: RequestCookie | undefined,
+): Promise<UserRole | null> {
+  const session = await getSession(token);
+  return session?.role ?? null;
+}
 
-  try {
-    return token.value.length > 0;
-  } catch {
-    return false;
-  }
+export async function isValidToken(
+  token: RequestCookie | undefined,
+): Promise<boolean> {
+  return (await getSession(token)) !== null;
 }

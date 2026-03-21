@@ -8,8 +8,8 @@
 import { Box, Flex } from "@chakra-ui/react";
 import { Header } from "storybook-react";
 import { useCart } from "../../hooks/use-cart";
+import { CartDrawer } from "../cart/cart-drawer";
 import { CartIcon } from "../cart/cart-icon";
-import { CartModal } from "../cart/cart-modal";
 
 interface ProductPageHeaderProps {
   /**
@@ -33,6 +33,7 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
     toWhatsAppCartItems,
     itemCount,
     canCheckout,
+    checkoutBlockReason,
   } = useCart();
 
   return (
@@ -63,7 +64,7 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
         </Flex>
       </Box>
 
-      <CartModal
+      <CartDrawer
         isOpen={isOpen}
         onClose={closeCart}
         items={enrichedItems}
@@ -75,6 +76,7 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
         onClearCart={clearCart}
         cartItems={toWhatsAppCartItems()}
         canCheckout={canCheckout}
+        checkoutBlockReason={checkoutBlockReason ?? ""}
       />
     </>
   );

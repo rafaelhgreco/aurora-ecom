@@ -9,10 +9,10 @@ import {
 } from "@/app/config/routes";
 import { getUserRole, isValidToken } from "@/app/services/auth";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("auth_token");
-  const isAuthenticated = isValidToken(token);
+  const isAuthenticated = await isValidToken(token);
 
   const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
@@ -45,7 +45,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const userRole = getUserRole(token);
+  const userRole = await getUserRole(token);
 
   if (!userRole) {
     const response = NextResponse.redirect(new URL("/login", request.url));

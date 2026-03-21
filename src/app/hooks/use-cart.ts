@@ -153,55 +153,57 @@ export function useCart() {
   }, [calculateTotal]);
 
   /**
+   * Estoque disponível para o item (por tamanho quando aplicável)
+   */
+  const getStockForItem = useCallback((enriched: EnrichedCartItem): number => {
+    const { item, product } = enriched;
+    if (!product) return 0;
+    const size = item.variants?.size;
+    if (size != null && product.sizes?.includes(size)) {
+      return product.getStockForSize(size);
+    }
+    return product.getTotalStock();
+  }, []);
+
+  /**
    * Verifica se pode fazer checkout (similar à validação da página de produto)
-   * Bloqueia checkout se algum item exceder o estoque disponível
+   * Bloqueia checkout se algum item exceder o estoque disponível (por tamanho quando aplicável)
    */
   const canCheckout = useMemo(() => {
-    // Não pode fazer checkout se carrinho vazio
-    if (enrichedItems.length === 0) {
-      return false;
-    }
+    if (enrichedItems.length === 0) return false;
 
-    // Verifica se todos os itens têm estoque suficiente
     return enrichedItems.every((enriched) => {
       const { item, product } = enriched;
+      if (!product) return false;
 
-      // Se produto não carregou, bloqueia
-      if (!product) {
-        return false;
-      }
-
-      // Quantidade deve ser válida e não exceder estoque
-      return item.quantity > 0 && item.quantity <= product.stock;
+      const available = getStockForItem(enriched);
+      return item.quantity > 0 && item.quantity <= available;
     });
-  }, [enrichedItems]);
+  }, [enrichedItems, getStockForItem]);
 
   /**
    * Retorna mensagem explicando por que não pode fazer checkout
    */
   const checkoutBlockReason = useMemo(() => {
-    if (enrichedItems.length === 0) {
-      return "Carrinho vazio";
-    }
+    if (enrichedItems.length === 0) return "Carrinho vazio";
 
     for (const enriched of enrichedItems) {
       const { item, product } = enriched;
 
-      if (!product) {
-        return "Alguns produtos não foram carregados";
-      }
+      if (!product) return "Alguns produtos não foram carregados";
+      if (item.quantity <= 0) return "Quantidade inválida no carrinho";
 
-      if (item.quantity > product.stock) {
-        return `${product.title} tem estoque insuficiente (disponível: ${product.stock})`;
-      }
-
-      if (item.quantity <= 0) {
-        return "Quantidade inválida no carrinho";
+      const available = getStockForItem(enriched);
+      if (item.quantity > available) {
+        const sizeInfo = item.variants?.size
+          ? ` para ${item.variants.size}`
+          : "";
+        return `${product.title} tem estoque insuficiente (disponível${sizeInfo}: ${available})`;
       }
     }
 
     return "";
-  }, [enrichedItems]);
+  }, [enrichedItems, getStockForItem]);
 
   return {
     // Estado

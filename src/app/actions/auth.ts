@@ -1,7 +1,10 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { signAdminToken } from "@/app/lib/jwt";
+import { getAdminFromFirestore } from "@/infrastructure/repositories/firestore-admin.repository";
 
 const GENERIC_LOGIN_ERROR =
   "Não foi possível entrar. Verifique email e senha e tente novamente.";
@@ -10,18 +13,13 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function resolveExpectedCredentials(): {
-  email: string;
-  password: string;
-} | null {
-  const fromEnvEmail = process.env.ADMIN_LOGIN_EMAIL?.trim();
-  const fromEnvPassword = process.env.ADMIN_LOGIN_PASSWORD;
+/** Fallback quando admin não está no Firestore (desenvolvimento) */
+function resolveEnvFallback(): { email: string; password: string } | null {
+  const email = process.env.ADMIN_LOGIN_EMAIL?.trim();
+  const password = process.env.ADMIN_LOGIN_PASSWORD;
 
-  if (fromEnvEmail && fromEnvPassword !== undefined && fromEnvPassword !== "") {
-    return {
-      email: normalizeEmail(fromEnvEmail),
-      password: fromEnvPassword,
-    };
+  if (email && password) {
+    return { email: normalizeEmail(email), password };
   }
 
   if (process.env.NODE_ENV !== "production") {
@@ -52,22 +50,32 @@ export async function loginAction(
     return { error: GENERIC_LOGIN_ERROR };
   }
 
-  const expected = resolveExpectedCredentials();
-  if (!expected) {
-    console.error(
-      "Login: defina ADMIN_LOGIN_EMAIL e ADMIN_LOGIN_PASSWORD no ambiente.",
-    );
+  const normalizedEmail = normalizeEmail(emailRaw);
+
+  let isValid = false;
+
+  const adminFromFirestore = await getAdminFromFirestore();
+  if (adminFromFirestore?.email && adminFromFirestore?.passwordHash) {
+    if (adminFromFirestore.email !== normalizedEmail) {
+      return { error: GENERIC_LOGIN_ERROR };
+    }
+    isValid = await bcrypt.compare(password, adminFromFirestore.passwordHash);
+  } else {
+    const envFallback = resolveEnvFallback();
+    if (
+      envFallback &&
+      envFallback.email === normalizedEmail &&
+      envFallback.password === password
+    ) {
+      isValid = true;
+    }
+  }
+
+  if (!isValid) {
     return { error: GENERIC_LOGIN_ERROR };
   }
 
-  if (
-    normalizeEmail(emailRaw) !== expected.email ||
-    password !== expected.password
-  ) {
-    return { error: GENERIC_LOGIN_ERROR };
-  }
-
-  const token = `token_admin_${Date.now()}`;
+  const token = await signAdminToken(normalizedEmail);
 
   try {
     const cookieStore = await cookies();

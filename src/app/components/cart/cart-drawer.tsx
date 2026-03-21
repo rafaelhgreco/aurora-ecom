@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Component: CartModal
- * Modal do carrinho - Implementado como um Drawer (Menu lateral)
+ * Component: CartDrawer
+ * Drawer lateral do carrinho
  * Responsivo e unificado para desktop e mobile
  */
 
@@ -35,40 +35,29 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { useEffect } from "react";
 import { FiMinus, FiPlus, FiTrash2 } from "react-icons/fi";
 import type { ProductSize } from "@/core/entities";
 import type { EnrichedCartItem } from "../../hooks/use-cart";
 import type { CartItemJSON } from "../../types/checkout";
 import { WhatsAppCheckoutButton } from "../public/whatsapp-checkout-button";
 
-interface CartModalProps {
-  /** Controla visibilidade do modal */
+interface CartDrawerProps {
   isOpen: boolean;
-  /** Callback ao fechar modal */
   onClose: () => void;
-  /** Itens enriquecidos do carrinho */
   items: EnrichedCartItem[];
-  /** Total do carrinho (formatado) */
   total: string;
-  /** Está carregando produtos? */
   loading?: boolean;
-  /** Callback ao remover item */
   onRemoveItem: (itemKey: string) => void;
-  /** Callback ao atualizar quantidade */
   onUpdateQuantity: (itemKey: string, quantity: number) => void;
-  /** Callback ao atualizar tamanho */
   onUpdateSize: (itemKey: string, size: ProductSize) => void;
-  /** Callback ao limpar carrinho */
   onClearCart: () => void;
-  /** Cart items para WhatsApp */
   cartItems: CartItemJSON[];
-  /** Pode fazer checkout? (validação de estoque) */
   canCheckout?: boolean;
-  /** Motivo pelo qual o checkout está bloqueado */
   checkoutBlockReason?: string;
 }
 
-export function CartModal({
+export function CartDrawer({
   isOpen,
   onClose,
   items,
@@ -81,8 +70,24 @@ export function CartModal({
   cartItems,
   canCheckout = true,
   checkoutBlockReason = "",
-}: CartModalProps) {
+}: CartDrawerProps) {
   const isEmpty = items.length === 0;
+
+  // Sincroniza quantidade com estoque disponível quando exceder
+  useEffect(() => {
+    for (const { item, product } of items) {
+      if (!product) continue;
+      const size = item.variants?.size;
+      const stock =
+        size && product.sizes?.includes(size)
+          ? product.getStockForSize(size)
+          : product.getTotalStock();
+      const maxQty = Math.max(0, stock);
+      if (maxQty > 0 && item.quantity > maxQty) {
+        onUpdateQuantity(item.getUniqueKey(), maxQty);
+      }
+    }
+  }, [items, onUpdateQuantity]);
 
   return (
     <DrawerRoot
@@ -149,6 +154,16 @@ export function CartModal({
                   {items.map((enrichedItem) => {
                     const { item, product, subtotal, error } = enrichedItem;
                     const itemKey = item.getUniqueKey();
+                    const selectedSize = item.variants?.size;
+                    const hasSizes = product?.sizes && product.sizes.length > 0;
+                    const availableSizes = product
+                      ? product.getAvailableSizes()
+                      : [];
+                    const stockForSize =
+                      hasSizes && selectedSize && product
+                        ? product.getStockForSize(selectedSize)
+                        : (product?.getTotalStock() ?? 0);
+                    const maxQty = Math.max(1, stockForSize);
 
                     return (
                       <Box
@@ -159,7 +174,6 @@ export function CartModal({
                         bg={error ? "red.50" : "white"}
                       >
                         <Flex gap="3" direction="row" align="flex-start">
-                          {/* Imagem */}
                           <Box
                             flexShrink={0}
                             position="relative"
@@ -183,7 +197,6 @@ export function CartModal({
                             />
                           </Box>
 
-                          {/* Informações */}
                           <VStack align="stretch" flex="1" gap="2">
                             <Flex justify="space-between" align="start">
                               <Box flex="1" pr="2">
@@ -220,42 +233,61 @@ export function CartModal({
                               flexWrap="wrap"
                               gap="2"
                             >
-                              {/* Seletor de Tamanho */}
-                              {product?.sizes && product.sizes.length > 0 && (
-                                <SelectRoot
-                                  collection={createListCollection({
-                                    items: product.sizes.map((size) => ({
-                                      label: size,
-                                      value: size,
-                                    })),
-                                  })}
-                                  value={[item.variants?.size || ""]}
-                                  onValueChange={(details) => {
-                                    const size = details.value[0];
-                                    if (size) {
-                                      onUpdateSize(
-                                        itemKey,
-                                        size as ProductSize,
-                                      );
-                                    }
-                                  }}
-                                  size="sm"
-                                  width={{ base: "100%", sm: "100px" }}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValueText placeholder="Tamanho" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {product.sizes.map((size) => (
-                                      <SelectItem key={size} item={size}>
-                                        {size}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </SelectRoot>
+                              {hasSizes && availableSizes.length > 0 && (
+                                <Box>
+                                  <SelectRoot
+                                    collection={createListCollection({
+                                      items: availableSizes.map((size) => ({
+                                        label: size,
+                                        value: size,
+                                      })),
+                                    })}
+                                    value={[selectedSize || ""]}
+                                    onValueChange={(details) => {
+                                      const size = details.value[0];
+                                      if (size && product) {
+                                        const newMax = product.getStockForSize(
+                                          size as ProductSize,
+                                        );
+                                        onUpdateSize(
+                                          itemKey,
+                                          size as ProductSize,
+                                        );
+                                        if (item.quantity > newMax) {
+                                          onUpdateQuantity(
+                                            itemKey,
+                                            Math.max(1, newMax),
+                                          );
+                                        }
+                                      }
+                                    }}
+                                    size="sm"
+                                    width={{ base: "100%", sm: "100px" }}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValueText placeholder="Tamanho" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {availableSizes.map((size) => (
+                                        <SelectItem key={size} item={size}>
+                                          {size} (
+                                          {product
+                                            ? product.getStockForSize(size)
+                                            : 0}{" "}
+                                          em estoque)
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </SelectRoot>
+                                  {selectedSize && (
+                                    <Text fontSize="xs" color="gray.500" mt="1">
+                                      {stockForSize} em estoque para{" "}
+                                      {selectedSize}
+                                    </Text>
+                                  )}
+                                </Box>
                               )}
 
-                              {/* Controles de Quantidade */}
                               <HStack bg="gray.50" borderRadius="md" p="1">
                                 <IconButton
                                   aria-label="Diminuir quantidade"
@@ -279,7 +311,6 @@ export function CartModal({
                                         e.target.value.replace(/\D/g, ""),
                                         10,
                                       ) || 1;
-                                    const maxQty = product?.stock || 999;
                                     onUpdateQuantity(
                                       itemKey,
                                       Math.max(1, Math.min(qty, maxQty)),
@@ -295,17 +326,18 @@ export function CartModal({
                                   inputMode="numeric"
                                   pattern="[0-9]*"
                                   px="1"
-                                />{" "}
+                                />
                                 <IconButton
                                   aria-label="Aumentar quantidade"
                                   size="sm"
                                   variant="ghost"
                                   onClick={() =>
-                                    onUpdateQuantity(itemKey, item.quantity + 1)
+                                    onUpdateQuantity(
+                                      itemKey,
+                                      Math.min(item.quantity + 1, maxQty),
+                                    )
                                   }
-                                  disabled={
-                                    !product || item.quantity >= product.stock
-                                  }
+                                  disabled={!product || item.quantity >= maxQty}
                                 >
                                   <FiPlus />
                                 </IconButton>
@@ -322,18 +354,20 @@ export function CartModal({
                               </Text>
                             </Flex>
 
-                            {/* Avisos */}
                             {error && (
                               <Text fontSize="xs" color="red.600">
                                 ⚠️ {error}
                               </Text>
                             )}
 
-                            {product && item.quantity > product.stock && (
-                              <Text fontSize="xs" color="orange.600">
-                                ⚠️ Apenas {product.stock} em estoque
-                              </Text>
-                            )}
+                            {product &&
+                              item.quantity > maxQty &&
+                              stockForSize > 0 && (
+                                <Text fontSize="xs" color="orange.600">
+                                  ⚠️ Apenas {maxQty} em estoque
+                                  {selectedSize ? ` para ${selectedSize}` : ""}
+                                </Text>
+                              )}
                           </VStack>
                         </Flex>
                       </Box>
@@ -351,7 +385,6 @@ export function CartModal({
               borderTopWidth="1px"
               p="4"
             >
-              {/* Total */}
               {!isEmpty && (
                 <Flex
                   justify="space-between"
@@ -370,7 +403,6 @@ export function CartModal({
                 </Flex>
               )}
 
-              {/* Aviso de estoque insuficiente */}
               {!isEmpty && !canCheckout && checkoutBlockReason && (
                 <Box
                   p="3"
@@ -389,7 +421,6 @@ export function CartModal({
                 </Box>
               )}
 
-              {/* Botões */}
               <Flex gap="3" width="full" direction="column">
                 {!isEmpty && (
                   <Box w="full">
