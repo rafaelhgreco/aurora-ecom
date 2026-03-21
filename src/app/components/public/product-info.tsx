@@ -1,4 +1,12 @@
-import { Box, Button, Flex, Heading, Text, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  type ButtonProps,
+  Flex,
+  Heading,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import { FiShoppingCart } from "react-icons/fi";
 import { calculateInstallment, formatPrice } from "@/app/utils/price-formatter";
@@ -9,9 +17,31 @@ import { ProductQuantitySelector } from "./product-quantity-selector";
 import { ProductSizeSelector } from "./product-size-selector";
 import { WhatsAppCheckoutButton } from "./whatsapp-checkout-button";
 
+/**
+ * CTAs da página de produto — no mobile evita altura fixa para o texto
+ * longo em maiúsculas (“Adicionar ao Carrinho”) caber sem cortar.
+ */
+const PRODUCT_CTA_LAYOUT: Partial<ButtonProps> = {
+  h: { base: "auto", md: "60px" },
+  minH: { md: "60px" },
+  py: { base: "3", md: "0" },
+  px: { base: "2", sm: "3", md: "4" },
+  fontSize: { base: "xs", sm: "sm", md: "md" },
+  textTransform: "uppercase",
+  w: "full",
+  transition: "all 0.2s",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: { base: 2, md: 3 },
+  flexWrap: { base: "wrap", md: "nowrap" },
+  whiteSpace: { base: "normal", md: "nowrap" },
+  lineHeight: { base: "1.25", md: "normal" },
+  textAlign: "center",
+};
+
 interface ProductInfoProps {
   productId: string;
-
   title: string;
   price: number;
   description: string;
@@ -255,10 +285,7 @@ export const ProductInfo = ({
           >
             <Button
               flex="1"
-              h={{ base: "70px", md: "60px" }}
-              fontSize={{ base: "lg", md: "md" }}
-              textTransform="uppercase"
-              w="full"
+              {...PRODUCT_CTA_LAYOUT}
               onClick={handleAddToCart}
               disabled={!canCheckout}
               bg="black"
@@ -269,26 +296,36 @@ export const ProductInfo = ({
                 shadow: "md",
               }}
               _active={{ bg: "gray.900", transform: "translateY(0)" }}
-              transition="all 0.2s"
             >
-              <Box as="span" fontSize={{ base: "24px", md: "20px" }} mr="3">
+              <Box
+                as="span"
+                flexShrink={0}
+                fontSize={{ base: "18px", sm: "20px", md: "20px" }}
+                lineHeight="1"
+                display="inline-flex"
+                alignItems="center"
+              >
                 <FiShoppingCart />
               </Box>
-              Adicionar ao Carrinho
+              <Box as="span">Adicionar ao Carrinho</Box>
             </Button>
 
             {itemCount > 0 && (
               <Button
                 flex="1"
-                h={{ base: "70px", md: "60px" }}
-                fontSize={{ base: "lg", md: "md" }}
-                w="full"
+                {...PRODUCT_CTA_LAYOUT}
                 onClick={openCart}
                 variant="outline"
                 borderWidth="2px"
                 borderColor="gray.200"
                 color="gray.700"
-                _hover={{ bg: "gray.50", borderColor: "gray.300" }}
+                _hover={{
+                  bg: "gray.50",
+                  borderColor: "gray.300",
+                  transform: "translateY(-2px)",
+                  shadow: "sm",
+                }}
+                _active={{ transform: "translateY(0)" }}
               >
                 Ir até o Carrinho ({itemCount})
               </Button>
@@ -301,6 +338,14 @@ export const ProductInfo = ({
               onError={handleError}
               disabled={!canCheckout}
               buttonText="Comprar Direto"
+              buttonProps={{
+                ...PRODUCT_CTA_LAYOUT,
+                _hover: {
+                  transform: "translateY(-2px)",
+                  shadow: "md",
+                },
+                _active: { transform: "translateY(0)" },
+              }}
             />
           </Box>
         </VStack>

@@ -1,9 +1,14 @@
 "use client";
 
-import { Button } from "@chakra-ui/react";
+import { Box, Button, type ButtonProps } from "@chakra-ui/react";
 import { useState } from "react";
 import { createWhatsAppCheckoutLink } from "@/app/actions/checkout";
 import type { CartItemJSON } from "@/app/types/checkout";
+
+type WhatsAppButtonStyleProps = Omit<
+  ButtonProps,
+  "onClick" | "children" | "loading" | "loadingText" | "spinner"
+>;
 
 interface WhatsAppCheckoutButtonProps {
   cart: CartItemJSON[];
@@ -13,6 +18,8 @@ interface WhatsAppCheckoutButtonProps {
   disabled?: boolean;
   onSuccess?: (total: number) => void;
   onError?: (error: string) => void;
+  /** Mesma altura/tipografia de outros CTAs da página de produto */
+  buttonProps?: WhatsAppButtonStyleProps;
 }
 
 export function WhatsAppCheckoutButton({
@@ -23,6 +30,7 @@ export function WhatsAppCheckoutButton({
   disabled = false,
   onSuccess,
   onError,
+  buttonProps,
 }: WhatsAppCheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -72,17 +80,30 @@ export function WhatsAppCheckoutButton({
 
   return (
     <Button
-      onClick={handleCheckout}
       variant={variant}
-      size={size}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      gap={2}
+      {...(size && !buttonProps?.h ? { size } : {})}
       colorScheme="green"
+      width="full"
+      {...buttonProps}
       disabled={disabled || cart.length === 0}
       loading={loading}
-      width="full"
+      onClick={handleCheckout}
     >
-      <span role="img" aria-label="WhatsApp">
+      <Box
+        as="span"
+        aria-hidden
+        flexShrink={0}
+        fontSize={{ base: "18px", sm: "20px", md: "20px" }}
+        lineHeight="1"
+        display="inline-flex"
+        alignItems="center"
+      >
         💬
-      </span>{" "}
+      </Box>
       {buttonText}
     </Button>
   );

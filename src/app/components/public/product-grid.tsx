@@ -23,6 +23,8 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
           subtitle={product.subtitle}
           price={product.price}
           sizes={product.sizes}
+          stock={product.stock}
+          isActive={product.isActive}
         />
       ))}
     </SimpleGrid>
