@@ -15,7 +15,7 @@ import {
 import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import { ProductEntity } from "@/core/entities/product.entity";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
-import type { ProductFilter } from "@/core/schemas/product.schema";
+import type { Product, ProductFilter } from "@/core/schemas/product.schema";
 import { db } from "@/infrastructure/lib/firebase";
 
 /**
@@ -56,6 +56,7 @@ export class FirestoreProductRepository implements IProductRepository {
         | Array<"PP" | "P" | "M" | "G" | "GG" | "XG">
         | undefined,
       colors: data.colors as string[] | undefined,
+      colorVariants: data.colorVariants as Product["colorVariants"],
       isActive: (data.isActive as boolean) ?? true,
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
@@ -80,6 +81,7 @@ export class FirestoreProductRepository implements IProductRepository {
       stockBySize: entity.stockBySize,
       sizes: entity.sizes,
       colors: entity.colors,
+      colorVariants: entity.colorVariants,
       isActive: entity.isActive,
       createdAt: entity.createdAt
         ? Timestamp.fromDate(entity.createdAt)
@@ -200,6 +202,10 @@ export class FirestoreProductRepository implements IProductRepository {
       updateData.stockBySize = product.stockBySize;
     if (product.sizes !== undefined) updateData.sizes = product.sizes;
     if (product.colors !== undefined) updateData.colors = product.colors;
+    if (product.colorVariants !== undefined)
+      updateData.colorVariants = product.colorVariants;
+    if (product.shopCategory !== undefined)
+      updateData.shopCategory = product.shopCategory;
     if (product.isActive !== undefined) updateData.isActive = product.isActive;
 
     await updateDoc(docRef, updateData);

@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   Container,
+  Flex,
   Grid,
   Heading,
   HStack,
@@ -26,9 +27,16 @@ import {
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { type SubmitHandler, useForm } from "react-hook-form";
-import { IoArrowBack, IoClose, IoCloudUpload } from "react-icons/io5";
+import {
+  IoAdd,
+  IoAddOutline,
+  IoArrowBack,
+  IoClose,
+  IoCloudUpload,
+  IoRemoveOutline,
+} from "react-icons/io5";
 import { z } from "zod";
 import { useProductCRUD } from "@/app/hooks/use-product-crud";
 import type { CreateProductInput } from "@/app/types/product";
@@ -41,12 +49,28 @@ import {
   SHOP_CATEGORY_IDS,
   SHOP_CATEGORY_LABELS,
 } from "@/core/catalog/shop-catalog";
+import type { ProductColorVariant } from "@/core/schemas/product.schema";
 import {
   PRODUCT_SIZES,
   type ProductSize,
   productSizeSchema,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
+import { buildVariantStockBySize } from "@/shared/admin-product-stock";
+
+type ColorDraft = {
+  id: string;
+  color: string;
+  files: File[];
+  previews: string[];
+  stockBySize: Partial<Record<ProductSize, number>>;
+};
+
+const MAX_COLORS = 12;
+const MAX_IMAGES_PER_COLOR = 10;
+
+/** Referência estável: evita `|| []` novo a cada render (loop em useEffect). */
+const EMPTY_SIZES: ProductSize[] = [];
 
 const formSchema = z.object({
   title: z
@@ -66,19 +90,6 @@ const formSchema = z.object({
   shopCategory: z.enum(SHOP_CATEGORY_IDS as unknown as [string, ...string[]]),
   stock: z.number().int().nonnegative().default(0),
   sizes: z.array(productSizeSchema).optional(),
-  colors: z
-    .union([z.string(), z.array(z.string())])
-    .optional()
-    .transform((val) => {
-      if (!val) return undefined;
-      if (typeof val === "string") {
-        return val
-          .split(",")
-          .map((c) => c.trim())
-          .filter((c) => c.length > 0);
-      }
-      return val;
-    }),
   isActive: z.boolean().default(true),
 });
 
@@ -87,6 +98,9 @@ type FormInput = z.infer<typeof formSchema>;
 export default function NovoProductPage() {
   const router = useRouter();
   const { createProduct } = useProductCRUD();
+  const colorFileInputId = useId();
+  /** IDs sequenciais estáveis (SSR = cliente). Evita hydration mismatch de crypto.randomUUID. */
+  const nextColorRowIdRef = useRef(1);
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>(
@@ -98,8 +112,15 @@ export default function NovoProductPage() {
     message: string;
   } | null>(null);
 
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [colorRows, setColorRows] = useState<ColorDraft[]>(() => [
+    {
+      id: "0",
+      color: "",
+      files: [],
+      previews: [],
+      stockBySize: {},
+    },
+  ]);
 
   const {
     register,
@@ -121,45 +142,136 @@ export default function NovoProductPage() {
     },
   });
 
-  const selectedSizes = watch("sizes") || [];
+  const rawSizes = watch("sizes");
+  /** `?? EMPTY_SIZES` evita `|| []` (novo array a cada render → loop no useEffect abaixo). */
+  const selectedSizes = rawSizes ?? EMPTY_SIZES;
   const isActive = watch("isActive") ?? true;
 
-  /**
-   * Adiciona imagens selecionadas
-   */
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  useEffect(() => {
+    if (selectedSizes.length > 0) {
+      setValue("stock", 0);
+    }
+  }, [selectedSizes.length, setValue]);
 
+  useEffect(() => {
+    setColorRows((prev) =>
+      prev.map((row) => {
+        const next = { ...row.stockBySize };
+        for (const s of selectedSizes) {
+          if (!(s in next)) next[s] = 0;
+        }
+        for (const k of Object.keys(next)) {
+          if (!selectedSizes.includes(k as ProductSize)) {
+            delete next[k as ProductSize];
+          }
+        }
+        return { ...row, stockBySize: next };
+      }),
+    );
+  }, [selectedSizes]);
+
+  const addColorRow = () => {
+    if (colorRows.length >= MAX_COLORS) return;
+    const stockBySize: Partial<Record<ProductSize, number>> = {};
+    for (const s of selectedSizes) {
+      stockBySize[s] = 0;
+    }
+    setColorRows((prev) => [
+      ...prev,
+      {
+        id: String(nextColorRowIdRef.current++),
+        color: "",
+        files: [],
+        previews: [],
+        stockBySize,
+      },
+    ]);
+  };
+
+  const adjustRowStock = (
+    rowIndex: number,
+    size: ProductSize,
+    delta: number,
+  ) => {
+    setColorRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== rowIndex) return r;
+        const prevQty = r.stockBySize[size] ?? 0;
+        return {
+          ...r,
+          stockBySize: {
+            ...r.stockBySize,
+            [size]: Math.max(0, prevQty + delta),
+          },
+        };
+      }),
+    );
+  };
+
+  const removeColorRow = (rowIndex: number) => {
+    if (colorRows.length <= 1) return;
+    setColorRows((prev) => {
+      const row = prev[rowIndex];
+      for (const p of row.previews) {
+        URL.revokeObjectURL(p);
+      }
+      return prev.filter((_, i) => i !== rowIndex);
+    });
+  };
+
+  const setRowColor = (rowIndex: number, color: string) => {
+    setColorRows((prev) =>
+      prev.map((r, i) => (i === rowIndex ? { ...r, color } : r)),
+    );
+  };
+
+  const handleRowImageSelect = (
+    rowIndex: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const remainingSlots = 10 - imageFiles.length;
-    const filesToAdd = files.slice(0, remainingSlots);
+    setColorRows((prev) => {
+      const row = prev[rowIndex];
+      const room = MAX_IMAGES_PER_COLOR - row.files.length;
+      if (room <= 0) return prev;
+      const toAdd = files.slice(0, room);
+      const newPreviews = toAdd.map((file) => URL.createObjectURL(file));
+      return prev.map((r, i) =>
+        i === rowIndex
+          ? {
+              ...r,
+              files: [...r.files, ...toAdd],
+              previews: [...r.previews, ...newPreviews],
+            }
+          : r,
+      );
+    });
+    e.target.value = "";
+  };
 
-    const newPreviews = filesToAdd.map((file) => URL.createObjectURL(file));
-
-    setImageFiles([...imageFiles, ...filesToAdd]);
-    setImagePreviews([...imagePreviews, ...newPreviews]);
+  const handleRemoveRowImage = (rowIndex: number, imageIndex: number) => {
+    setColorRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== rowIndex) return r;
+        URL.revokeObjectURL(r.previews[imageIndex]);
+        return {
+          ...r,
+          files: r.files.filter((_, j) => j !== imageIndex),
+          previews: r.previews.filter((_, j) => j !== imageIndex),
+        };
+      }),
+    );
   };
 
   /**
-   * Remove imagem
+   * Upload em lote (ordem preservada por cor).
    */
-  const handleRemoveImage = (index: number) => {
-    const newFiles = imageFiles.filter((_, i) => i !== index);
-    const newPreviews = imagePreviews.filter((_, i) => i !== index);
-
-    URL.revokeObjectURL(imagePreviews[index]);
-
-    setImageFiles(newFiles);
-    setImagePreviews(newPreviews);
-  };
-
-  /**
-   * Faz upload das imagens
-   */
-  const handleUploadImages = async (): Promise<string[]> => {
-    if (imageFiles.length === 0) {
-      throw new Error("Selecione pelo menos uma imagem");
+  const uploadColorVariants = async (): Promise<ProductColorVariant[]> => {
+    const allFiles = colorRows.flatMap((r) => r.files);
+    if (allFiles.length === 0) {
+      throw new Error("Adicione pelo menos uma foto em alguma cor");
     }
 
     setIsUploading(true);
@@ -167,7 +279,7 @@ export default function NovoProductPage() {
 
     try {
       const results = await uploadMultipleFiles(
-        imageFiles,
+        allFiles,
         "products/images",
         (fileIndex, progress) => {
           setUploadProgress((prev) => ({
@@ -176,9 +288,14 @@ export default function NovoProductPage() {
           }));
         },
       );
-
       const urls = results.map((r) => r.url);
-      return urls;
+      let offset = 0;
+      return colorRows.map((row) => {
+        const n = row.files.length;
+        const slice = urls.slice(offset, offset + n);
+        offset += n;
+        return { color: row.color.trim(), images: slice };
+      });
     } finally {
       setIsUploading(false);
     }
@@ -188,7 +305,7 @@ export default function NovoProductPage() {
    * Toggle size selection
    */
   const handleToggleSize = (size: ProductSize) => {
-    const current = selectedSizes || [];
+    const current = selectedSizes;
     const newSizes = current.includes(size)
       ? current.filter((s) => s !== size)
       : [...current, size];
@@ -203,20 +320,64 @@ export default function NovoProductPage() {
       setIsSubmitting(true);
       setSubmitStatus(null);
 
-      const imageUrls = await handleUploadImages();
+      if (!data.sizes?.length) {
+        toaster.create({
+          title: "Tamanhos obrigatórios",
+          description:
+            "Selecione os tamanhos e defina o estoque de cada um em cada cor.",
+          type: "warning",
+          duration: 4000,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      for (const row of colorRows) {
+        if (!row.color.trim()) {
+          toaster.create({
+            title: "Cor obrigatória",
+            description: "Preencha o nome de cada cor (ex.: Branco, Preto).",
+            type: "warning",
+            duration: 4000,
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        if (row.files.length === 0) {
+          toaster.create({
+            title: "Fotos por cor",
+            description: `Adicione pelo menos uma foto para a cor "${row.color.trim() || "(sem nome)"}".`,
+            type: "warning",
+            duration: 4000,
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const colorVariantsUploaded = await uploadColorVariants();
+      const sizes = data.sizes ?? [];
+      const colorVariants: ProductColorVariant[] = colorVariantsUploaded.map(
+        (v, i) => ({
+          ...v,
+          stockBySize: buildVariantStockBySize(colorRows[i].stockBySize, sizes),
+        }),
+      );
+      const flatImages = [...new Set(colorVariants.flatMap((v) => v.images))];
 
       const productData: CreateProductInput = {
         title: data.title,
         subtitle: data.subtitle,
         description: data.description,
         price: data.price,
-        imageUrl: imageUrls[0],
-        images: imageUrls,
+        imageUrl: colorVariants[0].images[0],
+        images: flatImages.length > 0 ? flatImages : colorVariants[0].images,
+        colorVariants,
         category: data.category,
         shopCategory: data.shopCategory,
-        stock: data.stock ?? 0,
-        sizes: data.sizes,
-        colors: data.colors as string[] | undefined,
+        stock: sizes.length > 0 ? 0 : (data.stock ?? 0),
+        sizes,
+        colors: colorVariants.map((v) => v.color),
         isActive: data.isActive ?? true,
       };
 
@@ -236,8 +397,16 @@ export default function NovoProductPage() {
         });
 
         reset();
-        setImageFiles([]);
-        setImagePreviews([]);
+        nextColorRowIdRef.current = 1;
+        setColorRows([
+          {
+            id: "0",
+            color: "",
+            files: [],
+            previews: [],
+            stockBySize: {},
+          },
+        ]);
 
         setTimeout(() => {
           router.push("/admin-produtos");
@@ -302,11 +471,10 @@ export default function NovoProductPage() {
         </Alert>
       )}
 
-      {/* Alerta de imagens obrigatórias */}
-      {imageFiles.length === 0 && (
+      {colorRows.every((r) => r.files.length === 0) && (
         <Alert status="info" title="Atenção">
-          Você precisa selecionar pelo menos uma imagem para cadastrar o
-          produto.
+          Cadastre pelo menos uma cor com nome e fotos (até{" "}
+          {MAX_IMAGES_PER_COLOR} fotos por cor).
         </Alert>
       )}
 
@@ -326,101 +494,210 @@ export default function NovoProductPage() {
         )}
       >
         <VStack gap={6} align="stretch">
-          {/* === SEÇÃO DE UPLOAD === */}
+          {/* === CORES E FOTOS === */}
           <Card.Root>
             <Card.Header>
-              <Heading size="lg">Imagens do Produto</Heading>
+              <Heading size="lg">Cores e fotos</Heading>
               <Text color="gray.600" fontSize="sm">
-                Selecione até 10 imagens (a primeira será a principal)
+                Para cada cor, informe o nome e as fotos dessa variante (a
+                primeira foto de cada cor é a capa dessa cor na loja). Depois de
+                escolher os tamanhos em &quot;Variações&quot;, defina abaixo o
+                estoque de cada tamanho para esta cor.
               </Text>
             </Card.Header>
             <Card.Body>
-              <VStack gap={4} align="stretch">
-                {/* Botão de Seleção */}
-                <Box>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageSelect}
-                    display="none"
-                    id="image-upload"
-                  />
-                  <label htmlFor="image-upload">
-                    <Button
-                      as="span"
-                      colorScheme="blue"
-                      variant="outline"
-                      width="full"
-                      cursor="pointer"
-                      disabled={imageFiles.length >= 10 || isUploading}
-                    >
-                      <IoCloudUpload />
-                      Selecionar Imagens ({imageFiles.length}/10)
-                    </Button>
-                  </label>
-                </Box>
-
-                {/* Previews */}
-                {imagePreviews.length > 0 && (
-                  <Grid
-                    templateColumns="repeat(auto-fill, minmax(150px, 1fr))"
-                    gap={4}
+              <VStack gap={6} align="stretch">
+                {colorRows.map((row, rowIndex) => (
+                  <Box
+                    key={row.id}
+                    p={4}
+                    borderWidth="1px"
+                    borderRadius="md"
+                    borderColor="gray.200"
                   >
-                    {imagePreviews.map((preview, index) => (
-                      <Box
-                        key={preview}
-                        position="relative"
-                        borderRadius="md"
-                        overflow="hidden"
-                        border="1px solid"
-                        borderColor="gray.200"
+                    <HStack justify="space-between" mb={3} flexWrap="wrap">
+                      <Field
+                        label="Nome da cor"
+                        required
+                        maxW={{ base: "full", md: "280px" }}
                       >
-                        <Image
-                          src={preview}
-                          alt={`Preview ${index + 1}`}
-                          height="150px"
-                          width="full"
-                          objectFit="cover"
+                        <Input
+                          value={row.color}
+                          onChange={(e) =>
+                            setRowColor(rowIndex, e.target.value)
+                          }
+                          placeholder="Ex.: Branco, Preto, Azul"
                         />
-                        <IconButton
-                          aria-label="Remover imagem"
-                          position="absolute"
-                          top={2}
-                          right={2}
-                          size="sm"
-                          colorScheme="red"
-                          onClick={() => handleRemoveImage(index)}
-                        >
-                          <IoClose />
-                        </IconButton>
-                        {index === 0 && (
-                          <Box
-                            position="absolute"
-                            bottom={0}
-                            left={0}
-                            right={0}
-                            bg="blue.500"
-                            color="white"
-                            fontSize="xs"
-                            textAlign="center"
-                            py={1}
+                      </Field>
+                      <HStack>
+                        {colorRows.length > 1 && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            colorScheme="red"
+                            onClick={() => removeColorRow(rowIndex)}
                           >
-                            Imagem Principal
-                          </Box>
+                            Remover cor
+                          </Button>
                         )}
-                      </Box>
-                    ))}
-                  </Grid>
-                )}
+                      </HStack>
+                    </HStack>
 
-                {/* Progress */}
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      display="none"
+                      id={`${colorFileInputId}-color-upload-${row.id}`}
+                      onChange={(e) => handleRowImageSelect(rowIndex, e)}
+                    />
+                    <label
+                      htmlFor={`${colorFileInputId}-color-upload-${row.id}`}
+                    >
+                      <Button
+                        as="span"
+                        colorScheme="blue"
+                        variant="outline"
+                        width="full"
+                        cursor="pointer"
+                        disabled={
+                          row.files.length >= MAX_IMAGES_PER_COLOR ||
+                          isUploading
+                        }
+                        type="button"
+                      >
+                        <IoCloudUpload />
+                        Adicionar fotos desta cor ({row.files.length}/
+                        {MAX_IMAGES_PER_COLOR})
+                      </Button>
+                    </label>
+
+                    {row.previews.length > 0 && (
+                      <Grid
+                        templateColumns="repeat(auto-fill, minmax(150px, 1fr))"
+                        gap={4}
+                        mt={4}
+                      >
+                        {row.previews.map((preview, imgIndex) => (
+                          <Box
+                            key={preview}
+                            position="relative"
+                            borderRadius="md"
+                            overflow="hidden"
+                            border="1px solid"
+                            borderColor="gray.200"
+                          >
+                            <Image
+                              src={preview}
+                              alt={`${row.color || "Cor"} ${imgIndex + 1}`}
+                              height="150px"
+                              width="full"
+                              objectFit="cover"
+                            />
+                            <IconButton
+                              aria-label="Remover imagem"
+                              position="absolute"
+                              top={2}
+                              right={2}
+                              size="sm"
+                              colorScheme="red"
+                              onClick={() =>
+                                handleRemoveRowImage(rowIndex, imgIndex)
+                              }
+                            >
+                              <IoClose />
+                            </IconButton>
+                            {imgIndex === 0 && (
+                              <Box
+                                position="absolute"
+                                bottom={0}
+                                left={0}
+                                right={0}
+                                bg="blue.500"
+                                color="white"
+                                fontSize="xs"
+                                textAlign="center"
+                                py={1}
+                              >
+                                Capa desta cor
+                              </Box>
+                            )}
+                          </Box>
+                        ))}
+                      </Grid>
+                    )}
+
+                    {selectedSizes.length > 0 && (
+                      <Box mt={4}>
+                        <Text fontWeight="semibold" mb={3} fontSize="sm">
+                          Estoque por tamanho (esta cor)
+                        </Text>
+                        <Flex gap={4} wrap="wrap">
+                          {selectedSizes.map((size) => (
+                            <HStack
+                              key={size}
+                              bg="gray.50"
+                              _dark={{ bg: "gray.800" }}
+                              px={4}
+                              py={2}
+                              borderRadius="md"
+                              gap={3}
+                            >
+                              <Text fontWeight="semibold" minW="2rem">
+                                {size}
+                              </Text>
+                              <IconButton
+                                aria-label={`Menos ${size}`}
+                                size="sm"
+                                variant="outline"
+                                type="button"
+                                onClick={() =>
+                                  adjustRowStock(rowIndex, size, -1)
+                                }
+                              >
+                                <IoRemoveOutline />
+                              </IconButton>
+                              <Text minW="2rem" textAlign="center">
+                                {colorRows[rowIndex]?.stockBySize[size] ?? 0}
+                              </Text>
+                              <IconButton
+                                aria-label={`Mais ${size}`}
+                                size="sm"
+                                variant="outline"
+                                type="button"
+                                onClick={() =>
+                                  adjustRowStock(rowIndex, size, 1)
+                                }
+                              >
+                                <IoAddOutline />
+                              </IconButton>
+                            </HStack>
+                          ))}
+                        </Flex>
+                      </Box>
+                    )}
+                  </Box>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addColorRow}
+                  disabled={colorRows.length >= MAX_COLORS || isUploading}
+                >
+                  <HStack gap={2}>
+                    <IoAdd />
+                    <Text>Adicionar outra cor</Text>
+                  </HStack>
+                </Button>
+
                 {isUploading && (
                   <VStack gap={2}>
                     {Object.entries(uploadProgress).map(([index, progress]) => (
                       <Box key={`progress-${index}`} width="full">
                         <HStack justify="space-between" mb={1}>
-                          <Text fontSize="sm">Imagem {Number(index) + 1}</Text>
+                          <Text fontSize="sm">Arquivo {Number(index) + 1}</Text>
                           <Text fontSize="sm">{Math.round(progress)}%</Text>
                         </HStack>
                         <ProgressRoot value={progress}>
@@ -474,7 +751,13 @@ export default function NovoProductPage() {
                   />
                 </Field>
 
-                <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={4}>
+                <Grid
+                  templateColumns={{
+                    base: "1fr",
+                    md: selectedSizes.length === 0 ? "1fr 1fr" : "1fr",
+                  }}
+                  gap={4}
+                >
                   <Field
                     label="Preço (R$)"
                     required
@@ -489,18 +772,20 @@ export default function NovoProductPage() {
                     />
                   </Field>
 
-                  <Field
-                    label="Estoque"
-                    required
-                    invalid={!!errors.stock}
-                    errorText={errors.stock?.message}
-                  >
-                    <Input
-                      {...register("stock", { valueAsNumber: true })}
-                      type="number"
-                      placeholder="0"
-                    />
-                  </Field>
+                  {selectedSizes.length === 0 ? (
+                    <Field
+                      label="Estoque"
+                      required
+                      invalid={!!errors.stock}
+                      errorText={errors.stock?.message}
+                    >
+                      <Input
+                        {...register("stock", { valueAsNumber: true })}
+                        type="number"
+                        placeholder="0"
+                      />
+                    </Field>
+                  ) : null}
                 </Grid>
 
                 <Field
@@ -544,12 +829,16 @@ export default function NovoProductPage() {
           <Card.Root>
             <Card.Header>
               <Heading size="lg">Variações</Heading>
+              <Text color="gray.600" fontSize="sm" mt={1}>
+                Com tamanhos selecionados, o estoque é informado por cor acima
+                (cada cor pode ter quantidades diferentes por tamanho).
+              </Text>
             </Card.Header>
             <Card.Body>
               <Stack gap={4}>
                 <Box>
                   <Text fontWeight="medium" mb={2}>
-                    Tamanhos Disponíveis
+                    Tamanhos disponíveis
                   </Text>
                   <Grid
                     templateColumns="repeat(auto-fill, minmax(80px, 1fr))"
@@ -566,17 +855,6 @@ export default function NovoProductPage() {
                     ))}
                   </Grid>
                 </Box>
-
-                <Field
-                  label="Cores Disponíveis"
-                  invalid={!!errors.colors}
-                  errorText={errors.colors?.message}
-                >
-                  <Input
-                    {...register("colors")}
-                    placeholder="Ex: Preto, Branco, Azul (separado por vírgula)"
-                  />
-                </Field>
               </Stack>
             </Card.Body>
           </Card.Root>
@@ -612,14 +890,18 @@ export default function NovoProductPage() {
             <Button
               type="submit"
               colorScheme="blue"
-              disabled={isSubmitting || isUploading || imageFiles.length === 0}
+              disabled={
+                isSubmitting ||
+                isUploading ||
+                colorRows.every((r) => r.files.length === 0)
+              }
               onClick={(e) => {
-                if (imageFiles.length === 0) {
+                if (colorRows.every((r) => r.files.length === 0)) {
                   e.preventDefault();
                   toaster.create({
                     title: "Atenção",
                     description:
-                      "Selecione pelo menos uma imagem antes de cadastrar",
+                      "Cadastre pelo menos uma cor com fotos antes de enviar",
                     type: "warning",
                     duration: 3000,
                   });
@@ -631,8 +913,8 @@ export default function NovoProductPage() {
                 ? "Fazendo Upload..."
                 : isSubmitting
                   ? "Cadastrando..."
-                  : imageFiles.length === 0
-                    ? "Selecione ao menos uma imagem"
+                  : colorRows.every((r) => r.files.length === 0)
+                    ? "Adicione fotos por cor"
                     : "Cadastrar Produto"}
             </Button>
           </HStack>

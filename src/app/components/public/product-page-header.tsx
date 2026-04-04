@@ -61,6 +61,7 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
     removeItem,
     updateItemQuantity,
     updateItemSize,
+    updateItemColor,
     clearCart,
     toWhatsAppCartItems,
     itemCount,
@@ -98,6 +99,7 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
         onRemoveItem={removeItem}
         onUpdateQuantity={updateItemQuantity}
         onUpdateSize={updateItemSize}
+        onUpdateColor={updateItemColor}
         onClearCart={clearCart}
         cartItems={toWhatsAppCartItems()}
         canCheckout={canCheckout}

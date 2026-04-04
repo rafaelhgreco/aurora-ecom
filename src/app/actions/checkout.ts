@@ -70,8 +70,13 @@ async function enrichCartItems(
 
     const available =
       item.variants?.size != null
-        ? product.getStockForSize(item.variants.size as ProductSize)
-        : product.getTotalStock();
+        ? product.getStockForSize(
+            item.variants.size as ProductSize,
+            item.variants.color,
+          )
+        : item.variants?.color
+          ? product.getTotalStockForColor(item.variants.color)
+          : product.getTotalStock();
     if (available < item.quantity) {
       throw new Error(
         `Estoque insuficiente para "${product.title}". Disponível: ${available}`,

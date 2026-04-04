@@ -5,6 +5,7 @@ import {
   type UpdateProductInput,
   updateProductSchema,
 } from "@/core/schemas/product.schema";
+import { normalizeUpdateProductInput } from "@/core/schemas/product-normalize";
 import { NotFoundError, ValidationError } from "@/shared/errors/domain-errors";
 
 export class UpdateProductUseCase {
@@ -12,7 +13,9 @@ export class UpdateProductUseCase {
 
   async execute(input: UpdateProductInput): Promise<Product> {
     try {
-      const validatedData = updateProductSchema.parse(input);
+      const validatedData = updateProductSchema.parse(
+        normalizeUpdateProductInput(input),
+      );
 
       const exists = await this.productRepository.exists(validatedData.id);
       if (!exists) {

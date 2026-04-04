@@ -1,9 +1,5 @@
 import { Box, SimpleGrid } from "@chakra-ui/react";
 import type { Product } from "@/core/schemas/product.schema";
-import {
-  getAvailableSizes,
-  getTotalStock,
-} from "@/shared/product-stock-helpers";
 import { ProductCard } from "./product-card";
 
 interface ProductGridProps {
@@ -32,17 +28,7 @@ export const ProductGrid = ({ products, embed = false }: ProductGridProps) => {
         alignItems="start"
       >
         {products.map((product) => (
-          <ProductCard
-            key={product.id}
-            id={product.id || ""}
-            imageUrl={product.imageUrl}
-            title={product.title}
-            subtitle={product.subtitle}
-            price={product.price}
-            sizes={getAvailableSizes(product)}
-            stock={getTotalStock(product)}
-            isActive={product.isActive}
-          />
+          <ProductCard key={product.id} product={product} />
         ))}
       </SimpleGrid>
     </Box>

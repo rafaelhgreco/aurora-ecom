@@ -30,7 +30,7 @@
     "react-hook-form": "^7.71.2",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.12.0",
-    "storybook-react": "git+ssh://git@github.com/rafaelhgreco/storybook-react.git#master",
+    "storybook-react": "git+https://github.com/rafaelhgreco/storybook-react.git#master",
     "zod": "^4.3.6"
   },
   "devDependencies": {

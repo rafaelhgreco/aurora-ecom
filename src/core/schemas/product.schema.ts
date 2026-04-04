@@ -24,6 +24,29 @@ export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 export const productSizeSchema = z.enum(PRODUCT_SIZES);
 export const productCategorySchema = z.enum(PRODUCT_CATEGORIES);
 
+const stockBySizeRecordSchema = z
+  .record(z.string(), z.number().int().nonnegative())
+  .refine(
+    (val) =>
+      Object.keys(val).every((k) =>
+        (PRODUCT_SIZES as readonly string[]).includes(k),
+      ),
+    { message: "Chaves de stockBySize devem ser tamanhos válidos" },
+  );
+
+/** Cor com galeria própria e estoque por tamanho nesta variante. */
+export const productColorVariantSchema = z.object({
+  color: z.string().min(1).max(40).trim(),
+  images: z
+    .array(z.string().url("URL da imagem inválida"))
+    .min(1, "Cada cor precisa de pelo menos uma imagem")
+    .max(10),
+  /** Estoque por tamanho só desta cor (fonte de verdade quando `colorVariants` existe). */
+  stockBySize: stockBySizeRecordSchema.optional(),
+});
+
+export type ProductColorVariant = z.infer<typeof productColorVariantSchema>;
+
 export const productSchema = z.object({
   /** IDs do Firestore não são UUID; aceita qualquer string não vazia */
   id: z.string().min(1, "ID inválido").optional(),
@@ -86,16 +109,7 @@ export const productSchema = z.object({
    * Caso contrário usa `stock` global (produtos sem tamanhos).
    * Chaves devem ser ProductSize; valores inteiros >= 0.
    */
-  stockBySize: z
-    .record(z.string(), z.number().int().nonnegative())
-    .refine(
-      (val) =>
-        Object.keys(val).every((k) =>
-          (PRODUCT_SIZES as readonly string[]).includes(k),
-        ),
-      { message: "Chaves de stockBySize devem ser tamanhos válidos" },
-    )
-    .optional(),
+  stockBySize: stockBySizeRecordSchema.optional(),
 
   sizes: z
     .array(productSizeSchema)
@@ -103,6 +117,9 @@ export const productSchema = z.object({
     .optional(),
 
   colors: z.array(z.string().min(2).max(30)).optional(),
+
+  /** Quando preenchido, cada cor tem suas fotos; `imageUrl`/`images`/`colors` são derivados na normalização. */
+  colorVariants: z.array(productColorVariantSchema).max(12).optional(),
 
   isActive: z.boolean().default(true),
 

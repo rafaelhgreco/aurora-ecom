@@ -3,17 +3,23 @@
 import { Timestamp } from "firebase-admin/firestore";
 import type {
   Order,
-  OrderItem,
   OrderItemWithStock,
   OrderStatus,
   OrderWithStock,
 } from "@/core/schemas/order.schema";
+import type { ProductSize } from "@/core/schemas/product.schema";
 import { getAdminDb } from "@/infrastructure/lib/firebase-admin";
 import {
   getOrderById,
   listOrders,
   updateOrderStatus as repoUpdateStatus,
 } from "@/infrastructure/repositories/firestore-order.repository";
+import {
+  getStockForSize,
+  getTotalStock,
+  getTotalStockForColor,
+  hasVariantLevelStock,
+} from "@/shared/product-stock-helpers";
 
 export type OrderActionResult<T> =
   | { success: true; data: T }
@@ -67,17 +73,33 @@ export async function listOrdersWithStockAction(): Promise<
         let currentStock = 0;
 
         if (doc.exists) {
-          const data = doc.data()!;
-          const size = item.variants?.size;
-          const sizes = data.sizes as string[] | undefined;
-          const stockBySize = data.stockBySize as
-            | Record<string, number>
-            | undefined;
-
-          if (size && sizes?.includes(size) && stockBySize) {
-            currentStock = stockBySize[size] ?? 0;
+          const data = doc.data();
+          if (!data) {
+            itemsWithStock.push({
+              ...item,
+              currentStock: 0,
+              sufficient: false,
+            });
+            continue;
+          }
+          const size = item.variants?.size as ProductSize | undefined;
+          const color = item.variants?.color;
+          const productLike = {
+            stock: data.stock as number | undefined,
+            sizes: data.sizes as ProductSize[] | undefined,
+            stockBySize: data.stockBySize as
+              | Partial<Record<ProductSize, number>>
+              | undefined,
+            colorVariants: data.colorVariants as
+              | Array<{ color: string; stockBySize?: Record<string, number> }>
+              | undefined,
+          };
+          if (size) {
+            currentStock = getStockForSize(productLike, size, color);
           } else {
-            currentStock = (data.stock as number) ?? 0;
+            currentStock = color
+              ? getTotalStockForColor(productLike, color)
+              : getTotalStock(productLike);
           }
         }
 
@@ -171,12 +193,54 @@ async function decrementStockForOrder(order: Order): Promise<void> {
     const snap = await docRef.get();
     if (!snap.exists) continue;
 
-    const data = snap.data()!;
-    const sizes = data.sizes as string[] | undefined;
-    const stockBySize = data.stockBySize as Record<string, number> | undefined;
-    const size = item.variants?.size;
+    const data = snap.data();
+    if (!data) continue;
 
-    if (size && sizes?.includes(size) && stockBySize) {
+    const sizes = data.sizes as ProductSize[] | undefined;
+    const stockBySize = data.stockBySize as Record<string, number> | undefined;
+    const colorVariants = data.colorVariants as
+      | Array<{ color: string; stockBySize?: Record<string, number> }>
+      | undefined;
+    const size = item.variants?.size as ProductSize | undefined;
+    const color = item.variants?.color;
+
+    const productLike = {
+      stock: data.stock as number | undefined,
+      sizes,
+      stockBySize,
+      colorVariants,
+    };
+
+    if (
+      hasVariantLevelStock(productLike) &&
+      color &&
+      size &&
+      sizes?.includes(size)
+    ) {
+      const idx = colorVariants?.findIndex((v) => v.color === color) ?? -1;
+      if (idx < 0) {
+        throw new Error(
+          `Cor "${color}" não encontrada no produto "${item.title}".`,
+        );
+      }
+      const cur = colorVariants?.[idx]?.stockBySize?.[size] ?? 0;
+      if (cur < item.quantity) {
+        throw new Error(
+          `Estoque insuficiente para "${item.title}". Disponível: ${cur}, pedido: ${item.quantity}`,
+        );
+      }
+      const rootStock = (data.stock as number) ?? 0;
+      const updates: Record<string, unknown> = {
+        [`colorVariants.${idx}.stockBySize.${size}`]: cur - item.quantity,
+        stock: Math.max(0, rootStock - item.quantity),
+        updatedAt: Timestamp.now(),
+      };
+      if (stockBySize && sizes?.includes(size)) {
+        const aggCur = stockBySize[size] ?? 0;
+        updates[`stockBySize.${size}`] = Math.max(0, aggCur - item.quantity);
+      }
+      await docRef.update(updates);
+    } else if (size && sizes?.includes(size) && stockBySize) {
       const current = stockBySize[size] ?? 0;
       if (current < item.quantity) {
         throw new Error(
@@ -216,12 +280,45 @@ async function incrementStockForOrder(order: Order): Promise<void> {
     const snap = await docRef.get();
     if (!snap.exists) continue;
 
-    const data = snap.data()!;
-    const sizes = data.sizes as string[] | undefined;
-    const stockBySize = data.stockBySize as Record<string, number> | undefined;
-    const size = item.variants?.size;
+    const data = snap.data();
+    if (!data) continue;
 
-    if (size && sizes?.includes(size) && stockBySize) {
+    const sizes = data.sizes as ProductSize[] | undefined;
+    const stockBySize = data.stockBySize as Record<string, number> | undefined;
+    const colorVariants = data.colorVariants as
+      | Array<{ color: string; stockBySize?: Record<string, number> }>
+      | undefined;
+    const size = item.variants?.size as ProductSize | undefined;
+    const color = item.variants?.color;
+
+    const productLike = {
+      stock: data.stock as number | undefined,
+      sizes,
+      stockBySize,
+      colorVariants,
+    };
+
+    if (
+      hasVariantLevelStock(productLike) &&
+      color &&
+      size &&
+      sizes?.includes(size)
+    ) {
+      const idx = colorVariants?.findIndex((v) => v.color === color) ?? -1;
+      if (idx < 0) continue;
+      const cur = colorVariants?.[idx]?.stockBySize?.[size] ?? 0;
+      const rootStock = (data.stock as number) ?? 0;
+      const updates: Record<string, unknown> = {
+        [`colorVariants.${idx}.stockBySize.${size}`]: cur + item.quantity,
+        stock: rootStock + item.quantity,
+        updatedAt: Timestamp.now(),
+      };
+      if (stockBySize && sizes?.includes(size)) {
+        const aggCur = stockBySize[size] ?? 0;
+        updates[`stockBySize.${size}`] = aggCur + item.quantity;
+      }
+      await docRef.update(updates);
+    } else if (size && sizes?.includes(size) && stockBySize) {
       const current = stockBySize[size] ?? 0;
       await docRef.update({
         [`stockBySize.${size}`]: current + item.quantity,

@@ -38,6 +38,10 @@ import {
 import { useEffect } from "react";
 import { FiMinus, FiPlus, FiTrash2 } from "react-icons/fi";
 import type { ProductSize } from "@/core/entities";
+import {
+  getEffectiveColorVariants,
+  getImagesForColor,
+} from "@/shared/product-color-utils";
 import type { EnrichedCartItem } from "../../hooks/use-cart";
 import type { CartItemJSON } from "../../types/checkout";
 import { WhatsAppCheckoutButton } from "../public/whatsapp-checkout-button";
@@ -51,6 +55,7 @@ interface CartDrawerProps {
   onRemoveItem: (itemKey: string) => void;
   onUpdateQuantity: (itemKey: string, quantity: number) => void;
   onUpdateSize: (itemKey: string, size: ProductSize) => void;
+  onUpdateColor?: (itemKey: string, color: string) => void;
   onClearCart: () => void;
   cartItems: CartItemJSON[];
   canCheckout?: boolean;
@@ -66,6 +71,7 @@ export function CartDrawer({
   onRemoveItem,
   onUpdateQuantity,
   onUpdateSize,
+  onUpdateColor,
   onClearCart,
   cartItems,
   canCheckout = true,
@@ -78,10 +84,13 @@ export function CartDrawer({
     for (const { item, product } of items) {
       if (!product) continue;
       const size = item.variants?.size;
+      const color = item.variants?.color;
       const stock =
         size && product.sizes?.includes(size)
-          ? product.getStockForSize(size)
-          : product.getTotalStock();
+          ? product.getStockForSize(size, color)
+          : color
+            ? product.getTotalStockForColor(color)
+            : product.getTotalStock();
       const maxQty = Math.max(0, stock);
       if (maxQty > 0 && item.quantity > maxQty) {
         onUpdateQuantity(item.getUniqueKey(), maxQty);
@@ -155,15 +164,32 @@ export function CartDrawer({
                     const { item, product, subtotal, error } = enrichedItem;
                     const itemKey = item.getUniqueKey();
                     const selectedSize = item.variants?.size;
+                    const selectedColor = item.variants?.color;
+                    const colorVariants = product
+                      ? getEffectiveColorVariants(product)
+                      : [];
+                    const colorOptions = colorVariants.map((v) => v.color);
+                    const thumbImgs =
+                      product && selectedColor
+                        ? getImagesForColor(product, selectedColor)
+                        : [];
+                    const thumbUrl =
+                      thumbImgs[0] ?? product?.imageUrl ?? "/placeholder.png";
                     const hasSizes = product?.sizes && product.sizes.length > 0;
                     const availableSizes = product
-                      ? product.getAvailableSizes()
+                      ? product.getAvailableSizes(selectedColor)
                       : [];
                     const stockForSize =
                       hasSizes && selectedSize && product
-                        ? product.getStockForSize(selectedSize)
-                        : (product?.getTotalStock() ?? 0);
+                        ? product.getStockForSize(selectedSize, selectedColor)
+                        : product
+                          ? selectedColor
+                            ? product.getTotalStockForColor(selectedColor)
+                            : product.getTotalStock()
+                          : 0;
                     const maxQty = Math.max(1, stockForSize);
+                    const showColorPicker =
+                      Boolean(onUpdateColor) && colorOptions.length > 1;
 
                     return (
                       <Box
@@ -189,7 +215,7 @@ export function CartDrawer({
                             justifyContent="center"
                           >
                             <Image
-                              src={product?.imageUrl || "/placeholder.png"}
+                              src={thumbUrl}
                               alt={product?.title || "Produto"}
                               w="full"
                               h="full"
@@ -233,6 +259,39 @@ export function CartDrawer({
                               flexWrap="wrap"
                               gap="2"
                             >
+                              {showColorPicker && product && (
+                                <Box>
+                                  <SelectRoot
+                                    collection={createListCollection({
+                                      items: colorOptions.map((c) => ({
+                                        label: c,
+                                        value: c,
+                                      })),
+                                    })}
+                                    value={[selectedColor || ""]}
+                                    onValueChange={(details) => {
+                                      const color = details.value[0];
+                                      if (color && onUpdateColor) {
+                                        onUpdateColor(itemKey, color);
+                                      }
+                                    }}
+                                    size="sm"
+                                    width={{ base: "100%", sm: "120px" }}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValueText placeholder="Cor" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {colorOptions.map((c) => (
+                                        <SelectItem key={c} item={c}>
+                                          {c}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </SelectRoot>
+                                </Box>
+                              )}
+
                               {hasSizes && availableSizes.length > 0 && (
                                 <Box>
                                   <SelectRoot
@@ -246,19 +305,10 @@ export function CartDrawer({
                                     onValueChange={(details) => {
                                       const size = details.value[0];
                                       if (size && product) {
-                                        const newMax = product.getStockForSize(
-                                          size as ProductSize,
-                                        );
                                         onUpdateSize(
                                           itemKey,
                                           size as ProductSize,
                                         );
-                                        if (item.quantity > newMax) {
-                                          onUpdateQuantity(
-                                            itemKey,
-                                            Math.max(1, newMax),
-                                          );
-                                        }
                                       }
                                     }}
                                     size="sm"
@@ -272,7 +322,10 @@ export function CartDrawer({
                                         <SelectItem key={size} item={size}>
                                           {size} (
                                           {product
-                                            ? product.getStockForSize(size)
+                                            ? product.getStockForSize(
+                                                size,
+                                                item.variants?.color,
+                                              )
                                             : 0}{" "}
                                           em estoque)
                                         </SelectItem>
@@ -366,6 +419,9 @@ export function CartDrawer({
                                 <Text fontSize="xs" color="orange.600">
                                   ⚠️ Apenas {maxQty} em estoque
                                   {selectedSize ? ` para ${selectedSize}` : ""}
+                                  {selectedColor && colorOptions.length > 1
+                                    ? ` · ${selectedColor}`
+                                    : ""}
                                 </Text>
                               )}
                           </VStack>

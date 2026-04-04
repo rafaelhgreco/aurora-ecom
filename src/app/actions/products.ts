@@ -130,9 +130,17 @@ export async function updateProductAction(
 ): Promise<ActionResult<Product>> {
   try {
     const payload: UpdateProductInput = { ...input };
-    if (input.isActive === false) {
+    if (input.isActive === false && input.id) {
       payload.stock = 0;
       payload.stockBySize = {};
+      const getUseCase = new GetProductByIdUseCase(productRepository);
+      const current = await getUseCase.execute(input.id);
+      if (current.colorVariants?.length) {
+        payload.colorVariants = current.colorVariants.map((v) => ({
+          ...v,
+          stockBySize: {},
+        }));
+      }
     }
 
     const useCase = new UpdateProductUseCase(productRepository);
@@ -268,11 +276,17 @@ export async function setProductActiveFlagAction(
     const updateUseCase = new UpdateProductUseCase(productRepository);
 
     if (isActive === false) {
+      const getUseCase = new GetProductByIdUseCase(productRepository);
+      const current = await getUseCase.execute(trimmedId);
+      const colorVariants = current.colorVariants?.length
+        ? current.colorVariants.map((v) => ({ ...v, stockBySize: {} }))
+        : undefined;
       const product = await updateUseCase.execute({
         id: trimmedId,
         isActive: false,
         stock: 0,
         stockBySize: {},
+        ...(colorVariants ? { colorVariants } : {}),
       });
       return {
         success: true,

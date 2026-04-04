@@ -12,7 +12,9 @@ import { FiShoppingCart } from "react-icons/fi";
 import { calculateInstallment, formatPrice } from "@/app/utils/price-formatter";
 import { toaster } from "@/components/ui/toaster";
 import type { ProductSize } from "@/core/entities";
+import type { ProductColorVariant } from "@/core/schemas/product.schema";
 import { useCart } from "../../hooks/use-cart";
+import { ProductColorSelector } from "./product-color-selector";
 import { ProductQuantitySelector } from "./product-quantity-selector";
 import { ProductSizeSelector } from "./product-size-selector";
 import { WhatsAppProductInquiryButton } from "./whatsapp-checkout-button";
@@ -53,6 +55,10 @@ interface ProductInfoProps {
   stockBySize?: Partial<Record<string, number>>;
   /** false = pausado na vitrine; não permite compra nem carrinho */
   isActive?: boolean;
+  /** Variantes com fotos; quando há mais de uma, o utilizador escolhe a cor */
+  colorVariants?: ProductColorVariant[];
+  selectedColor?: string;
+  onColorChange?: (color: string) => void;
 }
 
 export const ProductInfo = ({
@@ -66,10 +72,18 @@ export const ProductInfo = ({
   stock,
   stockBySize,
   isActive = true,
+  colorVariants = [],
+  selectedColor = "",
+  onColorChange,
 }: ProductInfoProps) => {
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null);
   const [quantity, setQuantity] = useState(1);
   const { addItem, openCart, itemCount } = useCart();
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ao mudar a cor (prop), limpar tamanho
+  useEffect(() => {
+    setSelectedSize(null);
+  }, [selectedColor]);
 
   const effectiveStock =
     stockBySize && selectedSize ? (stockBySize[selectedSize] ?? 0) : stock;
@@ -86,6 +100,10 @@ export const ProductInfo = ({
   /**
    * Valida se pode finalizar a compra
    */
+  const needsColorChoice = colorVariants.length > 1;
+  const colorOk =
+    !needsColorChoice || (selectedColor !== "" && Boolean(selectedColor));
+
   const canCheckout = useMemo(() => {
     if (!isActive) {
       return false;
@@ -94,8 +112,8 @@ export const ProductInfo = ({
     const hasSizeSelected = sizes.length === 0 || selectedSize !== null;
     const hasValidQuantity = quantity > 0 && quantity <= effectiveStock;
 
-    return hasSizeSelected && hasValidQuantity;
-  }, [isActive, sizes.length, selectedSize, quantity, effectiveStock]);
+    return hasSizeSelected && hasValidQuantity && colorOk;
+  }, [isActive, sizes.length, selectedSize, quantity, effectiveStock, colorOk]);
 
   /**
    * Mensagem de erro para o botão desabilitado
@@ -103,6 +121,9 @@ export const ProductInfo = ({
   const disabledReason = useMemo(() => {
     if (!isActive) {
       return "Produto indisponível no momento";
+    }
+    if (needsColorChoice && !selectedColor) {
+      return "Selecione uma cor";
     }
     if (sizes.length > 0 && !selectedSize) {
       return "Selecione um tamanho";
@@ -114,7 +135,15 @@ export const ProductInfo = ({
       return `Estoque insuficiente (disponível: ${effectiveStock})`;
     }
     return "";
-  }, [isActive, sizes.length, selectedSize, quantity, effectiveStock]);
+  }, [
+    isActive,
+    sizes.length,
+    selectedSize,
+    quantity,
+    effectiveStock,
+    needsColorChoice,
+    selectedColor,
+  ]);
 
   /**
    * Handler para mudança de tamanho com validação de tipo
@@ -137,6 +166,14 @@ export const ProductInfo = ({
     }
 
     // Validação
+    if (needsColorChoice && !selectedColor) {
+      toaster.create({
+        title: "Selecione uma cor",
+        type: "warning",
+      });
+      return;
+    }
+
     if (sizes.length > 0 && !selectedSize) {
       toaster.create({
         title: "Selecione um tamanho",
@@ -155,16 +192,24 @@ export const ProductInfo = ({
     }
 
     // Adicionar ao carrinho
+    const passColor = needsColorChoice;
+
+    const cartVariants: { size?: ProductSize; color?: string } = {};
+    if (selectedSize) cartVariants.size = selectedSize;
+    if (passColor && selectedColor) cartVariants.color = selectedColor;
+
     addItem(
       productId,
       quantity,
-      selectedSize ? { size: selectedSize } : undefined,
+      Object.keys(cartVariants).length > 0 ? cartVariants : undefined,
     );
 
     // Mostrar sucesso
+    const colorPart =
+      passColor && selectedColor ? ` - Cor ${selectedColor}` : "";
     toaster.create({
       title: "Produto adicionado ao carrinho!",
-      description: `${quantity}x ${title}${selectedSize ? ` - Tamanho ${selectedSize}` : ""}`,
+      description: `${quantity}x ${title}${selectedSize ? ` - Tamanho ${selectedSize}` : ""}${colorPart}`,
       type: "success",
       closable: true,
       duration: 4000,
@@ -213,6 +258,15 @@ export const ProductInfo = ({
             não é possível adicionar ao carrinho nem finalizar pelo WhatsApp.
           </Text>
         </Box>
+      )}
+
+      {colorVariants.length > 1 && onColorChange && (
+        <ProductColorSelector
+          variants={colorVariants}
+          selectedColor={selectedColor || colorVariants[0]?.color || ""}
+          onColorChange={onColorChange}
+          disabled={!isActive}
+        />
       )}
 
       <Box w="full">

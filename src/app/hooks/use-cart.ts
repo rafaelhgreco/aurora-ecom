@@ -119,8 +119,23 @@ export function useCart() {
    */
   const updateItemSize = useCallback(
     (itemKey: string, size: ProductSize) => {
-      // Usa o novo método que mantém a quantidade
-      context.updateItemVariants(itemKey, { size });
+      const item = context.cart.getItem(itemKey);
+      context.updateItemVariants(itemKey, {
+        size,
+        ...(item?.variants?.color ? { color: item.variants.color } : {}),
+      });
+    },
+    [context],
+  );
+
+  const updateItemColor = useCallback(
+    (itemKey: string, color: string) => {
+      const item = context.cart.getItem(itemKey);
+      if (!item) return;
+      context.updateItemVariants(itemKey, {
+        color,
+        ...(item.variants?.size ? { size: item.variants.size } : {}),
+      });
     },
     [context],
   );
@@ -135,9 +150,11 @@ export function useCart() {
         quantity: enriched.item.quantity,
       };
 
-      if (enriched.item.variants?.size) {
+      const v = enriched.item.variants;
+      if (v?.size || v?.color) {
         cartItem.variants = {
-          size: enriched.item.variants.size,
+          ...(v.size ? { size: v.size } : {}),
+          ...(v.color ? { color: v.color } : {}),
         };
       }
 
@@ -159,10 +176,13 @@ export function useCart() {
     const { item, product } = enriched;
     if (!product) return 0;
     const size = item.variants?.size;
+    const color = item.variants?.color;
     if (size != null && product.sizes?.includes(size)) {
-      return product.getStockForSize(size);
+      return product.getStockForSize(size, color);
     }
-    return product.getTotalStock();
+    return color
+      ? product.getTotalStockForColor(color)
+      : product.getTotalStock();
   }, []);
 
   /**
@@ -198,7 +218,10 @@ export function useCart() {
         const sizeInfo = item.variants?.size
           ? ` para ${item.variants.size}`
           : "";
-        return `${product.title} tem estoque insuficiente (disponível${sizeInfo}: ${available})`;
+        const colorInfo = item.variants?.color
+          ? ` · cor ${item.variants.color}`
+          : "";
+        return `${product.title} tem estoque insuficiente (disponível${sizeInfo}${colorInfo}: ${available})`;
       }
     }
 
@@ -224,6 +247,7 @@ export function useCart() {
     removeItem: context.removeItem,
     updateItemQuantity: context.updateItemQuantity,
     updateItemSize,
+    updateItemColor,
     clearCart: context.clearCart,
     openCart: context.openCart,
     closeCart: context.closeCart,

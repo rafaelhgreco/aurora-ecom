@@ -68,32 +68,63 @@ export function ProductViewDialog({
 
           <DialogBody>
             <VStack align="stretch" gap={6}>
-              <Box>
-                <Image
-                  src={product.imageUrl}
-                  alt={product.title}
-                  width="100%"
-                  height="300px"
-                  objectFit="cover"
-                  borderRadius="md"
-                />
-              </Box>
-
-              {product.images && product.images.length > 1 && (
-                <HStack gap={2} overflowX="auto">
-                  {product.images.map((img, index) => (
+              {product.colorVariants && product.colorVariants.length > 0 ? (
+                <VStack align="stretch" gap={4}>
+                  <Text fontWeight="semibold" fontSize="sm" color="gray.600">
+                    Fotos por cor
+                  </Text>
+                  {product.colorVariants.map((v) => (
+                    <Box key={v.color}>
+                      <Text fontWeight="semibold" mb={2}>
+                        {v.color}
+                      </Text>
+                      <HStack gap={2} flexWrap="wrap">
+                        {v.images.map((img) => (
+                          <Image
+                            key={img}
+                            src={img}
+                            alt={`${product.title} ${v.color}`}
+                            boxSize="80px"
+                            objectFit="cover"
+                            borderRadius="md"
+                            border="2px solid"
+                            borderColor="gray.200"
+                          />
+                        ))}
+                      </HStack>
+                    </Box>
+                  ))}
+                </VStack>
+              ) : (
+                <>
+                  <Box>
                     <Image
-                      key={img}
-                      src={img}
-                      alt={`${product.title} ${index + 1}`}
-                      boxSize="80px"
+                      src={product.imageUrl}
+                      alt={product.title}
+                      width="100%"
+                      height="300px"
                       objectFit="cover"
                       borderRadius="md"
-                      border="2px solid"
-                      borderColor="gray.200"
                     />
-                  ))}
-                </HStack>
+                  </Box>
+
+                  {product.images && product.images.length > 1 && (
+                    <HStack gap={2} overflowX="auto">
+                      {product.images.map((img, index) => (
+                        <Image
+                          key={img}
+                          src={img}
+                          alt={`${product.title} ${index + 1}`}
+                          boxSize="80px"
+                          objectFit="cover"
+                          borderRadius="md"
+                          border="2px solid"
+                          borderColor="gray.200"
+                        />
+                      ))}
+                    </HStack>
+                  )}
+                </>
               )}
 
               <VStack align="stretch" gap={4}>

@@ -49,6 +49,16 @@ export const ProductImageGallery = ({
   const lightboxSrc = safeImages[lightboxIndex] ?? safeImages[0];
   const count = safeImages.length;
 
+  const imagesKey = safeImages.join("|");
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: string estável para reset quando a lista muda
+  useEffect(() => {
+    setSelectedImage(0);
+    setLightboxOpen(false);
+    setLightboxIndex(0);
+    setZoom(ZOOM_MIN);
+  }, [imagesKey]);
+
   const openLightbox = useCallback(() => {
     setLightboxIndex(selectedImage);
     setZoom(ZOOM_MIN);

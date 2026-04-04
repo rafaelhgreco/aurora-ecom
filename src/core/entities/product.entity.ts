@@ -1,5 +1,16 @@
 import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
-import type { Product, ProductSize } from "../schemas/product.schema";
+import type {
+  Product,
+  ProductColorVariant,
+  ProductSize,
+} from "@/core/schemas/product.schema";
+import {
+  getAvailableSizes as getAvailableSizesHelper,
+  getStockForSize as getStockForSizeHelper,
+  getTotalStockForColor as getTotalStockForColorHelper,
+  getTotalStock as getTotalStockHelper,
+  hasVariantLevelStock,
+} from "@/shared/product-stock-helpers";
 
 export class ProductEntity implements Product {
   id?: string;
@@ -15,6 +26,7 @@ export class ProductEntity implements Product {
   stockBySize?: Partial<Record<ProductSize, number>>;
   sizes?: ProductSize[];
   colors?: string[];
+  colorVariants?: ProductColorVariant[];
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -34,62 +46,83 @@ export class ProductEntity implements Product {
     this.stockBySize = data.stockBySize;
     this.sizes = data.sizes;
     this.colors = data.colors;
+    this.colorVariants = data.colorVariants;
     this.isActive = data.isActive ?? true;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
     this.deletedAt = data.deletedAt || null;
   }
 
-  /**
-   * Estoque total. Usa stockBySize quando produto tem sizes e stockBySize definido.
-   */
   getTotalStock(): number {
-    if (this.stockBySize && this.sizes && this.sizes.length > 0) {
-      return this.sizes.reduce(
-        (sum, s) => sum + (this.stockBySize?.[s] ?? 0),
-        0,
-      );
+    return getTotalStockHelper(this);
+  }
+
+  getTotalStockForColor(color: string): number {
+    return getTotalStockForColorHelper(this, color);
+  }
+
+  getStockForSize(size: ProductSize, color?: string): number {
+    return getStockForSizeHelper(this, size, color);
+  }
+
+  getAvailableSizes(color?: string): ProductSize[] {
+    return getAvailableSizesHelper(this, color);
+  }
+
+  hasStock(quantity: number, size?: ProductSize, color?: string): boolean {
+    if (size != null) {
+      return this.getStockForSize(size, color) >= quantity;
     }
-    return this.stock;
-  }
-
-  /**
-   * Estoque para um tamanho específico. Retorna 0 quando stockBySize ausente ou size inexistente.
-   */
-  getStockForSize(size: ProductSize): number {
-    return this.stockBySize?.[size] ?? 0;
-  }
-
-  /**
-   * Verifica se há estoque suficiente. Aceita size opcional para produtos com tamanhos.
-   */
-  hasStock(quantity: number, size?: ProductSize): boolean {
-    if (size != null && this.stockBySize && this.sizes?.includes(size)) {
-      return this.getStockForSize(size) >= quantity;
+    if (color) {
+      return this.getTotalStockForColor(color) >= quantity;
     }
     return this.getTotalStock() >= quantity;
   }
 
-  hasStockForSize(size: ProductSize, quantity: number): boolean {
-    return this.getStockForSize(size) >= quantity;
-  }
-
-  /** Tamanhos com estoque > 0 (quando usa stockBySize). Caso contrário retorna sizes inteiros. */
-  getAvailableSizes(): ProductSize[] {
-    if (this.stockBySize && this.sizes && this.sizes.length > 0) {
-      return this.sizes.filter((s) => (this.stockBySize?.[s] ?? 0) > 0);
-    }
-    if (this.stock > 0 && this.sizes && this.sizes.length > 0) {
-      return this.sizes;
-    }
-    return [];
+  hasStockForSize(
+    size: ProductSize,
+    quantity: number,
+    color?: string,
+  ): boolean {
+    return this.getStockForSize(size, color) >= quantity;
   }
 
   isAvailable(): boolean {
     return this.isActive && this.getTotalStock() > 0;
   }
 
-  decreaseStock(quantity: number, size?: ProductSize): void {
+  decreaseStock(quantity: number, size?: ProductSize, color?: string): void {
+    if (hasVariantLevelStock(this) && color && size != null) {
+      const idx = this.colorVariants?.findIndex((v) => v.color === color) ?? -1;
+      if (idx < 0) {
+        throw new Error(`Cor "${color}" inválida para este produto`);
+      }
+      const v = this.colorVariants?.[idx];
+      if (!v) {
+        throw new Error(`Cor "${color}" inválida para este produto`);
+      }
+      const sb = { ...(v.stockBySize ?? {}) };
+      const current = sb[size] ?? 0;
+      if (current < quantity) {
+        throw new Error(
+          `Estoque insuficiente para tamanho ${size}. Disponível: ${current}, Solicitado: ${quantity}`,
+        );
+      }
+      sb[size] = current - quantity;
+      const next = [...(this.colorVariants ?? [])];
+      next[idx] = { ...v, stockBySize: sb };
+      this.colorVariants = next;
+
+      this.stock = Math.max(0, this.stock - quantity);
+      if (this.stockBySize && this.sizes?.includes(size)) {
+        this.stockBySize = {
+          ...this.stockBySize,
+          [size]: Math.max(0, (this.stockBySize[size] ?? 0) - quantity),
+        };
+      }
+      return;
+    }
+
     if (size != null && this.stockBySize && this.sizes?.includes(size)) {
       const current = this.getStockForSize(size);
       if (current < quantity) {
@@ -111,9 +144,33 @@ export class ProductEntity implements Product {
     this.stock -= quantity;
   }
 
-  increaseStock(quantity: number, size?: ProductSize): void {
+  increaseStock(quantity: number, size?: ProductSize, color?: string): void {
     if (quantity <= 0) {
       throw new Error("Quantidade deve ser maior que zero");
+    }
+    if (hasVariantLevelStock(this) && color && size != null) {
+      const idx = this.colorVariants?.findIndex((v) => v.color === color) ?? -1;
+      if (idx < 0) {
+        throw new Error(`Cor "${color}" inválida para este produto`);
+      }
+      const v = this.colorVariants?.[idx];
+      if (!v) {
+        throw new Error(`Cor "${color}" inválida para este produto`);
+      }
+      const sb = { ...(v.stockBySize ?? {}) };
+      sb[size] = (sb[size] ?? 0) + quantity;
+      const next = [...(this.colorVariants ?? [])];
+      next[idx] = { ...v, stockBySize: sb };
+      this.colorVariants = next;
+
+      this.stock += quantity;
+      if (this.stockBySize && this.sizes?.includes(size)) {
+        this.stockBySize = {
+          ...this.stockBySize,
+          [size]: (this.stockBySize[size] ?? 0) + quantity,
+        };
+      }
+      return;
     }
     if (size != null && this.sizes?.includes(size)) {
       this.stockBySize = {
@@ -155,6 +212,7 @@ export class ProductEntity implements Product {
       stockBySize: this.stockBySize,
       sizes: this.sizes,
       colors: this.colors,
+      colorVariants: this.colorVariants,
       isActive: this.isActive,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,

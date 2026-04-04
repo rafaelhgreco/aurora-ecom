@@ -24,9 +24,10 @@ import {
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
+  IoAdd,
   IoAddOutline,
   IoArrowBack,
   IoClose,
@@ -45,6 +46,7 @@ import {
   SHOP_CATEGORY_LABELS,
   type ShopCategoryId,
 } from "@/core/catalog/shop-catalog";
+import type { ProductColorVariant } from "@/core/schemas/product.schema";
 import {
   PRODUCT_SIZES,
   type ProductAdminEditFormValues,
@@ -53,25 +55,36 @@ import {
   type UpdateProductInput,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
+import { buildVariantStockBySize } from "@/shared/admin-product-stock";
 
-function parseColorsText(text: string | undefined): string[] | undefined {
-  if (!text?.trim()) return undefined;
-  const parts = text
-    .split(",")
-    .map((c) => c.trim())
-    .filter((c) => c.length >= 2 && c.length <= 30);
-  return parts.length > 0 ? parts : undefined;
-}
+const MAX_COLORS_EDIT = 12;
+const MAX_IMAGES_PER_COLOR_EDIT = 10;
+
+/** Referência estável: evita `|| []` novo a cada render (loop em useEffect). */
+const EMPTY_SIZES: ProductSize[] = [];
+
+type ColorEditRow = {
+  id: string;
+  color: string;
+  existingUrls: string[];
+  files: File[];
+  previews: string[];
+  stockBySize: Partial<Record<ProductSize, number>>;
+};
 
 function productToFormDefaults(product: Product): ProductAdminEditFormValues {
   const sizes = product.sizes ?? [];
-  const stockBySize =
-    product.stockBySize ??
-    (sizes.length > 0
-      ? Object.fromEntries(
-          sizes.map((s, i) => [s, i === 0 ? (product.stock ?? 0) : 0]),
-        )
-      : undefined);
+  const hasPerColorStock = product.colorVariants?.some(
+    (v) => v.stockBySize && Object.keys(v.stockBySize).length > 0,
+  );
+  const stockBySize = hasPerColorStock
+    ? {}
+    : (product.stockBySize ??
+      (sizes.length > 0
+        ? Object.fromEntries(
+            sizes.map((s, i) => [s, i === 0 ? (product.stock ?? 0) : 0]),
+          )
+        : undefined));
   return {
     id: product.id || "",
     title: product.title,
@@ -84,8 +97,43 @@ function productToFormDefaults(product: Product): ProductAdminEditFormValues {
     shopCategory: (product.shopCategory ?? "roupas") as ShopCategoryId,
     sizes,
     isActive: product.isActive ?? true,
-    colorsText: product.colors?.join(", ") ?? "",
+    colorsText: "",
   };
+}
+
+function buildColorRowsFromProduct(product: Product): ColorEditRow[] {
+  if (product.colorVariants?.length) {
+    return product.colorVariants.map((v, i) => ({
+      id: String(i),
+      color: v.color,
+      existingUrls: [...v.images],
+      files: [],
+      previews: [],
+      stockBySize: { ...(v.stockBySize ?? {}) },
+    }));
+  }
+  const urls =
+    product.images?.length > 0
+      ? [...product.images]
+      : product.imageUrl
+        ? [product.imageUrl]
+        : [];
+  const sizes = product.sizes ?? [];
+  const sb = product.stockBySize ?? {};
+  const stockBySize: Partial<Record<ProductSize, number>> = {};
+  for (const s of sizes) {
+    stockBySize[s] = sb[s] ?? 0;
+  }
+  return [
+    {
+      id: "0",
+      color: "Padrão",
+      existingUrls: urls,
+      files: [],
+      previews: [],
+      stockBySize,
+    },
+  ];
 }
 
 interface ProductEditFormProps {
@@ -94,6 +142,10 @@ interface ProductEditFormProps {
 
 export function ProductEditForm({ product }: ProductEditFormProps) {
   const router = useRouter();
+  const colorFileInputId = useId();
+  /** Próximo id ao adicionar cor; alinhado a buildColorRowsFromProduct (0..n-1). */
+  const nextColorRowIdRef = useRef(0);
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>(
     {},
@@ -104,9 +156,11 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     message: string;
   } | null>(null);
 
-  const [existingUrls, setExistingUrls] = useState<string[]>([]);
-  const [newFiles, setNewFiles] = useState<File[]>([]);
-  const [newPreviews, setNewPreviews] = useState<string[]>([]);
+  const [colorRows, setColorRows] = useState<ColorEditRow[]>(() => {
+    const rows = buildColorRowsFromProduct(product);
+    nextColorRowIdRef.current = rows.length;
+    return rows;
+  });
 
   const defaults = useMemo(() => productToFormDefaults(product), [product]);
 
@@ -117,71 +171,154 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     setValue,
     watch,
     reset,
-    getValues,
   } = useForm<ProductAdminEditFormValues>({
     // biome-ignore lint/suspicious/noExplicitAny: zodResolver type compatibility
     resolver: zodResolver(productAdminEditFormSchema) as any,
     defaultValues: defaults,
   });
 
-  const selectedSizes = watch("sizes") || [];
-  const stockBySize = watch("stockBySize") ?? {};
+  const rawSizes = watch("sizes");
+  /** `?? EMPTY_SIZES` evita `|| []` (novo array a cada render → loop no useEffect abaixo). */
+  const selectedSizes = rawSizes ?? EMPTY_SIZES;
 
   useEffect(() => {
-    if (selectedSizes.length === 0) return;
-    const current = getValues("stockBySize") ?? {};
-    let changed = false;
-    const next = { ...current };
-    for (const s of selectedSizes) {
-      if (!(s in next)) {
-        next[s as ProductSize] = 0;
-        changed = true;
-      }
-    }
-    if (changed) setValue("stockBySize", next);
-  }, [selectedSizes, setValue, getValues]);
+    setColorRows((prev) =>
+      prev.map((row) => {
+        const next = { ...row.stockBySize };
+        for (const s of selectedSizes) {
+          if (!(s in next)) next[s] = 0;
+        }
+        for (const k of Object.keys(next)) {
+          if (!selectedSizes.includes(k as ProductSize)) {
+            delete next[k as ProductSize];
+          }
+        }
+        return { ...row, stockBySize: next };
+      }),
+    );
+  }, [selectedSizes]);
 
-  const adjustStockBySize = (size: ProductSize, delta: number) => {
-    const prev = stockBySize[size as keyof typeof stockBySize] ?? 0;
-    const next = Math.max(0, prev + delta);
-    setValue("stockBySize", { ...stockBySize, [size]: next });
+  useEffect(() => {
+    if (selectedSizes.length > 0) {
+      setValue("stockBySize", {});
+    }
+  }, [selectedSizes.length, setValue]);
+
+  const adjustRowStock = (
+    rowIndex: number,
+    size: ProductSize,
+    delta: number,
+  ) => {
+    setColorRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== rowIndex) return r;
+        const prevQty = r.stockBySize[size] ?? 0;
+        return {
+          ...r,
+          stockBySize: {
+            ...r.stockBySize,
+            [size]: Math.max(0, prevQty + delta),
+          },
+        };
+      }),
+    );
   };
 
   useEffect(() => {
     reset(defaults);
-    setExistingUrls(
-      product.images?.length
-        ? [...product.images]
-        : product.imageUrl
-          ? [product.imageUrl]
-          : [],
-    );
-    setNewFiles([]);
-    setNewPreviews([]);
+    const rows = buildColorRowsFromProduct(product);
+    nextColorRowIdRef.current = rows.length;
+    setColorRows(rows);
   }, [product, defaults, reset]);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const addColorRow = () => {
+    if (colorRows.length >= MAX_COLORS_EDIT) return;
+    const stockBySize: Partial<Record<ProductSize, number>> = {};
+    for (const s of selectedSizes) {
+      stockBySize[s] = 0;
+    }
+    setColorRows((prev) => [
+      ...prev,
+      {
+        id: String(nextColorRowIdRef.current++),
+        color: "",
+        existingUrls: [],
+        files: [],
+        previews: [],
+        stockBySize,
+      },
+    ]);
+  };
+
+  const removeColorRow = (rowIndex: number) => {
+    if (colorRows.length <= 1) return;
+    setColorRows((prev) => {
+      const row = prev[rowIndex];
+      for (const p of row.previews) {
+        URL.revokeObjectURL(p);
+      }
+      return prev.filter((_, i) => i !== rowIndex);
+    });
+  };
+
+  const setRowColor = (rowIndex: number, color: string) => {
+    setColorRows((prev) =>
+      prev.map((r, i) => (i === rowIndex ? { ...r, color } : r)),
+    );
+  };
+
+  const handleRowImageSelect = (
+    rowIndex: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const maxTotal = 10;
-    const room = maxTotal - existingUrls.length - newFiles.length;
-    if (room <= 0) return;
-
-    const toAdd = files.slice(0, room);
-    const previews = toAdd.map((f) => URL.createObjectURL(f));
-    setNewFiles((prev) => [...prev, ...toAdd]);
-    setNewPreviews((prev) => [...prev, ...previews]);
+    setColorRows((prev) => {
+      const row = prev[rowIndex];
+      const room =
+        MAX_IMAGES_PER_COLOR_EDIT - row.existingUrls.length - row.files.length;
+      if (room <= 0) return prev;
+      const toAdd = files.slice(0, room);
+      const newPreviews = toAdd.map((f) => URL.createObjectURL(f));
+      return prev.map((r, i) =>
+        i === rowIndex
+          ? {
+              ...r,
+              files: [...r.files, ...toAdd],
+              previews: [...r.previews, ...newPreviews],
+            }
+          : r,
+      );
+    });
+    e.target.value = "";
   };
 
-  const removeExistingUrl = (index: number) => {
-    setExistingUrls((prev) => prev.filter((_, i) => i !== index));
+  const removeExistingUrl = (rowIndex: number, imageIndex: number) => {
+    setColorRows((prev) =>
+      prev.map((r, i) =>
+        i === rowIndex
+          ? {
+              ...r,
+              existingUrls: r.existingUrls.filter((_, j) => j !== imageIndex),
+            }
+          : r,
+      ),
+    );
   };
 
-  const removeNewFile = (index: number) => {
-    URL.revokeObjectURL(newPreviews[index]);
-    setNewFiles((prev) => prev.filter((_, i) => i !== index));
-    setNewPreviews((prev) => prev.filter((_, i) => i !== index));
+  const removeNewFile = (rowIndex: number, imageIndex: number) => {
+    setColorRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== rowIndex) return r;
+        URL.revokeObjectURL(r.previews[imageIndex]);
+        return {
+          ...r,
+          files: r.files.filter((_, j) => j !== imageIndex),
+          previews: r.previews.filter((_, j) => j !== imageIndex),
+        };
+      }),
+    );
   };
 
   const handleToggleSize = (size: ProductSize) => {
@@ -192,14 +329,14 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     setValue("sizes", next);
   };
 
-  const handleUploadNewFiles = async (): Promise<string[]> => {
-    if (newFiles.length === 0) return [];
+  const uploadNewFilesBatch = async (files: File[]): Promise<string[]> => {
+    if (files.length === 0) return [];
     setIsUploading(true);
     setUploadProgress({});
     try {
       return (
         await uploadMultipleFiles(
-          newFiles,
+          files,
           "products/images",
           (fileIndex, progress) => {
             setUploadProgress((prev) => ({
@@ -217,29 +354,45 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
   const onSubmit = async (data: ProductAdminEditFormValues) => {
     setSubmitStatus(null);
 
-    const mergedImages = [...existingUrls];
-    if (mergedImages.length === 0 && newFiles.length === 0) {
-      setSubmitStatus({
-        type: "error",
-        message: "Mantenha ao menos uma imagem ou envie novas.",
-      });
-      return;
+    for (const row of colorRows) {
+      if (!row.color.trim()) {
+        setSubmitStatus({
+          type: "error",
+          message: "Preencha o nome de cada cor.",
+        });
+        return;
+      }
+      if (row.existingUrls.length + row.files.length === 0) {
+        setSubmitStatus({
+          type: "error",
+          message: `A cor "${row.color.trim()}" precisa de pelo menos uma foto.`,
+        });
+        return;
+      }
     }
 
     try {
       setIsSubmitting(true);
-      const uploaded = await handleUploadNewFiles();
-      const allImages = [...mergedImages, ...uploaded];
+      const allNewFiles = colorRows.flatMap((r) => r.files);
+      const uploadedList = await uploadNewFilesBatch(allNewFiles);
+      let offset = 0;
+      const sizes = data.sizes ?? [];
+      const colorVariants: ProductColorVariant[] = colorRows.map((row) => {
+        const n = row.files.length;
+        const slice = uploadedList.slice(offset, offset + n);
+        offset += n;
+        const stockBySize =
+          sizes.length > 0
+            ? buildVariantStockBySize(row.stockBySize, sizes)
+            : undefined;
+        return {
+          color: row.color.trim(),
+          images: [...row.existingUrls, ...slice],
+          ...(stockBySize ? { stockBySize } : {}),
+        };
+      });
 
-      if (allImages.length === 0) {
-        setSubmitStatus({
-          type: "error",
-          message: "É necessário ao menos uma imagem.",
-        });
-        return;
-      }
-
-      const colors = parseColorsText(data.colorsText);
+      const flatImages = [...new Set(colorVariants.flatMap((v) => v.images))];
 
       const payload: UpdateProductInput = {
         id: data.id,
@@ -247,18 +400,23 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
         subtitle: data.subtitle || undefined,
         description: data.description,
         price: data.price,
-        stock: data.stock,
-        stockBySize:
-          data.stockBySize && Object.keys(data.stockBySize).length > 0
-            ? data.stockBySize
-            : undefined,
         category: data.category || undefined,
         shopCategory: data.shopCategory,
-        imageUrl: allImages[0],
-        images: allImages,
-        sizes: data.sizes?.length ? data.sizes : undefined,
-        colors,
+        imageUrl: colorVariants[0].images[0],
+        images: flatImages.length > 0 ? flatImages : colorVariants[0].images,
+        colorVariants,
+        colors: colorVariants.map((v) => v.color),
+        sizes: sizes.length ? sizes : undefined,
         isActive: data.isActive,
+        ...(sizes.length === 0
+          ? {
+              stock: data.stock,
+              stockBySize:
+                data.stockBySize && Object.keys(data.stockBySize).length > 0
+                  ? data.stockBySize
+                  : undefined,
+            }
+          : {}),
       };
 
       const result = await updateProductAction(payload);
@@ -270,9 +428,17 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
           type: "success",
           duration: 4000,
         });
-        setNewFiles([]);
-        setNewPreviews([]);
-        setExistingUrls(allImages);
+        setColorRows(
+          colorVariants.map((v, i) => ({
+            id: String(i),
+            color: v.color,
+            existingUrls: [...v.images],
+            files: [],
+            previews: [],
+            stockBySize: { ...(v.stockBySize ?? {}) },
+          })),
+        );
+        nextColorRowIdRef.current = colorVariants.length;
         router.push("/admin-produtos");
         router.refresh();
       } else {
@@ -326,120 +492,238 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
           <VStack gap={6} align="stretch">
             <Card.Root>
               <Card.Header>
-                <Heading size="lg">Imagens</Heading>
+                <Heading size="lg">Cores e fotos</Heading>
                 <Text color="gray.600" fontSize="sm">
-                  Primeira imagem é a capa. Até 10 no total.
+                  Cada cor tem nome e fotos próprias. A primeira foto de cada
+                  cor é a capa dessa variante. Com tamanhos selecionados em
+                  &quot;Tamanhos&quot;, informe o estoque por tamanho em cada
+                  bloco de cor.
                 </Text>
               </Card.Header>
               <Card.Body>
-                <VStack gap={4} align="stretch">
-                  <Box>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageSelect}
-                      display="none"
-                      id="edit-image-upload"
-                    />
-                    <label htmlFor="edit-image-upload">
-                      <Button
-                        as="span"
-                        colorScheme="blue"
-                        variant="outline"
-                        width="full"
-                        cursor="pointer"
-                      >
-                        <IoCloudUpload style={{ marginRight: 8 }} />
-                        Adicionar imagens (
-                        {existingUrls.length + newFiles.length}/10)
-                      </Button>
-                    </label>
-                  </Box>
-
-                  {(existingUrls.length > 0 || newPreviews.length > 0) && (
-                    <Grid
-                      templateColumns="repeat(auto-fill, minmax(150px, 1fr))"
-                      gap={4}
+                <VStack gap={6} align="stretch">
+                  {colorRows.map((row, rowIndex) => (
+                    <Box
+                      key={row.id}
+                      p={4}
+                      borderWidth="1px"
+                      borderRadius="md"
+                      borderColor="gray.200"
                     >
-                      {existingUrls.map((url, index) => (
-                        <Box key={url} position="relative">
-                          <Image
-                            src={url}
-                            alt={`Imagem ${index + 1}`}
-                            borderRadius="md"
-                            objectFit="cover"
-                            height="150px"
-                            width="100%"
+                      <HStack justify="space-between" mb={3} flexWrap="wrap">
+                        <Field
+                          label="Nome da cor"
+                          maxW={{ base: "full", md: "280px" }}
+                        >
+                          <Input
+                            value={row.color}
+                            onChange={(e) =>
+                              setRowColor(rowIndex, e.target.value)
+                            }
+                            placeholder="Ex.: Branco, Preto"
                           />
-                          <Badge
-                            position="absolute"
-                            top={2}
-                            left={2}
-                            colorScheme={index === 0 ? "green" : "gray"}
-                          >
-                            {index === 0 ? "Principal" : `#${index + 1}`}
-                          </Badge>
-                          <IconButton
-                            position="absolute"
-                            top={2}
-                            right={2}
+                        </Field>
+                        {colorRows.length > 1 && (
+                          <Button
+                            type="button"
                             size="sm"
+                            variant="outline"
                             colorScheme="red"
-                            onClick={() => removeExistingUrl(index)}
-                            aria-label="Remover imagem"
+                            onClick={() => removeColorRow(rowIndex)}
                           >
-                            <IoClose />
-                          </IconButton>
-                        </Box>
-                      ))}
-                      {newPreviews.map((preview, index) => (
-                        <Box key={`n-${preview}`} position="relative">
-                          <Image
-                            src={preview}
-                            alt={`Nova ${index + 1}`}
-                            borderRadius="md"
-                            objectFit="cover"
-                            height="150px"
-                            width="100%"
-                          />
-                          <Badge position="absolute" top={2} left={2}>
-                            Nova
-                          </Badge>
-                          <IconButton
-                            position="absolute"
-                            top={2}
-                            right={2}
-                            size="sm"
-                            colorScheme="red"
-                            onClick={() => removeNewFile(index)}
-                            aria-label="Remover nova imagem"
-                          >
-                            <IoClose />
-                          </IconButton>
-                          {isUploading &&
-                            uploadProgress[index] !== undefined && (
-                              <Box
+                            Remover cor
+                          </Button>
+                        )}
+                      </HStack>
+
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        display="none"
+                        id={`${colorFileInputId}-edit-color-upload-${row.id}`}
+                        onChange={(e) => handleRowImageSelect(rowIndex, e)}
+                      />
+                      <label
+                        htmlFor={`${colorFileInputId}-edit-color-upload-${row.id}`}
+                      >
+                        <Button
+                          as="span"
+                          colorScheme="blue"
+                          variant="outline"
+                          width="full"
+                          cursor="pointer"
+                          disabled={
+                            row.existingUrls.length + row.files.length >=
+                              MAX_IMAGES_PER_COLOR_EDIT || isUploading
+                          }
+                          type="button"
+                        >
+                          <IoCloudUpload style={{ marginRight: 8 }} />
+                          Adicionar fotos (
+                          {row.existingUrls.length + row.files.length}/
+                          {MAX_IMAGES_PER_COLOR_EDIT})
+                        </Button>
+                      </label>
+
+                      {(row.existingUrls.length > 0 ||
+                        row.previews.length > 0) && (
+                        <Grid
+                          templateColumns="repeat(auto-fill, minmax(150px, 1fr))"
+                          gap={4}
+                          mt={4}
+                        >
+                          {row.existingUrls.map((url, imgIndex) => (
+                            <Box
+                              key={`${row.id}-ex-${url}`}
+                              position="relative"
+                            >
+                              <Image
+                                src={url}
+                                alt={`${row.color || "Cor"} ${imgIndex + 1}`}
+                                borderRadius="md"
+                                objectFit="cover"
+                                height="150px"
+                                width="100%"
+                              />
+                              <Badge
                                 position="absolute"
-                                bottom={0}
-                                left={0}
-                                right={0}
-                                p={2}
-                                bg="blackAlpha.700"
-                                borderBottomRadius="md"
+                                top={2}
+                                left={2}
+                                colorScheme={imgIndex === 0 ? "green" : "gray"}
                               >
-                                <ProgressRoot
-                                  value={uploadProgress[index]}
+                                {imgIndex === 0 ? "Capa" : `#${imgIndex + 1}`}
+                              </Badge>
+                              <IconButton
+                                position="absolute"
+                                top={2}
+                                right={2}
+                                size="sm"
+                                colorScheme="red"
+                                onClick={() =>
+                                  removeExistingUrl(rowIndex, imgIndex)
+                                }
+                                aria-label="Remover imagem"
+                              >
+                                <IoClose />
+                              </IconButton>
+                            </Box>
+                          ))}
+                          {row.previews.map((preview, imgIndex) => (
+                            <Box key={preview} position="relative">
+                              <Image
+                                src={preview}
+                                alt={`Nova ${imgIndex + 1}`}
+                                borderRadius="md"
+                                objectFit="cover"
+                                height="150px"
+                                width="100%"
+                              />
+                              <Badge position="absolute" top={2} left={2}>
+                                Nova
+                              </Badge>
+                              <IconButton
+                                position="absolute"
+                                top={2}
+                                right={2}
+                                size="sm"
+                                colorScheme="red"
+                                onClick={() =>
+                                  removeNewFile(rowIndex, imgIndex)
+                                }
+                                aria-label="Remover nova imagem"
+                              >
+                                <IoClose />
+                              </IconButton>
+                              {isUploading &&
+                                uploadProgress[imgIndex] !== undefined && (
+                                  <Box
+                                    position="absolute"
+                                    bottom={0}
+                                    left={0}
+                                    right={0}
+                                    p={2}
+                                    bg="blackAlpha.700"
+                                    borderBottomRadius="md"
+                                  >
+                                    <ProgressRoot
+                                      value={uploadProgress[imgIndex]}
+                                      size="sm"
+                                    >
+                                      <ProgressBar />
+                                    </ProgressRoot>
+                                  </Box>
+                                )}
+                            </Box>
+                          ))}
+                        </Grid>
+                      )}
+
+                      {selectedSizes.length > 0 && (
+                        <Box mt={4}>
+                          <Text fontWeight="semibold" mb={3} fontSize="sm">
+                            Estoque por tamanho (esta cor)
+                          </Text>
+                          <Flex gap={4} wrap="wrap">
+                            {selectedSizes.map((size) => (
+                              <HStack
+                                key={size}
+                                bg="gray.50"
+                                _dark={{ bg: "gray.800" }}
+                                px={4}
+                                py={2}
+                                borderRadius="md"
+                                gap={3}
+                              >
+                                <Text fontWeight="semibold" minW="2rem">
+                                  {size}
+                                </Text>
+                                <IconButton
+                                  aria-label={`Menos ${size}`}
                                   size="sm"
+                                  variant="outline"
+                                  type="button"
+                                  onClick={() =>
+                                    adjustRowStock(rowIndex, size, -1)
+                                  }
                                 >
-                                  <ProgressBar />
-                                </ProgressRoot>
-                              </Box>
-                            )}
+                                  <IoRemoveOutline />
+                                </IconButton>
+                                <Text minW="2rem" textAlign="center">
+                                  {row.stockBySize[size] ?? 0}
+                                </Text>
+                                <IconButton
+                                  aria-label={`Mais ${size}`}
+                                  size="sm"
+                                  variant="outline"
+                                  type="button"
+                                  onClick={() =>
+                                    adjustRowStock(rowIndex, size, 1)
+                                  }
+                                >
+                                  <IoAddOutline />
+                                </IconButton>
+                              </HStack>
+                            ))}
+                          </Flex>
                         </Box>
-                      ))}
-                    </Grid>
-                  )}
+                      )}
+                    </Box>
+                  ))}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addColorRow}
+                    disabled={
+                      colorRows.length >= MAX_COLORS_EDIT || isUploading
+                    }
+                  >
+                    <HStack gap={2}>
+                      <IoAdd />
+                      <Text>Adicionar outra cor</Text>
+                    </HStack>
+                  </Button>
                 </VStack>
               </Card.Body>
             </Card.Root>
@@ -504,14 +788,6 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
                       ))}
                     </Box>
                   </Field>
-                  <Field
-                    label="Cores (opcional)"
-                    helperText="Separe por vírgula, ex: Preto, Branco"
-                    invalid={!!errors.colorsText}
-                    errorText={errors.colorsText?.message}
-                  >
-                    <Input {...register("colorsText")} />
-                  </Field>
                 </Stack>
               </Card.Body>
             </Card.Root>
@@ -533,50 +809,7 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
                       step="0.01"
                     />
                   </Field>
-                  {selectedSizes.length > 0 ? (
-                    <Box>
-                      <Text fontWeight="medium" mb={3}>
-                        Estoque por tamanho
-                      </Text>
-                      <Flex gap={4} wrap="wrap">
-                        {selectedSizes.map((size) => (
-                          <HStack
-                            key={size}
-                            bg="gray.50"
-                            _dark={{ bg: "gray.800" }}
-                            px={4}
-                            py={2}
-                            borderRadius="md"
-                            gap={3}
-                          >
-                            <Text fontWeight="semibold" minW="2rem">
-                              {size}
-                            </Text>
-                            <IconButton
-                              aria-label={`Diminuir ${size}`}
-                              size="sm"
-                              variant="outline"
-                              onClick={() => adjustStockBySize(size, -1)}
-                            >
-                              <IoRemoveOutline />
-                            </IconButton>
-                            <Text minW="2rem" textAlign="center">
-                              {stockBySize[size as keyof typeof stockBySize] ??
-                                0}
-                            </Text>
-                            <IconButton
-                              aria-label={`Aumentar ${size}`}
-                              size="sm"
-                              variant="outline"
-                              onClick={() => adjustStockBySize(size, 1)}
-                            >
-                              <IoAddOutline />
-                            </IconButton>
-                          </HStack>
-                        ))}
-                      </Flex>
-                    </Box>
-                  ) : (
+                  {selectedSizes.length === 0 ? (
                     <Field
                       label="Estoque *"
                       invalid={!!errors.stock}
@@ -587,6 +820,12 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
                         type="number"
                       />
                     </Field>
+                  ) : (
+                    <Text fontSize="sm" color="gray.600">
+                      Com tamanhos ativos, o estoque é definido por cor na seção
+                      &quot;Cores e fotos&quot; (cada cor com quantidades por
+                      tamanho).
+                    </Text>
                   )}
                 </Stack>
               </Card.Body>

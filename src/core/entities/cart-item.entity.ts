@@ -1,4 +1,4 @@
-import type { ProductSize } from "../schemas/product.schema";
+import type { ProductSize } from "@/core/schemas/product.schema";
 import type { ProductEntity } from "./product.entity";
 
 /**
@@ -94,7 +94,11 @@ export class CartItemEntity {
    * Verifica se o item tem estoque suficiente (por tamanho quando aplicável)
    */
   hasStock(product: ProductEntity): boolean {
-    return product.hasStock(this.quantity, this.variants?.size);
+    return product.hasStock(
+      this.quantity,
+      this.variants?.size,
+      this.variants?.color,
+    );
   }
 
   /**
@@ -108,18 +112,19 @@ export class CartItemEntity {
     if (!this.hasStock(product)) {
       const available =
         this.variants?.size != null
-          ? product.getStockForSize(this.variants.size)
-          : product.getTotalStock();
+          ? product.getStockForSize(this.variants.size, this.variants?.color)
+          : this.variants?.color
+            ? product.getTotalStockForColor(this.variants.color)
+            : product.getTotalStock();
       return {
         valid: false,
         error: `Estoque insuficiente. Disponível: ${available}`,
       };
     }
 
-    // Valida tamanho se especificado
     if (this.variants?.size && product.sizes) {
-      const sizeExists = product.sizes.includes(this.variants.size);
-      if (!sizeExists) {
+      const allowed = product.getAvailableSizes(this.variants?.color);
+      if (!allowed.includes(this.variants.size)) {
         return {
           valid: false,
           error: `Tamanho "${this.variants.size}" não disponível`,
@@ -127,8 +132,22 @@ export class CartItemEntity {
       }
     }
 
-    // Valida cor se especificado
-    if (this.variants?.color && product.colors) {
+    const cv = product.colorVariants;
+    if (cv && cv.length > 1) {
+      if (!this.variants?.color) {
+        return {
+          valid: false,
+          error: "Selecione uma cor",
+        };
+      }
+      const ok = cv.some((v) => v.color === this.variants?.color);
+      if (!ok) {
+        return {
+          valid: false,
+          error: `Cor "${this.variants.color}" não disponível`,
+        };
+      }
+    } else if (this.variants?.color && product.colors?.length) {
       const colorExists = product.colors.includes(this.variants.color);
       if (!colorExists) {
         return {

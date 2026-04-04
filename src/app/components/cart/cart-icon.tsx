@@ -3,9 +3,13 @@
 /**
  * Component: CartIcon
  * Ícone do carrinho com badge de quantidade
+ *
+ * O contador só reflete o valor real após montar no cliente para evitar
+ * hydration mismatch: no SSR o carrinho não vem do localStorage.
  */
 
 import { Box, IconButton } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 import { FiShoppingCart } from "react-icons/fi";
 
 interface CartIconProps {
@@ -26,6 +30,13 @@ interface CartIconProps {
 }
 
 export function CartIcon({ itemCount, onClick, size = "md" }: CartIconProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const count = mounted ? itemCount : 0;
+
   const badgeSize = size === "sm" ? "16px" : size === "md" ? "18px" : "20px";
   const badgeFontSize =
     size === "sm" ? "10px" : size === "md" ? "11px" : "12px";
@@ -48,7 +59,7 @@ export function CartIcon({ itemCount, onClick, size = "md" }: CartIconProps) {
         position="absolute"
         top="2px"
         right="2px"
-        bg={itemCount > 0 ? "red.500" : "gray.400"}
+        bg={count > 0 ? "red.500" : "gray.400"}
         color="white"
         borderRadius="full"
         width={badgeSize}
@@ -60,9 +71,9 @@ export function CartIcon({ itemCount, onClick, size = "md" }: CartIconProps) {
         fontWeight="bold"
         pointerEvents="none"
         transition="all 0.2s"
-        transform={itemCount > 0 ? "scale(1)" : "scale(0.9)"}
+        transform={count > 0 ? "scale(1)" : "scale(0.9)"}
       >
-        {itemCount > 99 ? "99+" : itemCount}
+        {count > 99 ? "99+" : count}
       </Box>
     </Box>
   );

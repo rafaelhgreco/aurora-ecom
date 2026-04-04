@@ -5,6 +5,7 @@ import {
   createProductSchema,
   type Product,
 } from "@/core/schemas/product.schema";
+import { normalizeCreateProductInput } from "@/core/schemas/product-normalize";
 import { ValidationError } from "@/shared/errors/domain-errors";
 
 export class CreateProductUseCase {
@@ -12,7 +13,9 @@ export class CreateProductUseCase {
 
   async execute(input: CreateProductInput): Promise<Product> {
     try {
-      const validatedData = createProductSchema.parse(input);
+      const validatedData = createProductSchema.parse(
+        normalizeCreateProductInput(input),
+      );
 
       const product = await this.productRepository.create(validatedData);
 
