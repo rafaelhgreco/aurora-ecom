@@ -834,7 +834,7 @@ export default function NovoProductPage() {
                 </Field>
                 <Field
                   label="Seção do catálogo (loja)"
-                  helperText="Define em qual página /shop/... o produto aparece."
+                  helperText="Define em qual página /loja/... o produto aparece."
                   invalid={!!errors.shopCategory}
                   errorText={errors.shopCategory?.message}
                 >

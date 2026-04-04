@@ -32,12 +32,12 @@ function usePublicHeaderNavItems(): NavItem[] {
             {
               id: "shop-hub",
               label: "Shop",
-              onClick: () => navigate("/shop"),
+              onClick: () => navigate("/loja"),
             },
             ...SHOP_CATALOG_ROUTES.map((route) => ({
               id: `shop-${route.slug}`,
               label: route.title,
-              onClick: () => navigate(`/shop/${route.slug}`),
+              onClick: () => navigate(`/loja/${route.slug}`),
             })),
           ],
         },

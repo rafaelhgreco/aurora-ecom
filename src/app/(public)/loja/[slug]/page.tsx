@@ -2,17 +2,20 @@
 
 import { Heading, Text, VStack } from "@chakra-ui/react";
 import { notFound, useParams } from "next/navigation";
+import { useMemo } from "react";
 import { ProductGrid } from "@/app/components/public/product-grid";
 import { ProductGridSkeleton } from "@/app/components/public/product-grid-skeleton";
 import { ShopPageShell } from "@/app/components/public/shop";
 import { EmptyState, ErrorState } from "@/app/components/states";
 import { useProducts } from "@/app/hooks/use-products";
 import { getShopCatalogBySlug } from "@/core/catalog/shop-catalog";
+import { sortProductsAlphabetically } from "@/shared/shop-category-helpers";
 
 /**
  * Catálogo filtrado por seção (Roupas / Produtos Aurora).
+ * Produtos em ordem alfabética pelo título.
  */
-export default function ShopCategoryPage() {
+export default function LojaCategoryPage() {
   const params = useParams();
   const slug = typeof params.slug === "string" ? params.slug : params.slug?.[0];
   const catalog = slug ? getShopCatalogBySlug(slug) : undefined;
@@ -24,6 +27,11 @@ export default function ShopCategoryPage() {
   const { products, loading, error } = useProducts({
     shopCategory: catalog.shopCategory,
   });
+
+  const sortedProducts = useMemo(
+    () => sortProductsAlphabetically(products),
+    [products],
+  );
 
   return (
     <ShopPageShell>
@@ -54,8 +62,8 @@ export default function ShopCategoryPage() {
           />
         )}
 
-        {!loading && !error && products.length > 0 && (
-          <ProductGrid products={products} embed />
+        {!loading && !error && sortedProducts.length > 0 && (
+          <ProductGrid products={sortedProducts} embed />
         )}
       </VStack>
     </ShopPageShell>

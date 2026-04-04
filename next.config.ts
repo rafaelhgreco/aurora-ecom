@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["@chakra-ui/react"],
   },
+  async redirects() {
+    return [
+      { source: "/shop", destination: "/loja", permanent: true },
+      { source: "/shop/:slug", destination: "/loja/:slug", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

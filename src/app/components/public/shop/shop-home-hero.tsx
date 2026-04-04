@@ -1,5 +1,5 @@
 /**
- * Bloco de destaque da página /shop — título + área para filtro (breadcrumb).
+ * Bloco de destaque da página da loja — título + área para filtro (breadcrumb).
  */
 
 import { Heading, Text, VStack } from "@chakra-ui/react";

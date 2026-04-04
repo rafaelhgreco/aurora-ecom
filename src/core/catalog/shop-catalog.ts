@@ -12,7 +12,7 @@ export type ShopCatalogRoute = {
   readonly description: string;
 };
 
-/** Rotas fixas: /shop/[slug] */
+/** Rotas fixas: /loja/[slug] */
 export const SHOP_CATALOG_ROUTES: readonly ShopCatalogRoute[] = [
   {
     slug: "roupas",

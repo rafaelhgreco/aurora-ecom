@@ -20,7 +20,7 @@ export function ShopCategoryCards({ routes }: ShopCategoryCardsProps) {
         {routes.map((route) => (
           <Link
             key={route.slug}
-            href={`/shop/${route.slug}`}
+            href={`/loja/${route.slug}`}
             style={{ textDecoration: "none", display: "block" }}
           >
             <Box
