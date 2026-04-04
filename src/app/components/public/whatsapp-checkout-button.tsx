@@ -2,13 +2,37 @@
 
 import { Box, Button, type ButtonProps } from "@chakra-ui/react";
 import { useState } from "react";
+import { FaWhatsapp } from "react-icons/fa";
 import { createWhatsAppCheckoutLink } from "@/app/actions/checkout";
 import type { CartItemJSON } from "@/app/types/checkout";
+
+const WHATSAPP_GREEN = "#25D366";
+const WHATSAPP_GREEN_HOVER = "#20BD5A";
+const WHATSAPP_GREEN_ACTIVE = "#1DA851";
 
 type WhatsAppButtonStyleProps = Omit<
   ButtonProps,
   "onClick" | "children" | "loading" | "loadingText" | "spinner"
 >;
+
+/** Número da loja (mesmo uso do checkout no servidor) — precisa estar no cliente para o link de dúvidas. */
+const SHOP_WHATSAPP =
+  process.env.NEXT_PUBLIC_SHOP_WHATSAPP_NUMBER ?? "5511999999999";
+
+function buildProductInquiryMessage(
+  productTitle: string,
+  productPageUrl: string,
+) {
+  return [
+    "Olá! Gostaria de mais informações sobre o produto:",
+    "",
+    `*${productTitle}*`,
+    "",
+    `Link: ${productPageUrl}`,
+  ].join("\n");
+}
+
+// --- Carrinho: finalizar pedido pelo WhatsApp (inalterado para o drawer) ---
 
 interface WhatsAppCheckoutButtonProps {
   cart: CartItemJSON[];
@@ -18,7 +42,6 @@ interface WhatsAppCheckoutButtonProps {
   disabled?: boolean;
   onSuccess?: (total: number) => void;
   onError?: (error: string) => void;
-  /** Mesma altura/tipografia de outros CTAs da página de produto */
   buttonProps?: WhatsAppButtonStyleProps;
 }
 
@@ -34,9 +57,6 @@ export function WhatsAppCheckoutButton({
 }: WhatsAppCheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
 
-  /**
-   * Processa checkout e redireciona para WhatsApp
-   */
   const handleCheckout = async () => {
     if (cart.length === 0) {
       alert("Carrinho vazio. Adicione produtos antes de finalizar.");
@@ -57,12 +77,9 @@ export function WhatsAppCheckoutButton({
       const result = await createWhatsAppCheckoutLink(cart);
 
       if (result.success && result.url) {
-        // Callback de sucesso
         if (result.total) {
           onSuccess?.(result.total);
         }
-
-        // Redireciona para WhatsApp
         window.open(result.url, "_blank");
       } else {
         throw new Error(result.error || "Erro ao gerar link do WhatsApp");
@@ -105,6 +122,64 @@ export function WhatsAppCheckoutButton({
         💬
       </Box>
       {buttonText}
+    </Button>
+  );
+}
+
+// --- Página de produto: pedir mais informações + link do produto ---
+
+export interface WhatsAppProductInquiryButtonProps {
+  productId: string;
+  productTitle: string;
+  /** Estilo alinhado aos outros CTAs (ex.: PRODUCT_CTA_LAYOUT) */
+  buttonProps?: WhatsAppButtonStyleProps;
+}
+
+/**
+ * Abre o WhatsApp com mensagem pedindo mais informações e o link público do produto.
+ * Visual nas cores oficiais do WhatsApp.
+ */
+export function WhatsAppProductInquiryButton({
+  productId,
+  productTitle,
+  buttonProps,
+}: WhatsAppProductInquiryButtonProps) {
+  const openInquiry = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const productPageUrl = `${origin}/produto/${encodeURIComponent(productId)}`;
+    const text = buildProductInquiryMessage(productTitle, productPageUrl);
+    const waUrl = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <Button
+      type="button"
+      w="full"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      gap={3}
+      bg={WHATSAPP_GREEN}
+      color="white"
+      _hover={{ bg: WHATSAPP_GREEN_HOVER }}
+      _active={{ bg: WHATSAPP_GREEN_ACTIVE }}
+      {...buttonProps}
+      onClick={openInquiry}
+    >
+      <Box
+        as="span"
+        aria-hidden
+        flexShrink={0}
+        display="inline-flex"
+        alignItems="center"
+        fontSize={{ base: "22px", md: "24px" }}
+      >
+        <FaWhatsapp />
+      </Box>
+      <Box as="span" fontWeight="semibold">
+        Posso te ajudar?
+      </Box>
     </Button>
   );
 }

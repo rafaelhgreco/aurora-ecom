@@ -20,4 +20,7 @@ export {
   ShopHomeHero,
   ShopPageShell,
 } from "./shop";
-export { WhatsAppCheckoutButton } from "./whatsapp-checkout-button";
+export {
+  WhatsAppCheckoutButton,
+  WhatsAppProductInquiryButton,
+} from "./whatsapp-checkout-button";

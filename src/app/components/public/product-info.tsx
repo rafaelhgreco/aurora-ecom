@@ -15,7 +15,7 @@ import type { ProductSize } from "@/core/entities";
 import { useCart } from "../../hooks/use-cart";
 import { ProductQuantitySelector } from "./product-quantity-selector";
 import { ProductSizeSelector } from "./product-size-selector";
-import { WhatsAppCheckoutButton } from "./whatsapp-checkout-button";
+import { WhatsAppProductInquiryButton } from "./whatsapp-checkout-button";
 
 /**
  * CTAs da página de produto — no mobile evita altura fixa para o texto
@@ -115,34 +115,6 @@ export const ProductInfo = ({
     }
     return "";
   }, [isActive, sizes.length, selectedSize, quantity, effectiveStock]);
-
-  /**
-   * Constrói o carrinho dinamicamente baseado nas seleções do usuário
-   * Usa o formato esperado pela WhatsAppCheckoutButton
-   */
-  const cart = useMemo(() => {
-    // Se não tiver tamanho selecionado, ainda cria o item sem variante
-    const item = {
-      productId,
-      quantity,
-      ...(selectedSize && {
-        variants: {
-          size: selectedSize,
-        },
-      }),
-    };
-
-    return [item];
-  }, [productId, quantity, selectedSize]);
-
-  const handleSuccess = (total: number) => {
-    console.log("Pedido processado com sucesso! Total:", total);
-  };
-
-  const handleError = (error: string) => {
-    console.error("Erro ao processar pedido:", error);
-    // Aqui você pode mostrar um toast ou modal de erro
-  };
 
   /**
    * Handler para mudança de tamanho com validação de tipo
@@ -390,17 +362,15 @@ export const ProductInfo = ({
             )}
           </Flex>
           <Box w="full">
-            <WhatsAppCheckoutButton
-              cart={cart}
-              onSuccess={handleSuccess}
-              onError={handleError}
-              disabled={!canCheckout}
-              buttonText="Comprar Direto"
+            <WhatsAppProductInquiryButton
+              productId={productId}
+              productTitle={title}
               buttonProps={{
                 ...PRODUCT_CTA_LAYOUT,
                 _hover: {
                   transform: "translateY(-2px)",
                   shadow: "md",
+                  bg: "#20BD5A",
                 },
                 _active: { transform: "translateY(0)" },
               }}
