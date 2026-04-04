@@ -32,7 +32,7 @@ function usePublicHeaderNavItems(): NavItem[] {
           dropdownItems: [
             {
               id: "shop-hub",
-              label: "Loja",
+              label: "Shop",
               onClick: () => navigate("/shop"),
             },
             ...SHOP_CATALOG_ROUTES.map((route) => ({
