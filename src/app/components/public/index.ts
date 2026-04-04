@@ -16,7 +16,6 @@ export { ProductPageHeader } from "./product-page-header";
 export { ProductQuantitySelector } from "./product-quantity-selector";
 export { ProductSizeSelector } from "./product-size-selector";
 export {
-  HomeLanding,
   ShopCategoryCards,
   ShopHomeHero,
   ShopPageShell,

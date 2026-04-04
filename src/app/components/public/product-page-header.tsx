@@ -25,7 +25,6 @@ function usePublicHeaderNavItems(): NavItem[] {
   return useMemo(
     () =>
       [
-        { label: "HOME", path: "/" },
         {
           label: "SHOP",
           isButton: true as const,
