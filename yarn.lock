@@ -3565,7 +3565,7 @@ source-map@^0.5.7:
 
 "storybook-react@git+https://github.com/rafaelhgreco/storybook-react.git#master":
   version "1.0.0"
-  resolved "git+ssh://git@github.com/rafaelhgreco/storybook-react.git#41caa48c91c2dfa7ea2693c1dba81a5ab8d2befb"
+  resolved "git+https://github.com/rafaelhgreco/storybook-react.git#41caa48c91c2dfa7ea2693c1dba81a5ab8d2befb"
   dependencies:
     react "^19.2.3"
     react-dom "^19.2.3"
