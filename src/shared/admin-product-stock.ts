@@ -7,9 +7,9 @@ import type { ProductSize } from "@/core/schemas/product.schema";
 export function buildVariantStockBySize(
   row: Partial<Record<ProductSize, number>>,
   selectedSizes: ProductSize[],
-): Partial<Record<ProductSize, number>> | undefined {
+): Record<ProductSize, number> | undefined {
   if (selectedSizes.length === 0) return undefined;
-  const out: Partial<Record<ProductSize, number>> = {};
+  const out = {} as Record<ProductSize, number>;
   for (const s of selectedSizes) {
     const n = Math.max(0, Math.floor(Number(row[s] ?? 0)));
     out[s] = n;

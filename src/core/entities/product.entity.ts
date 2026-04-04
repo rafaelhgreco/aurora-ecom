@@ -23,7 +23,7 @@ export class ProductEntity implements Product {
   category?: string;
   shopCategory?: ShopCategoryId;
   stock: number;
-  stockBySize?: Partial<Record<ProductSize, number>>;
+  stockBySize?: Record<string, number>;
   sizes?: ProductSize[];
   colors?: string[];
   colorVariants?: ProductColorVariant[];

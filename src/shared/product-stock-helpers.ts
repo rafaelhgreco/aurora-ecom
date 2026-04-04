@@ -3,7 +3,6 @@
  */
 
 import type { ProductSize } from "@/core/schemas/product.schema";
-import { PRODUCT_SIZES } from "@/core/schemas/product.schema";
 
 /** Variante mínima para cálculo de estoque (ex.: snapshot Firestore sem `images`). */
 export type ColorVariantStockLike = {
@@ -45,7 +44,7 @@ export function getTotalStockForColor(
 ): number {
   const sb = getVariantStockBySizeForColor(product, color);
   if (sb && Object.keys(sb).length > 0) {
-    return Object.values(sb).reduce((a, b) => a + b, 0);
+    return Object.values(sb).reduce<number>((a, b) => a + (b ?? 0), 0);
   }
   return product.stock ?? 0;
 }
@@ -78,7 +77,7 @@ export function getAvailableSizes(
         if ((v.stockBySize[s] ?? 0) > 0) set.add(s);
       }
     }
-    return PRODUCT_SIZES.filter((s) => set.has(s));
+    return sizes.filter((s) => set.has(s));
   }
 
   if (product.stockBySize && sizes.length > 0) {
@@ -117,7 +116,10 @@ export function getTotalStock(product: ProductStockLike): number {
   if (hasVariantLevelStock(product)) {
     return (product.colorVariants ?? []).reduce((sum, v) => {
       if (!v.stockBySize) return sum;
-      return sum + Object.values(v.stockBySize).reduce((a, b) => a + b, 0);
+      return (
+        sum +
+        Object.values(v.stockBySize).reduce<number>((a, b) => a + (b ?? 0), 0)
+      );
     }, 0);
   }
 

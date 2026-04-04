@@ -51,9 +51,11 @@ import {
 } from "@/core/catalog/shop-catalog";
 import type { ProductColorVariant } from "@/core/schemas/product.schema";
 import {
-  PRODUCT_SIZES,
+  PRODUCT_SIZES_CLOTHING,
+  PRODUCT_SIZES_VOLUME,
   type ProductSize,
   productSizeSchema,
+  type SizePresetKind,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
 import { buildVariantStockBySize } from "@/shared/admin-product-stock";
@@ -111,6 +113,9 @@ export default function NovoProductPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  const [sizePreset, setSizePreset] = useState<SizePresetKind>("clothing");
+  const [customSizeDraft, setCustomSizeDraft] = useState("");
 
   const [colorRows, setColorRows] = useState<ColorDraft[]>(() => [
     {
@@ -301,8 +306,22 @@ export default function NovoProductPage() {
     }
   };
 
+  const presetOptions =
+    sizePreset === "clothing"
+      ? PRODUCT_SIZES_CLOTHING
+      : sizePreset === "volume"
+        ? PRODUCT_SIZES_VOLUME
+        : [];
+
+  const applySizePreset = (next: SizePresetKind) => {
+    if (next === sizePreset) return;
+    setSizePreset(next);
+    setValue("sizes", []);
+    setCustomSizeDraft("");
+  };
+
   /**
-   * Toggle size selection
+   * Toggle size selection (presets roupa / volume)
    */
   const handleToggleSize = (size: ProductSize) => {
     const current = selectedSizes;
@@ -310,6 +329,21 @@ export default function NovoProductPage() {
       ? current.filter((s) => s !== size)
       : [...current, size];
     setValue("sizes", newSizes);
+  };
+
+  const handleAddCustomSize = () => {
+    const t = customSizeDraft.trim();
+    if (!t || t.length > 32) return;
+    if (selectedSizes.includes(t)) return;
+    setValue("sizes", [...selectedSizes, t]);
+    setCustomSizeDraft("");
+  };
+
+  const handleRemoveCustomSize = (size: string) => {
+    setValue(
+      "sizes",
+      selectedSizes.filter((s) => s !== size),
+    );
   };
 
   /**
@@ -838,22 +872,117 @@ export default function NovoProductPage() {
               <Stack gap={4}>
                 <Box>
                   <Text fontWeight="medium" mb={2}>
-                    Tamanhos disponíveis
+                    Tipo de variação
                   </Text>
-                  <Grid
-                    templateColumns="repeat(auto-fill, minmax(80px, 1fr))"
-                    gap={2}
-                  >
-                    {PRODUCT_SIZES.map((size) => (
-                      <Checkbox
-                        key={size}
-                        checked={selectedSizes.includes(size)}
-                        onCheckedChange={() => handleToggleSize(size)}
-                      >
-                        {size}
-                      </Checkbox>
-                    ))}
-                  </Grid>
+                  <HStack flexWrap="wrap" gap={2} mb={3}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={sizePreset === "clothing" ? "solid" : "outline"}
+                      onClick={() => applySizePreset("clothing")}
+                    >
+                      Roupas (PP…XG)
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={sizePreset === "volume" ? "solid" : "outline"}
+                      onClick={() => applySizePreset("volume")}
+                    >
+                      Volumes (ml)
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={sizePreset === "custom" ? "solid" : "outline"}
+                      onClick={() => applySizePreset("custom")}
+                    >
+                      Personalizado
+                    </Button>
+                  </HStack>
+                  <Text fontSize="sm" color="gray.600" mb={3}>
+                    {sizePreset === "clothing" &&
+                      "Tamanhos de vestuário. Escolha os que este produto oferece."}
+                    {sizePreset === "volume" &&
+                      "Capacidades em mililitros (cosméticos, líquidos, etc.)."}
+                    {sizePreset === "custom" &&
+                      "Defina rótulos livres (ex.: 30ml, Único, Kit)."}
+                  </Text>
+                  <Text fontWeight="medium" mb={2}>
+                    {sizePreset === "custom"
+                      ? "Variações adicionadas"
+                      : "Opções disponíveis"}
+                  </Text>
+                  {sizePreset !== "custom" ? (
+                    <Grid
+                      templateColumns="repeat(auto-fill, minmax(80px, 1fr))"
+                      gap={2}
+                    >
+                      {presetOptions.map((size) => (
+                        <Checkbox
+                          key={size}
+                          checked={selectedSizes.includes(size)}
+                          onCheckedChange={() => handleToggleSize(size)}
+                        >
+                          {size}
+                        </Checkbox>
+                      ))}
+                    </Grid>
+                  ) : (
+                    <Stack gap={3}>
+                      <HStack flexWrap="wrap" gap={2}>
+                        <Input
+                          maxLength={32}
+                          placeholder='Ex.: 30ml, "Único", Kit 2un'
+                          value={customSizeDraft}
+                          onChange={(e) => setCustomSizeDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddCustomSize();
+                            }
+                          }}
+                          maxW="280px"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleAddCustomSize}
+                        >
+                          Adicionar
+                        </Button>
+                      </HStack>
+                      {selectedSizes.length > 0 ? (
+                        <Flex flexWrap="wrap" gap={2}>
+                          {selectedSizes.map((s) => (
+                            <HStack
+                              key={s}
+                              bg="gray.100"
+                              borderRadius="md"
+                              px={2}
+                              py={1}
+                              gap={1}
+                            >
+                              <Text fontSize="sm">{s}</Text>
+                              <IconButton
+                                aria-label={`Remover ${s}`}
+                                size="2xs"
+                                variant="ghost"
+                                onClick={() => handleRemoveCustomSize(s)}
+                              >
+                                <IoClose />
+                              </IconButton>
+                            </HStack>
+                          ))}
+                        </Flex>
+                      ) : (
+                        <Text fontSize="sm" color="gray.500">
+                          Nenhuma variação ainda. Use o campo acima e
+                          &quot;Adicionar&quot;.
+                        </Text>
+                      )}
+                    </Stack>
+                  )}
                 </Box>
               </Stack>
             </Card.Body>

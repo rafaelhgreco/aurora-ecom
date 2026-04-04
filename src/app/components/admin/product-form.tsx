@@ -40,8 +40,10 @@ import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import {
   type CreateProductInput,
   createProductSchema,
-  PRODUCT_SIZES,
+  PRODUCT_SIZES_CLOTHING,
+  PRODUCT_SIZES_VOLUME,
   type ProductSize,
+  type SizePresetKind,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
 
@@ -55,6 +57,9 @@ export function ProductForm() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  const [sizePreset, setSizePreset] = useState<SizePresetKind>("clothing");
+  const [customSizeDraft, setCustomSizeDraft] = useState("");
 
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -138,15 +143,41 @@ export function ProductForm() {
     }
   };
 
-  /**
-   * Toggle size selection
-   */
+  const presetOptions =
+    sizePreset === "clothing"
+      ? PRODUCT_SIZES_CLOTHING
+      : sizePreset === "volume"
+        ? PRODUCT_SIZES_VOLUME
+        : [];
+
+  const applySizePreset = (next: SizePresetKind) => {
+    if (next === sizePreset) return;
+    setSizePreset(next);
+    setValue("sizes", []);
+    setCustomSizeDraft("");
+  };
+
   const handleToggleSize = (size: ProductSize) => {
     const current = selectedSizes || [];
     const newSizes = current.includes(size)
       ? current.filter((s) => s !== size)
       : [...current, size];
     setValue("sizes", newSizes);
+  };
+
+  const handleAddCustomSize = () => {
+    const t = customSizeDraft.trim();
+    if (!t || t.length > 32) return;
+    if (selectedSizes.includes(t)) return;
+    setValue("sizes", [...(selectedSizes || []), t]);
+    setCustomSizeDraft("");
+  };
+
+  const handleRemoveCustomSize = (size: string) => {
+    setValue(
+      "sizes",
+      (selectedSizes || []).filter((s) => s !== size),
+    );
   };
 
   /**
@@ -427,20 +458,95 @@ export function ProductForm() {
             {/* === TAMANHOS === */}
             <Card.Root>
               <Card.Header>
-                <Heading size="lg">Tamanhos Disponíveis *</Heading>
+                <Heading size="lg">Tamanhos / variações *</Heading>
               </Card.Header>
               <Card.Body>
-                <Flex gap={4} wrap="wrap">
-                  {PRODUCT_SIZES.map((size) => (
-                    <Checkbox
-                      key={size}
-                      checked={selectedSizes.includes(size)}
-                      onCheckedChange={() => handleToggleSize(size)}
-                    >
-                      {size}
-                    </Checkbox>
-                  ))}
-                </Flex>
+                <HStack flexWrap="wrap" gap={2} mb={3}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={sizePreset === "clothing" ? "solid" : "outline"}
+                    onClick={() => applySizePreset("clothing")}
+                  >
+                    Roupas
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={sizePreset === "volume" ? "solid" : "outline"}
+                    onClick={() => applySizePreset("volume")}
+                  >
+                    Volumes (ml)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={sizePreset === "custom" ? "solid" : "outline"}
+                    onClick={() => applySizePreset("custom")}
+                  >
+                    Personalizado
+                  </Button>
+                </HStack>
+                {sizePreset !== "custom" ? (
+                  <Flex gap={4} wrap="wrap">
+                    {presetOptions.map((size) => (
+                      <Checkbox
+                        key={size}
+                        checked={selectedSizes.includes(size)}
+                        onCheckedChange={() => handleToggleSize(size)}
+                      >
+                        {size}
+                      </Checkbox>
+                    ))}
+                  </Flex>
+                ) : (
+                  <Stack gap={3}>
+                    <HStack flexWrap="wrap" gap={2}>
+                      <Input
+                        maxLength={32}
+                        placeholder="Ex.: 30ml"
+                        value={customSizeDraft}
+                        onChange={(e) => setCustomSizeDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddCustomSize();
+                          }
+                        }}
+                        maxW="280px"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddCustomSize}
+                      >
+                        Adicionar
+                      </Button>
+                    </HStack>
+                    <Flex flexWrap="wrap" gap={2}>
+                      {(selectedSizes || []).map((s) => (
+                        <HStack
+                          key={s}
+                          bg="gray.100"
+                          borderRadius="md"
+                          px={2}
+                          py={1}
+                          gap={1}
+                        >
+                          <Text fontSize="sm">{s}</Text>
+                          <IconButton
+                            aria-label={`Remover ${s}`}
+                            size="2xs"
+                            variant="ghost"
+                            onClick={() => handleRemoveCustomSize(s)}
+                          >
+                            <IoClose />
+                          </IconButton>
+                        </HStack>
+                      ))}
+                    </Flex>
+                  </Stack>
+                )}
                 {errors.sizes && (
                   <Text color="red.500" fontSize="sm" mt={2}>
                     {errors.sizes.message}

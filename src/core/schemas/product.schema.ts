@@ -2,11 +2,40 @@ import { z } from "zod";
 import { SHOP_CATEGORY_IDS } from "@/core/catalog/shop-catalog";
 
 /**
- * Constantes de Produto
- * Fonte única da verdade para valores permitidos
+ * Presets de variação (cadastro admin escolhe um tipo; também há modo personalizado).
  */
-export const PRODUCT_SIZES = ["PP", "P", "M", "G", "GG", "XG"] as const;
-export type ProductSize = (typeof PRODUCT_SIZES)[number];
+export const PRODUCT_SIZES_CLOTHING = [
+  "PP",
+  "P",
+  "M",
+  "G",
+  "GG",
+  "XG",
+] as const;
+/** Capacidades comuns (cosméticos, líquidos, etc.) */
+export const PRODUCT_SIZES_VOLUME = [
+  "100ml",
+  "250ml",
+  "500ml",
+  "1000ml",
+] as const;
+
+/** @deprecated use PRODUCT_SIZES_CLOTHING — mantido para compatibilidade */
+export const PRODUCT_SIZES = PRODUCT_SIZES_CLOTHING;
+
+/** Rótulo de variante (tamanho roupa, volume, ou texto livre no preset personalizado) */
+export type ProductSize = string;
+
+export type SizePresetKind = "clothing" | "volume" | "custom";
+
+export function inferSizePresetFromSizes(sizes: string[]): SizePresetKind {
+  if (sizes.length === 0) return "clothing";
+  const clothing = new Set(PRODUCT_SIZES_CLOTHING as readonly string[]);
+  const volume = new Set(PRODUCT_SIZES_VOLUME as readonly string[]);
+  if (sizes.every((s) => clothing.has(s))) return "clothing";
+  if (sizes.every((s) => volume.has(s))) return "volume";
+  return "custom";
+}
 
 export const PRODUCT_CATEGORIES = [
   "camisetas",
@@ -21,18 +50,13 @@ export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 /**
  * Validações Zod para Produto
  */
-export const productSizeSchema = z.enum(PRODUCT_SIZES);
+export const productSizeSchema = z.string().min(1).max(32).trim();
 export const productCategorySchema = z.enum(PRODUCT_CATEGORIES);
 
-const stockBySizeRecordSchema = z
-  .record(z.string(), z.number().int().nonnegative())
-  .refine(
-    (val) =>
-      Object.keys(val).every((k) =>
-        (PRODUCT_SIZES as readonly string[]).includes(k),
-      ),
-    { message: "Chaves de stockBySize devem ser tamanhos válidos" },
-  );
+const stockBySizeRecordSchema = z.record(
+  z.string().min(1).max(32),
+  z.number().int().nonnegative(),
+);
 
 /** Cor com galeria própria e estoque por tamanho nesta variante. */
 export const productColorVariantSchema = z.object({
@@ -47,7 +71,46 @@ export const productColorVariantSchema = z.object({
 
 export type ProductColorVariant = z.infer<typeof productColorVariantSchema>;
 
-export const productSchema = z.object({
+function refineProductSizesConsistency(
+  data: {
+    sizes?: string[];
+    stockBySize?: Record<string, number>;
+    colorVariants?: Array<{ stockBySize?: Record<string, number> }>;
+  },
+  ctx: z.RefinementCtx,
+) {
+  const sizes = data.sizes;
+  if (!sizes?.length) return;
+  const allowed = new Set(sizes);
+  if (data.stockBySize) {
+    for (const k of Object.keys(data.stockBySize)) {
+      if (!allowed.has(k)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Tamanho "${k}" não está listado em sizes`,
+          path: ["stockBySize", k],
+        });
+      }
+    }
+  }
+  if (data.colorVariants) {
+    for (let i = 0; i < data.colorVariants.length; i++) {
+      const v = data.colorVariants[i];
+      if (!v.stockBySize) continue;
+      for (const k of Object.keys(v.stockBySize)) {
+        if (!allowed.has(k)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Tamanho "${k}" não está listado em sizes`,
+            path: ["colorVariants", i, "stockBySize", k],
+          });
+        }
+      }
+    }
+  }
+}
+
+const productObjectSchema = z.object({
   /** IDs do Firestore não são UUID; aceita qualquer string não vazia */
   id: z.string().min(1, "ID inválido").optional(),
 
@@ -107,7 +170,7 @@ export const productSchema = z.object({
   /**
    * Estoque por tamanho. Quando definido e produto tem sizes, é a fonte de verdade.
    * Caso contrário usa `stock` global (produtos sem tamanhos).
-   * Chaves devem ser ProductSize; valores inteiros >= 0.
+   * Chaves devem existir em `sizes` quando este estiver definido.
    */
   stockBySize: stockBySizeRecordSchema.optional(),
 
@@ -128,25 +191,40 @@ export const productSchema = z.object({
   updatedAt: z.date().optional(),
 });
 
-export const serializedProductSchema = productSchema.extend({
-  createdAt: z.union([z.date(), z.string()]).optional(),
-  updatedAt: z.union([z.date(), z.string()]).optional(),
-});
+export const productSchema = productObjectSchema.superRefine(
+  refineProductSizesConsistency,
+);
 
-export const createProductSchema = productSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const serializedProductSchema = productObjectSchema
+  .extend({
+    createdAt: z.union([z.date(), z.string()]).optional(),
+    updatedAt: z.union([z.date(), z.string()]).optional(),
+  })
+  .superRefine(refineProductSizesConsistency);
 
-export const updateProductSchema = productSchema
+export const createProductSchema = productObjectSchema
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .superRefine(refineProductSizesConsistency);
+
+export const updateProductSchema = productObjectSchema
   .partial()
-  .required({ id: true });
+  .required({ id: true })
+  .superRefine(refineProductSizesConsistency);
 
 /** Formulário de edição admin: mesmo shape de criação + id do Firestore */
-export const productEditFormSchema = createProductSchema.extend({
-  id: z.string().min(1, "ID do produto é obrigatório"),
-});
+export const productEditFormSchema = productObjectSchema
+  .omit({
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    id: z.string().min(1, "ID do produto é obrigatório"),
+  })
+  .superRefine(refineProductSizesConsistency);
 
 export type ProductEditFormInput = z.infer<typeof productEditFormSchema>;
 
@@ -154,11 +232,19 @@ export type ProductEditFormInput = z.infer<typeof productEditFormSchema>;
  * Formulário admin: imagens tratadas no componente (URLs existentes + upload);
  * cores como texto livre (vírgulas).
  */
-export const productAdminEditFormSchema = productEditFormSchema
-  .omit({ colors: true, images: true, imageUrl: true })
+export const productAdminEditFormSchema = productObjectSchema
+  .omit({
+    createdAt: true,
+    updatedAt: true,
+    colors: true,
+    images: true,
+    imageUrl: true,
+  })
   .extend({
+    id: z.string().min(1, "ID do produto é obrigatório"),
     colorsText: z.string().optional(),
-  });
+  })
+  .superRefine(refineProductSizesConsistency);
 
 export type ProductAdminEditFormValues = z.infer<
   typeof productAdminEditFormSchema

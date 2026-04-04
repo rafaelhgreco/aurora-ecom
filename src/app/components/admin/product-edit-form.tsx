@@ -48,10 +48,13 @@ import {
 } from "@/core/catalog/shop-catalog";
 import type { ProductColorVariant } from "@/core/schemas/product.schema";
 import {
-  PRODUCT_SIZES,
+  inferSizePresetFromSizes,
+  PRODUCT_SIZES_CLOTHING,
+  PRODUCT_SIZES_VOLUME,
   type ProductAdminEditFormValues,
   type ProductSize,
   productAdminEditFormSchema,
+  type SizePresetKind,
   type UpdateProductInput,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
@@ -156,6 +159,11 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     message: string;
   } | null>(null);
 
+  const [sizePreset, setSizePreset] = useState<SizePresetKind>(() =>
+    inferSizePresetFromSizes(product.sizes ?? []),
+  );
+  const [customSizeDraft, setCustomSizeDraft] = useState("");
+
   const [colorRows, setColorRows] = useState<ColorEditRow[]>(() => {
     const rows = buildColorRowsFromProduct(product);
     nextColorRowIdRef.current = rows.length;
@@ -229,6 +237,7 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     const rows = buildColorRowsFromProduct(product);
     nextColorRowIdRef.current = rows.length;
     setColorRows(rows);
+    setSizePreset(inferSizePresetFromSizes(product.sizes ?? []));
   }, [product, defaults, reset]);
 
   const addColorRow = () => {
@@ -321,12 +330,41 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
     );
   };
 
+  const presetOptions =
+    sizePreset === "clothing"
+      ? PRODUCT_SIZES_CLOTHING
+      : sizePreset === "volume"
+        ? PRODUCT_SIZES_VOLUME
+        : [];
+
+  const applySizePreset = (next: SizePresetKind) => {
+    if (next === sizePreset) return;
+    setSizePreset(next);
+    setValue("sizes", []);
+    setCustomSizeDraft("");
+  };
+
   const handleToggleSize = (size: ProductSize) => {
     const current = selectedSizes || [];
     const next = current.includes(size)
       ? current.filter((s) => s !== size)
       : [...current, size];
     setValue("sizes", next);
+  };
+
+  const handleAddCustomSize = () => {
+    const t = customSizeDraft.trim();
+    if (!t || t.length > 32) return;
+    if (selectedSizes.includes(t)) return;
+    setValue("sizes", [...selectedSizes, t]);
+    setCustomSizeDraft("");
+  };
+
+  const handleRemoveCustomSize = (size: string) => {
+    setValue(
+      "sizes",
+      selectedSizes.filter((s) => s !== size),
+    );
   };
 
   const uploadNewFilesBatch = async (files: File[]): Promise<string[]> => {
@@ -833,20 +871,115 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
 
             <Card.Root>
               <Card.Header>
-                <Heading size="lg">Tamanhos *</Heading>
+                <Heading size="lg">Tamanhos / variações *</Heading>
+                <Text color="gray.600" fontSize="sm" mt={1}>
+                  Escolha roupas, volumes (ml) ou rótulos personalizados.
+                </Text>
               </Card.Header>
               <Card.Body>
-                <Flex gap={4} wrap="wrap">
-                  {PRODUCT_SIZES.map((size) => (
-                    <Checkbox
-                      key={size}
-                      checked={selectedSizes.includes(size)}
-                      onCheckedChange={() => handleToggleSize(size)}
-                    >
-                      {size}
-                    </Checkbox>
-                  ))}
-                </Flex>
+                <Text fontWeight="medium" mb={2}>
+                  Tipo de variação
+                </Text>
+                <HStack flexWrap="wrap" gap={2} mb={3}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={sizePreset === "clothing" ? "solid" : "outline"}
+                    onClick={() => applySizePreset("clothing")}
+                  >
+                    Roupas (PP…XG)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={sizePreset === "volume" ? "solid" : "outline"}
+                    onClick={() => applySizePreset("volume")}
+                  >
+                    Volumes (ml)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={sizePreset === "custom" ? "solid" : "outline"}
+                    onClick={() => applySizePreset("custom")}
+                  >
+                    Personalizado
+                  </Button>
+                </HStack>
+                <Text fontSize="sm" color="gray.600" mb={3}>
+                  {sizePreset === "clothing" &&
+                    "Tamanhos de vestuário oferecidos por este produto."}
+                  {sizePreset === "volume" &&
+                    "Capacidades em mililitros (cosméticos, líquidos, etc.)."}
+                  {sizePreset === "custom" &&
+                    "Rótulos livres (ex.: 30ml, Único)."}
+                </Text>
+                {sizePreset !== "custom" ? (
+                  <Flex gap={4} wrap="wrap">
+                    {presetOptions.map((size) => (
+                      <Checkbox
+                        key={size}
+                        checked={selectedSizes.includes(size)}
+                        onCheckedChange={() => handleToggleSize(size)}
+                      >
+                        {size}
+                      </Checkbox>
+                    ))}
+                  </Flex>
+                ) : (
+                  <Stack gap={3}>
+                    <HStack flexWrap="wrap" gap={2}>
+                      <Input
+                        maxLength={32}
+                        placeholder='Ex.: 30ml, "Único"'
+                        value={customSizeDraft}
+                        onChange={(e) => setCustomSizeDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddCustomSize();
+                          }
+                        }}
+                        maxW="280px"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddCustomSize}
+                      >
+                        Adicionar
+                      </Button>
+                    </HStack>
+                    {selectedSizes.length > 0 ? (
+                      <Flex flexWrap="wrap" gap={2}>
+                        {selectedSizes.map((s) => (
+                          <HStack
+                            key={s}
+                            bg="gray.100"
+                            borderRadius="md"
+                            px={2}
+                            py={1}
+                            gap={1}
+                          >
+                            <Text fontSize="sm">{s}</Text>
+                            <IconButton
+                              aria-label={`Remover ${s}`}
+                              size="2xs"
+                              variant="ghost"
+                              onClick={() => handleRemoveCustomSize(s)}
+                            >
+                              <IoClose />
+                            </IconButton>
+                          </HStack>
+                        ))}
+                      </Flex>
+                    ) : (
+                      <Text fontSize="sm" color="gray.500">
+                        Adicione pelo menos uma variação.
+                      </Text>
+                    )}
+                  </Stack>
+                )}
                 {errors.sizes && (
                   <Text color="red.500" fontSize="sm" mt={2}>
                     {errors.sizes.message}

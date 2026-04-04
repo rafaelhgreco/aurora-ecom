@@ -4,21 +4,23 @@ import type {
   ProductSize,
   UpdateProductInput,
 } from "./product.schema";
-import { PRODUCT_SIZES } from "./product.schema";
 
-function aggregateFromColorVariants(variants: ProductColorVariant[]): {
+function aggregateFromColorVariants(
+  variants: ProductColorVariant[],
+  inputSizesHint?: ProductSize[],
+): {
   sizes?: ProductSize[];
   stock: number;
-  stockBySize?: Partial<Record<ProductSize, number>>;
+  stockBySize?: Record<string, number>;
 } {
   const sizesSet = new Set<ProductSize>();
   let totalStock = 0;
-  const agg: Partial<Record<ProductSize, number>> = {};
+  const agg: Record<string, number> = {};
 
   for (const v of variants) {
     if (!v.stockBySize) continue;
     for (const [k, n] of Object.entries(v.stockBySize)) {
-      if (!(PRODUCT_SIZES as readonly string[]).includes(k)) continue;
+      if (k.length < 1 || k.length > 32) continue;
       const sz = k as ProductSize;
       sizesSet.add(sz);
       totalStock += n;
@@ -26,11 +28,20 @@ function aggregateFromColorVariants(variants: ProductColorVariant[]): {
     }
   }
 
+  if (sizesSet.size === 0) {
+    return {
+      sizes: undefined,
+      stock: totalStock,
+      stockBySize: Object.keys(agg).length > 0 ? agg : undefined,
+    };
+  }
+
+  const ordered = inputSizesHint?.filter((s) => sizesSet.has(s)) ?? [
+    ...sizesSet,
+  ];
+
   return {
-    sizes:
-      sizesSet.size > 0
-        ? PRODUCT_SIZES.filter((s) => sizesSet.has(s))
-        : undefined,
+    sizes: ordered,
     stock: totalStock,
     stockBySize: Object.keys(agg).length > 0 ? agg : undefined,
   };
@@ -52,7 +63,7 @@ export function normalizeCreateProductInput(
   if (input.colorVariants?.length) {
     const variants = input.colorVariants;
     const flat = [...new Set(variants.flatMap((v) => v.images))];
-    const agg = aggregateFromColorVariants(variants);
+    const agg = aggregateFromColorVariants(variants, input.sizes);
     const hasStock = hasVariantStockData(variants);
     return {
       ...input,
@@ -75,7 +86,7 @@ export function normalizeUpdateProductInput(
   if (input.colorVariants?.length) {
     const variants = input.colorVariants;
     const flat = [...new Set(variants.flatMap((v) => v.images))];
-    const agg = aggregateFromColorVariants(variants);
+    const agg = aggregateFromColorVariants(variants, input.sizes);
     const hasStock = hasVariantStockData(variants);
     return {
       ...input,
