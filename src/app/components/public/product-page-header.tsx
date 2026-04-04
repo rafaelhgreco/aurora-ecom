@@ -2,23 +2,56 @@
 
 /**
  * Component: ProductPageHeader
- * Header da página de produto com carrinho
+ * Header da página de produto com carrinho.
+ * Navegação: SHOP agrupa subitens (dropdown + drawer) via API do storybook-react.
  */
 
 import { Box, Flex } from "@chakra-ui/react";
-import { Header } from "storybook-react";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Header, type NavItem } from "storybook-react";
+import { SHOP_CATALOG_ROUTES } from "@/core/catalog/shop-catalog";
 import { useCart } from "../../hooks/use-cart";
 import { CartDrawer } from "../cart/cart-drawer";
 import { CartIcon } from "../cart/cart-icon";
 
 interface ProductPageHeaderProps {
-  /**
-   * Logo source
-   */
   logoSrc: string;
 }
 
+function usePublicHeaderNavItems(): NavItem[] {
+  const navigate = useNavigate();
+
+  return useMemo(
+    () =>
+      [
+        { label: "HOME", path: "/" },
+        {
+          label: "SHOP",
+          isButton: true as const,
+          dropdownItems: [
+            {
+              id: "shop-hub",
+              label: "Loja",
+              onClick: () => navigate("/shop"),
+            },
+            ...SHOP_CATALOG_ROUTES.map((route) => ({
+              id: `shop-${route.slug}`,
+              label: route.title,
+              onClick: () => navigate(`/shop/${route.slug}`),
+            })),
+          ],
+        },
+        { label: "ARQUIVO", path: "/arquivo" },
+        { label: "SOBRE", path: "/sobre" },
+      ] satisfies NavItem[],
+    [navigate],
+  );
+}
+
 export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
+  const navItems = usePublicHeaderNavItems();
+
   const {
     isOpen,
     openCart,
@@ -39,14 +72,7 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
   return (
     <>
       <Box>
-        <Header
-          logo={logoSrc}
-          items={[
-            { label: "SHOP", path: "/" },
-            { label: "ARQUIVO", path: "/arquivo" },
-            { label: "SOBRE", path: "/sobre" },
-          ]}
-        />
+        <Header logo={logoSrc} items={navItems} />
 
         <Flex
           position="fixed"

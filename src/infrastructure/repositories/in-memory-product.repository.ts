@@ -17,6 +17,7 @@ export class InMemoryProductRepository implements IProductRepository {
         "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop",
       ],
       category: "Camisetas",
+      shopCategory: "roupas",
       stock: 50,
       sizes: ["P", "M", "G", "GG"],
       colors: ["Branco"],
@@ -37,6 +38,7 @@ export class InMemoryProductRepository implements IProductRepository {
         "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop",
       ],
       category: "Camisetas",
+      shopCategory: "roupas",
       stock: 30,
       sizes: ["P", "M", "G"],
       colors: ["Preto"],
@@ -57,6 +59,7 @@ export class InMemoryProductRepository implements IProductRepository {
         "https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=800&auto=format&fit=crop",
       ],
       category: "Camisetas",
+      shopCategory: "roupas",
       stock: 45,
       sizes: ["PP", "P", "M", "G", "GG"],
       colors: ["Cinza"],
@@ -77,6 +80,7 @@ export class InMemoryProductRepository implements IProductRepository {
         "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=800&auto=format&fit=crop",
       ],
       category: "Camisetas",
+      shopCategory: "roupas",
       stock: 15,
       sizes: ["M", "G"],
       colors: ["Branco", "Azul"],
@@ -120,6 +124,13 @@ export class InMemoryProductRepository implements IProductRepository {
       if (filter.sizes && filter.sizes.length > 0) {
         filtered = filtered.filter((p) =>
           p.sizes?.some((size) => filter.sizes?.includes(size)),
+        );
+      }
+
+      if (filter.shopCategory) {
+        const target = filter.shopCategory;
+        filtered = filtered.filter(
+          (p) => (p.shopCategory ?? "roupas") === target,
         );
       }
     }

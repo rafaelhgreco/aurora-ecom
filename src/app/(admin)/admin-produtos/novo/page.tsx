@@ -38,6 +38,10 @@ import { Field } from "@/components/ui/field";
 import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import { toaster } from "@/components/ui/toaster";
 import {
+  SHOP_CATEGORY_IDS,
+  SHOP_CATEGORY_LABELS,
+} from "@/core/catalog/shop-catalog";
+import {
   PRODUCT_SIZES,
   type ProductSize,
   productSizeSchema,
@@ -59,6 +63,7 @@ const formSchema = z.object({
     .positive("Preço deve ser maior que zero")
     .multipleOf(0.01, "Preço deve ter no máximo 2 casas decimais"),
   category: z.string().optional(),
+  shopCategory: z.enum(SHOP_CATEGORY_IDS as unknown as [string, ...string[]]),
   stock: z.number().int().nonnegative().default(0),
   sizes: z.array(productSizeSchema).optional(),
   colors: z
@@ -112,6 +117,7 @@ export default function NovoProductPage() {
       price: 0,
       stock: 0,
       isActive: true,
+      shopCategory: "roupas",
     },
   });
 
@@ -207,6 +213,7 @@ export default function NovoProductPage() {
         imageUrl: imageUrls[0],
         images: imageUrls,
         category: data.category,
+        shopCategory: data.shopCategory,
         stock: data.stock ?? 0,
         sizes: data.sizes,
         colors: data.colors as string[] | undefined,
@@ -505,6 +512,29 @@ export default function NovoProductPage() {
                     {...register("category")}
                     placeholder="Ex: Roupas, Acessórios"
                   />
+                </Field>
+                <Field
+                  label="Seção do catálogo (loja)"
+                  helperText="Define em qual página /shop/... o produto aparece."
+                  invalid={!!errors.shopCategory}
+                  errorText={errors.shopCategory?.message}
+                >
+                  <Box
+                    as="select"
+                    borderWidth="1px"
+                    borderRadius="md"
+                    px={3}
+                    py={2}
+                    w="full"
+                    bg="white"
+                    {...register("shopCategory")}
+                  >
+                    {SHOP_CATEGORY_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {SHOP_CATEGORY_LABELS[id]}
+                      </option>
+                    ))}
+                  </Box>
                 </Field>
               </Stack>
             </Card.Body>

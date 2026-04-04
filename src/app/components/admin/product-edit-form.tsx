@@ -41,6 +41,11 @@ import { Field } from "@/components/ui/field";
 import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import { toaster } from "@/components/ui/toaster";
 import {
+  SHOP_CATEGORY_IDS,
+  SHOP_CATEGORY_LABELS,
+  type ShopCategoryId,
+} from "@/core/catalog/shop-catalog";
+import {
   PRODUCT_SIZES,
   type ProductAdminEditFormValues,
   type ProductSize,
@@ -76,6 +81,7 @@ function productToFormDefaults(product: Product): ProductAdminEditFormValues {
     stock: product.stock,
     stockBySize,
     category: product.category ?? "",
+    shopCategory: (product.shopCategory ?? "roupas") as ShopCategoryId,
     sizes,
     isActive: product.isActive ?? true,
     colorsText: product.colors?.join(", ") ?? "",
@@ -247,6 +253,7 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
             ? data.stockBySize
             : undefined,
         category: data.category || undefined,
+        shopCategory: data.shopCategory,
         imageUrl: allImages[0],
         images: allImages,
         sizes: data.sizes?.length ? data.sizes : undefined,
@@ -473,6 +480,29 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
                       {...register("category")}
                       placeholder="Ex: camisetas"
                     />
+                  </Field>
+                  <Field
+                    label="Seção do catálogo (loja)"
+                    helperText="Define em qual página /shop/... o produto aparece."
+                    invalid={!!errors.shopCategory}
+                    errorText={errors.shopCategory?.message}
+                  >
+                    <Box
+                      as="select"
+                      borderWidth="1px"
+                      borderRadius="md"
+                      px={3}
+                      py={2}
+                      w="full"
+                      bg="white"
+                      {...register("shopCategory")}
+                    >
+                      {SHOP_CATEGORY_IDS.map((id) => (
+                        <option key={id} value={id}>
+                          {SHOP_CATEGORY_LABELS[id]}
+                        </option>
+                      ))}
+                    </Box>
                   </Field>
                   <Field
                     label="Cores (opcional)"

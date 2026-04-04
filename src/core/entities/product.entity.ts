@@ -1,3 +1,4 @@
+import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import type { Product, ProductSize } from "../schemas/product.schema";
 
 export class ProductEntity implements Product {
@@ -9,6 +10,7 @@ export class ProductEntity implements Product {
   imageUrl: string;
   images: string[];
   category?: string;
+  shopCategory?: ShopCategoryId;
   stock: number;
   stockBySize?: Partial<Record<ProductSize, number>>;
   sizes?: ProductSize[];
@@ -27,6 +29,7 @@ export class ProductEntity implements Product {
     this.imageUrl = data.imageUrl;
     this.images = data.images || [];
     this.category = data.category;
+    this.shopCategory = data.shopCategory as ShopCategoryId | undefined;
     this.stock = data.stock || 0;
     this.stockBySize = data.stockBySize;
     this.sizes = data.sizes;
@@ -147,6 +150,7 @@ export class ProductEntity implements Product {
       imageUrl: this.imageUrl,
       images: this.images,
       category: this.category,
+      shopCategory: this.shopCategory,
       stock: this.stock,
       stockBySize: this.stockBySize,
       sizes: this.sizes,

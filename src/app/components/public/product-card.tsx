@@ -2,6 +2,10 @@ import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/app/utils/price-formatter";
 
+/** Sombra atrás da foto (card) — alinhada ao design desejado */
+export const PRODUCT_CARD_IMAGE_SHADOW =
+  "0px 5px 17px 1px hsla(0, 0%, 0%, 0.16)";
+
 export interface ProductCardProps {
   id: string;
   imageUrl: string;
@@ -78,14 +82,32 @@ export const ProductCard = ({
       className="group"
       w="full"
       onClick={handleClick}
+      aria-label={`Ver produto: ${title}`}
     >
-      <Box position="relative" overflow="hidden" aspectRatio="3/4" w="full">
+      <Box
+        position="relative"
+        overflow="hidden"
+        aspectRatio="3/4"
+        w="full"
+        borderRadius="lg"
+        boxShadow={PRODUCT_CARD_IMAGE_SHADOW}
+        transition="box-shadow 0.25s ease, transform 0.2s ease"
+        _groupHover={{
+          boxShadow: "0px 8px 24px 10px rgba(0, 0, 0, 0.18)",
+        }}
+        _groupActive={{
+          transform: { base: "scale(0.985)", md: "none" },
+        }}
+      >
         <Image
           src={imageUrl}
           alt={alt || title}
           w="full"
           h="full"
           objectFit="cover"
+          loading="lazy"
+          decoding="async"
+          draggable={false}
         />
 
         {!isAvailable && (
@@ -185,16 +207,19 @@ export const ProductCard = ({
             size="sm"
             fontWeight="bold"
             letterSpacing="wide"
-            borderRadius="none"
+            borderRadius="md"
             bg="gray.900"
             color="white"
             _hover={{ bg: "gray.800" }}
+            _active={{ bg: "gray.700" }}
             w="full"
             whiteSpace="normal"
             textAlign="center"
             lineHeight="short"
             h="auto"
-            py="2"
+            minH="44px"
+            py="2.5"
+            px="3"
             fontSize={isAvailable ? "sm" : "xs"}
           >
             {ctaLabel}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SHOP_CATEGORY_IDS } from "@/core/catalog/shop-catalog";
 
 /**
  * Constantes de Produto
@@ -67,6 +68,11 @@ export const productSchema = z.object({
     .string()
     .min(2, "Categoria deve ter no mínimo 2 caracteres")
     .max(50, "Categoria deve ter no máximo 50 caracteres")
+    .optional(),
+
+  /** Seção do catálogo (Roupas vs Cabelos / Produtos Aurora) */
+  shopCategory: z
+    .enum(SHOP_CATEGORY_IDS as unknown as [string, ...string[]])
     .optional(),
 
   stock: z
@@ -143,6 +149,9 @@ export type ProductAdminEditFormValues = z.infer<
 
 export const productFilterSchema = z.object({
   category: z.string().optional(),
+  shopCategory: z
+    .enum(SHOP_CATEGORY_IDS as unknown as [string, ...string[]])
+    .optional(),
   minPrice: z.number().positive().optional(),
   maxPrice: z.number().positive().optional(),
   sizes: z.array(productSizeSchema).optional(),

@@ -12,6 +12,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import { ProductEntity } from "@/core/entities/product.entity";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
 import type { ProductFilter } from "@/core/schemas/product.schema";
@@ -46,6 +47,7 @@ export class FirestoreProductRepository implements IProductRepository {
       imageUrl: data.imageUrl as string,
       images: (data.images as string[]) || [],
       category: data.category as string | undefined,
+      shopCategory: data.shopCategory as ShopCategoryId | undefined,
       stock: data.stock as number,
       stockBySize: data.stockBySize as
         | Partial<Record<"PP" | "P" | "M" | "G" | "GG" | "XG", number>>
@@ -73,6 +75,7 @@ export class FirestoreProductRepository implements IProductRepository {
       imageUrl: entity.imageUrl,
       images: entity.images,
       category: entity.category,
+      shopCategory: entity.shopCategory,
       stock: entity.stock,
       stockBySize: entity.stockBySize,
       sizes: entity.sizes,
@@ -137,6 +140,11 @@ export class FirestoreProductRepository implements IProductRepository {
       results = results.filter((p) =>
         p.sizes?.some((size) => filters.sizes?.includes(size)),
       );
+    }
+
+    if (filters?.shopCategory) {
+      const target = filters.shopCategory;
+      results = results.filter((p) => (p.shopCategory ?? "roupas") === target);
     }
 
     return results;

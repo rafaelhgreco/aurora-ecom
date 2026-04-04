@@ -9,10 +9,16 @@ import { useEffect, useState } from "react";
 import { listProductsAction } from "@/app/actions/products";
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
 
+function filterDependencyKey(filter?: ProductFilter): string {
+  return filter === undefined ? "" : JSON.stringify(filter);
+}
+
 export function useProducts(filter?: ProductFilter) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const filterKey = filterDependencyKey(filter);
 
   useEffect(() => {
     let isMounted = true;
@@ -22,7 +28,9 @@ export function useProducts(filter?: ProductFilter) {
         setLoading(true);
         setError(null);
 
-        const result = await listProductsAction(filter);
+        const result = await listProductsAction(
+          filterKey ? (JSON.parse(filterKey) as ProductFilter) : undefined,
+        );
 
         if (isMounted) {
           if (result.success) {
@@ -49,7 +57,7 @@ export function useProducts(filter?: ProductFilter) {
     return () => {
       isMounted = false;
     };
-  }, [filter]);
+  }, [filterKey]);
 
   return { products, loading, error };
 }
