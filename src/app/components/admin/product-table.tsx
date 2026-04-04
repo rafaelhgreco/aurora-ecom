@@ -32,18 +32,9 @@ import {
 import { adminFeatureFlagsClient } from "@/app/config/feature-flags";
 import type { Product } from "@/app/types/product";
 import { formatPrice } from "@/app/utils/price-formatter";
-import {
-  DialogActionTrigger,
-  DialogBody,
-  DialogCloseTrigger,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogRoot,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toaster } from "@/components/ui/toaster";
 import { getTotalStock } from "@/shared/product-stock-helpers";
+import { PauseProductDialog } from "./pause-product-dialog";
 
 interface ProductTableProps {
   products: Product[];
@@ -222,6 +213,7 @@ export function ProductTable({
                     {showStockTools &&
                       !(product.stockBySize && product.sizes?.length) && (
                         <IconButton
+                          type="button"
                           aria-label="Baixar uma unidade do estoque"
                           size="xs"
                           variant="outline"
@@ -236,6 +228,7 @@ export function ProductTable({
                       )}
                     {showSoftDeactivate && (
                       <Button
+                        type="button"
                         size="xs"
                         variant={product.isActive ? "outline" : "solid"}
                         colorScheme={product.isActive ? "gray" : "green"}
@@ -267,33 +260,45 @@ export function ProductTable({
                 <HStack justify="center" gap={2}>
                   {onView && (
                     <IconButton
+                      type="button"
                       aria-label="Ver produto"
                       size="sm"
                       variant="ghost"
                       colorScheme="blue"
-                      onClick={() => onView(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onView(product);
+                      }}
                     >
                       <IoEye />
                     </IconButton>
                   )}
                   {onEdit && (
                     <IconButton
+                      type="button"
                       aria-label="Editar produto"
                       size="sm"
                       variant="ghost"
                       colorScheme="orange"
-                      onClick={() => onEdit(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(product);
+                      }}
                     >
                       <IoPencil />
                     </IconButton>
                   )}
                   {onDelete && (
                     <IconButton
+                      type="button"
                       aria-label="Deletar produto"
                       size="sm"
                       variant="ghost"
                       colorScheme="red"
-                      onClick={() => onDelete(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(product);
+                      }}
                     >
                       <IoTrash />
                     </IconButton>
@@ -305,60 +310,12 @@ export function ProductTable({
         </Table.Body>
       </Table.Root>
 
-      <DialogRoot
-        open={!!pauseConfirmProduct}
-        onOpenChange={(e: { open: boolean }) =>
-          !e.open && setPauseConfirmProduct(null)
-        }
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Pausar produto na vitrine</DialogTitle>
-            <DialogCloseTrigger />
-          </DialogHeader>
-          <DialogBody>
-            <VStack align="stretch" gap={3}>
-              {pauseConfirmProduct && (
-                <>
-                  <Text>
-                    <strong>{pauseConfirmProduct.title}</strong>
-                  </Text>
-                  <Text color="orange.600" fontWeight="medium">
-                    Todos os itens do estoque atual serão removidos.
-                  </Text>
-                  <Text fontSize="sm" color="gray.600">
-                    O produto continuará na loja como esgotado. Para reativar,
-                    clique em &quot;Reativar&quot; e cadastre o estoque
-                    novamente.
-                  </Text>
-                </>
-              )}
-            </VStack>
-          </DialogBody>
-          <DialogFooter>
-            <DialogActionTrigger asChild>
-              <Button
-                variant="outline"
-                onClick={() => setPauseConfirmProduct(null)}
-                disabled={
-                  !!pauseConfirmProduct && busyId === pauseConfirmProduct.id
-                }
-              >
-                Cancelar
-              </Button>
-            </DialogActionTrigger>
-            <Button
-              colorScheme="orange"
-              loading={
-                !!pauseConfirmProduct && busyId === pauseConfirmProduct.id
-              }
-              onClick={handleConfirmPause}
-            >
-              Pausar e zerar estoque
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </DialogRoot>
+      <PauseProductDialog
+        product={pauseConfirmProduct}
+        isLoading={!!pauseConfirmProduct && busyId === pauseConfirmProduct.id}
+        onCancel={() => setPauseConfirmProduct(null)}
+        onConfirm={handleConfirmPause}
+      />
     </>
   );
 }

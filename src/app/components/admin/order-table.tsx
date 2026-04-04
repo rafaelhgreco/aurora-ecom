@@ -25,20 +25,11 @@ import {
   updateOrderStatusAction,
 } from "@/app/actions/orders";
 import { formatDateTime, formatPrice } from "@/app/utils/price-formatter";
-import {
-  DialogActionTrigger,
-  DialogBody,
-  DialogCloseTrigger,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogRoot,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toaster } from "@/components/ui/toaster";
 import type { OrderStatus, OrderWithStock } from "@/core/schemas/order.schema";
 import { EmptyState } from "../states/empty-state";
 import { LoadingState } from "../states/loading-state";
+import { DeclineFinishedOrderDialog } from "./decline-finished-order-dialog";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   PENDENTE: "Pendente",
@@ -308,6 +299,7 @@ export function OrderTable() {
                       {order.status === "PENDENTE" && (
                         <>
                           <Button
+                            type="button"
                             size="xs"
                             colorScheme="green"
                             loading={updatingId === id}
@@ -316,6 +308,7 @@ export function OrderTable() {
                             Finalizar
                           </Button>
                           <Button
+                            type="button"
                             size="xs"
                             variant="outline"
                             colorScheme="red"
@@ -329,6 +322,7 @@ export function OrderTable() {
                       {order.status === "FINALIZADA" && (
                         <>
                           <Button
+                            type="button"
                             size="xs"
                             variant="outline"
                             colorScheme="blue"
@@ -338,6 +332,7 @@ export function OrderTable() {
                             Reabrir
                           </Button>
                           <Button
+                            type="button"
                             size="xs"
                             variant="outline"
                             colorScheme="red"
@@ -362,59 +357,20 @@ export function OrderTable() {
         </Table.Root>
       </Box>
 
-      <DialogRoot
-        open={!!declineConfirmOrderId}
-        onOpenChange={(e: { open: boolean }) =>
-          !e.open && setDeclineConfirmOrderId(null)
+      <DeclineFinishedOrderDialog
+        orderId={declineConfirmOrderId}
+        isConfirmLoading={
+          !!declineConfirmOrderId && updatingId === declineConfirmOrderId
         }
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Alterar status para Declinada</DialogTitle>
-            <DialogCloseTrigger />
-          </DialogHeader>
-          <DialogBody>
-            <VStack align="stretch" gap={3}>
-              <Text>
-                Ao alterar o status de um pedido finalizado, os itens voltam ao
-                estoque automaticamente.
-              </Text>
-              <Text fontWeight="medium" color="orange.600">
-                Os itens do estoque devem ser recontados para conferência.
-              </Text>
-              <Text fontSize="sm" color="gray.600">
-                Use esta opção apenas em caso de erro humano (ex.: finalizou um
-                pedido por engano).
-              </Text>
-            </VStack>
-          </DialogBody>
-          <DialogFooter>
-            <DialogActionTrigger asChild>
-              <Button
-                variant="outline"
-                onClick={() => setDeclineConfirmOrderId(null)}
-                disabled={!!updatingId}
-              >
-                Cancelar
-              </Button>
-            </DialogActionTrigger>
-            <Button
-              colorScheme="red"
-              loading={
-                !!declineConfirmOrderId && updatingId === declineConfirmOrderId
-              }
-              onClick={async () => {
-                const orderId = declineConfirmOrderId;
-                if (!orderId) return;
-                setDeclineConfirmOrderId(null);
-                await handleStatusChange(orderId, "DECLINADA");
-              }}
-            >
-              Confirmar e devolver estoque
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </DialogRoot>
+        cancelDisabled={!!updatingId}
+        onCancel={() => setDeclineConfirmOrderId(null)}
+        onConfirm={async () => {
+          const orderId = declineConfirmOrderId;
+          if (!orderId) return;
+          setDeclineConfirmOrderId(null);
+          await handleStatusChange(orderId, "DECLINADA");
+        }}
+      />
     </Box>
   );
 }
