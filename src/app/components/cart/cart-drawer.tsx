@@ -12,7 +12,6 @@ import {
   createListCollection,
   DrawerBackdrop,
   DrawerBody,
-  DrawerCloseTrigger,
   DrawerContent,
   DrawerFooter,
   DrawerHeader,
@@ -36,7 +35,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useEffect } from "react";
-import { FiMinus, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiMinus, FiPlus, FiTrash2, FiX } from "react-icons/fi";
 import type { ProductSize } from "@/core/entities";
 import {
   getEffectiveColorVariants,
@@ -109,28 +108,36 @@ export function CartDrawer({
         <DrawerBackdrop />
         <DrawerPositioner>
           <DrawerContent>
-            <DrawerHeader>
+            <DrawerHeader pr="2">
               <DrawerTitle>
-                <Flex align="center" justify="space-between">
-                  <Heading as="h2" size="lg">
+                <Flex align="center" justify="space-between" gap="3" w="full">
+                  <Heading as="h2" size="lg" flex="1" minW="0">
                     Seu Carrinho
                   </Heading>
-                  {!isEmpty && (
-                    <Button
+                  <HStack gap="1" flexShrink={0}>
+                    {!isEmpty && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        colorScheme="red"
+                        onClick={onClearCart}
+                      >
+                        Limpar Carrinho
+                      </Button>
+                    )}
+                    <IconButton
+                      aria-label="Fechar carrinho"
                       variant="ghost"
-                      size="sm"
-                      colorScheme="red"
-                      onClick={onClearCart}
-                      mr="8"
+                      size="md"
+                      colorScheme="gray"
+                      onClick={onClose}
                     >
-                      Limpar Carrinho
-                    </Button>
-                  )}
+                      <FiX size={22} />
+                    </IconButton>
+                  </HStack>
                 </Flex>
               </DrawerTitle>
             </DrawerHeader>
-
-            <DrawerCloseTrigger onClick={onClose} />
 
             <DrawerBody
               bg="white"
