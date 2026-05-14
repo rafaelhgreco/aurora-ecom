@@ -1,15 +1,9 @@
 "use client";
 
-/**
- * Component: ProductPageHeader
- * Header da página de produto com carrinho.
- * Navegação: SHOP agrupa subitens (dropdown + drawer) via API do storybook-react.
- */
-
-import { Box, Flex } from "@chakra-ui/react";
+import { Box, Flex, Image } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header, type NavItem } from "storybook-react";
+import { DrawerNav, type NavItem, NavMenu } from "storybook-react";
 import { SHOP_CATALOG_ROUTES } from "@/core/catalog/shop-catalog";
 import { useCart } from "../../hooks/use-cart";
 import { CartDrawer } from "../cart/cart-drawer";
@@ -72,7 +66,41 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
   return (
     <>
       <Box>
-        <Header logo={logoSrc} items={navItems} />
+        <Flex
+          as="header"
+          position="fixed"
+          top={0}
+          left={0}
+          zIndex={1000}
+          w="100%"
+          h={{ base: "50px", md: "60px" }}
+          align="center"
+          px={{ base: "10px", md: "20px" }}
+          boxSizing="border-box"
+          bg="inherit"
+        >
+          {logoSrc ? (
+            <Image
+              alt="Logo"
+              src={logoSrc}
+              maxW="100px"
+              h="auto"
+              position={{ base: "absolute", md: "static" }}
+              left={{ base: "50%", md: "auto" }}
+              transform={{ base: "translateX(-50%)", md: "none" }}
+            />
+          ) : null}
+          <Box display={{ base: "block", md: "none" }}>
+            <DrawerNav items={navItems} />
+          </Box>
+          <Box
+            display={{ base: "none", md: "flex" }}
+            flex="1"
+            justifyContent="center"
+          >
+            <NavMenu items={navItems} />
+          </Box>
+        </Flex>
 
         <Flex
           position="fixed"
