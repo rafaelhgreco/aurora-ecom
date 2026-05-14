@@ -1,28 +1,24 @@
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  type QueryConstraint,
-  query,
-  Timestamp,
-  updateDoc,
-  where,
-} from "firebase/firestore";
+import { type Query, Timestamp } from "firebase-admin/firestore";
 import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import { ProductEntity } from "@/core/entities/product.entity";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
-import { db } from "@/infrastructure/lib/firebase";
+import { getAdminDb } from "@/infrastructure/lib/firebase-admin";
 
 /**
- * Implementação do repositório de produtos usando Firebase Firestore
+ * Firestore (Admin SDK + REST) — mesmo transporte que pedidos e auth admin.
+ * Evita o SDK cliente no Node (Server Actions), onde gRPC/WebChannel costuma falhar em produção.
  */
 export class FirestoreProductRepository implements IProductRepository {
   private collectionName = "products";
+
+  private requireDb() {
+    const db = getAdminDb();
+    if (!db) {
+      throw new Error("Firebase Admin não inicializado");
+    }
+    return db;
+  }
 
   /**
    * Converte documento Firestore para ProductEntity
@@ -94,39 +90,40 @@ export class FirestoreProductRepository implements IProductRepository {
   }
 
   async exists(id: string): Promise<boolean> {
-    const docRef = doc(db, this.collectionName, id);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists();
+    const db = this.requireDb();
+    const docSnap = await db.collection(this.collectionName).doc(id).get();
+    return docSnap.exists;
   }
 
   async findAll(filters?: ProductFilter): Promise<ProductEntity[]> {
-    const constraints: QueryConstraint[] = [];
+    const db = this.requireDb();
 
-    constraints.push(where("deletedAt", "==", null));
+    let q: Query = db
+      .collection(this.collectionName)
+      .where("deletedAt", "==", null);
 
     if (filters?.category) {
-      constraints.push(where("category", "==", filters.category));
+      q = q.where("category", "==", filters.category);
     }
 
     if (filters?.isActive !== undefined) {
-      constraints.push(where("isActive", "==", filters.isActive));
+      q = q.where("isActive", "==", filters.isActive);
     }
 
     if (filters?.minPrice !== undefined) {
-      constraints.push(where("price", ">=", filters.minPrice));
+      q = q.where("price", ">=", filters.minPrice);
     }
 
     if (filters?.maxPrice !== undefined) {
-      constraints.push(where("price", "<=", filters.maxPrice));
+      q = q.where("price", "<=", filters.maxPrice);
     }
 
-    constraints.push(orderBy("createdAt", "desc"));
+    q = q.orderBy("createdAt", "desc");
 
-    const q = query(collection(db, this.collectionName), ...constraints);
-    const snapshot = await getDocs(q);
+    const snapshot = await q.get();
 
-    let results = snapshot.docs.map((doc) =>
-      this.docToEntity(doc.id, doc.data()),
+    let results = snapshot.docs.map((d) =>
+      this.docToEntity(d.id, d.data() as Record<string, unknown>),
     );
 
     if (filters?.search) {
@@ -153,14 +150,14 @@ export class FirestoreProductRepository implements IProductRepository {
   }
 
   async findById(id: string): Promise<ProductEntity | null> {
-    const docRef = doc(db, this.collectionName, id);
-    const docSnap = await getDoc(docRef);
+    const db = this.requireDb();
+    const docSnap = await db.collection(this.collectionName).doc(id).get();
 
-    if (!docSnap.exists()) {
+    if (!docSnap.exists) {
       return null;
     }
 
-    const data = docSnap.data();
+    const data = docSnap.data() as Record<string, unknown>;
 
     if (data.deletedAt) {
       return null;
@@ -170,8 +167,9 @@ export class FirestoreProductRepository implements IProductRepository {
   }
 
   async create(product: ProductEntity): Promise<ProductEntity> {
+    const db = this.requireDb();
     const docData = this.entityToDoc(product);
-    const docRef = await addDoc(collection(db, this.collectionName), docData);
+    const docRef = await db.collection(this.collectionName).add(docData);
 
     return new ProductEntity({
       ...product,
@@ -183,7 +181,8 @@ export class FirestoreProductRepository implements IProductRepository {
     id: string,
     product: Partial<ProductEntity>,
   ): Promise<ProductEntity> {
-    const docRef = doc(db, this.collectionName, id);
+    const db = this.requireDb();
+    const docRef = db.collection(this.collectionName).doc(id);
 
     const updateData: Record<string, unknown> = {
       updatedAt: Timestamp.now(),
@@ -208,7 +207,7 @@ export class FirestoreProductRepository implements IProductRepository {
       updateData.shopCategory = product.shopCategory;
     if (product.isActive !== undefined) updateData.isActive = product.isActive;
 
-    await updateDoc(docRef, updateData);
+    await docRef.update(updateData);
 
     const updated = await this.findById(id);
     if (!updated) {
@@ -219,16 +218,16 @@ export class FirestoreProductRepository implements IProductRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const docRef = doc(db, this.collectionName, id);
-    await deleteDoc(docRef);
+    const db = this.requireDb();
+    await db.collection(this.collectionName).doc(id).delete();
   }
 
   /**
    * Soft delete - marca como deletado sem remover do banco
    */
   async softDelete(id: string): Promise<void> {
-    const docRef = doc(db, this.collectionName, id);
-    await updateDoc(docRef, {
+    const db = this.requireDb();
+    await db.collection(this.collectionName).doc(id).update({
       deletedAt: Timestamp.now(),
       isActive: false,
       updatedAt: Timestamp.now(),
@@ -239,8 +238,8 @@ export class FirestoreProductRepository implements IProductRepository {
    * Restaura um produto deletado
    */
   async restore(id: string): Promise<void> {
-    const docRef = doc(db, this.collectionName, id);
-    await updateDoc(docRef, {
+    const db = this.requireDb();
+    await db.collection(this.collectionName).doc(id).update({
       deletedAt: null,
       updatedAt: Timestamp.now(),
     });
@@ -250,13 +249,15 @@ export class FirestoreProductRepository implements IProductRepository {
    * Lista produtos deletados
    */
   async findDeleted(): Promise<ProductEntity[]> {
-    const q = query(
-      collection(db, this.collectionName),
-      where("deletedAt", "!=", null),
-      orderBy("deletedAt", "desc"),
-    );
+    const db = this.requireDb();
+    const snapshot = await db
+      .collection(this.collectionName)
+      .where("deletedAt", "!=", null)
+      .orderBy("deletedAt", "desc")
+      .get();
 
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => this.docToEntity(doc.id, doc.data()));
+    return snapshot.docs.map((d) =>
+      this.docToEntity(d.id, d.data() as Record<string, unknown>),
+    );
   }
 }
