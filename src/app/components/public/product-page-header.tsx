@@ -13,6 +13,28 @@ interface ProductPageHeaderProps {
   logoSrc: string;
 }
 
+function HeaderLogoLink({ logoSrc }: { logoSrc: string }) {
+  if (!logoSrc) return null;
+  return (
+    <Link
+      to="/"
+      aria-label="Ir para a página inicial"
+      style={{ textDecoration: "none" }}
+    >
+      <Box as="span" lineHeight={0} cursor="pointer" display="block">
+        <Image
+          alt=""
+          src={logoSrc}
+          maxW="100px"
+          h="auto"
+          display="block"
+          draggable={false}
+        />
+      </Box>
+    </Link>
+  );
+}
+
 function usePublicHeaderNavItems(): NavItem[] {
   const navigate = useNavigate();
 
@@ -62,6 +84,8 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
     canCheckout,
     checkoutBlockReason,
   } = useCart();
+
+  const logoLink = <HeaderLogoLink logoSrc={logoSrc} />;
 
   return (
     <>
@@ -154,13 +178,12 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
                   zIndex: 60,
                 },
                 "& nav ul[data-dropdown-open='true']": {
-                  backdropFilter: "blur(var(--header-blur))",
-                  WebkitBackdropFilter: "blur(var(--header-blur))",
-                  backgroundColor: "rgb(255 255 255 / 0.72)",
+                  backgroundColor: "#ffffff",
                   borderRadius: "14px",
-                  border: "1px solid rgba(255, 255, 255, 0.45)",
-                  boxShadow:
-                    "0 12px 36px rgba(15, 23, 42, 0.12), 0 0 48px rgba(89, 50, 230, 0.18), 0 0 36px rgba(224, 50, 230, 0.12)",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.12)",
+                  backdropFilter: "none",
+                  WebkitBackdropFilter: "none",
                 },
                 "& .public-header-mobile-nav > div:nth-of-type(2)": {
                   backdropFilter: "blur(var(--header-blur))",
@@ -172,46 +195,49 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
                 },
               }}
             >
-              {logoSrc ? (
-                <Link
-                  to="/"
-                  aria-label="Ir para a página inicial"
-                  style={{ textDecoration: "none" }}
+              <Flex
+                display={{ base: "flex", md: "none" }}
+                align="center"
+                w="full"
+                minW={0}
+                flexShrink={0}
+              >
+                <Box
+                  flex="0 0 auto"
+                  minW="44px"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="flex-start"
+                  className="public-header-mobile-nav"
                 >
-                  <Box
-                    as="span"
-                    display={{ base: "block", md: "inline-block" }}
-                    position={{ base: "absolute", md: "static" }}
-                    left={{ base: "50%", md: "auto" }}
-                    transform={{ base: "translateX(-50%)", md: "none" }}
-                    zIndex={3}
-                    lineHeight={0}
-                    cursor="pointer"
-                  >
-                    <Image
-                      alt=""
-                      src={logoSrc}
-                      maxW="100px"
-                      h="auto"
-                      display="block"
-                      draggable={false}
-                    />
-                  </Box>
-                </Link>
-              ) : null}
-              <Box
-                display={{ base: "block", md: "none" }}
-                className="public-header-mobile-nav"
-              >
-                <DrawerNav items={navItems} />
-              </Box>
-              <Box
+                  <DrawerNav items={navItems} />
+                </Box>
+                <Flex flex="1" minW={0} justify="center" align="center" px="1">
+                  {logoLink}
+                </Flex>
+                <Box
+                  aria-hidden
+                  flex="0 0 auto"
+                  w={{ base: "56px", md: "0" }}
+                  minW={{ base: "56px", md: "0" }}
+                  flexShrink={0}
+                />
+              </Flex>
+
+              <Flex
                 display={{ base: "none", md: "flex" }}
+                align="center"
+                w="full"
                 flex="1"
-                justifyContent="center"
+                minW={0}
               >
-                <NavMenu items={navItems} />
-              </Box>
+                <Box flexShrink={0}>
+                  <HeaderLogoLink logoSrc={logoSrc} />
+                </Box>
+                <Box flex="1" display="flex" justifyContent="center" minW={0}>
+                  <NavMenu items={navItems} />
+                </Box>
+              </Flex>
             </Flex>
           </Box>
         </Box>
