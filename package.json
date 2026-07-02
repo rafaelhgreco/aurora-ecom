@@ -2,8 +2,10 @@
   "name": "aurora-ecom",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "yarn@4.14.1",
   "scripts": {
     "seed:admin": "tsx scripts/seed-admin.ts",
+    "validate:firebase-env": "tsx scripts/validate-firebase-env.ts",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
@@ -19,6 +21,7 @@
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "dotenv": "^17.3.1",
+    "exceljs": "^4.4.0",
     "firebase-admin": "^13.7.0",
     "jose": "^6.2.2",
     "next": "16.1.6",
@@ -29,7 +32,7 @@
     "react-hook-form": "^7.71.2",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.12.0",
-    "storybook-react": "git+https://github.com/rafaelhgreco/storybook-react.git#master",
+    "storybook-react": "https://raw.githubusercontent.com/rafaelhgreco/storybook-react/master/storybook-react-v1.0.0.tgz",
     "zod": "^4.3.6"
   },
   "devDependencies": {

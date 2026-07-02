@@ -24,6 +24,10 @@ type RouteConfig = {
 };
 
 export const privateRoutes: Record<string, RouteConfig> = {
+  "/admin-produtos/importacao": {
+    roles: ["admin"],
+    redirect: "/not-found",
+  },
   "/admin-produtos": {
     roles: ["admin"],
     redirect: "/not-found",

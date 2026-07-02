@@ -14,8 +14,9 @@ import {
   HStack,
   IconButton,
 } from "@chakra-ui/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { IoAdd, IoGrid, IoList } from "react-icons/io5";
+import { IoAdd, IoCloudUpload, IoGrid, IoList } from "react-icons/io5";
 import type { Product, ViewMode } from "@/app/types/product";
 import { EmptyState } from "../states/empty-state";
 import { LoadingState } from "../states/loading-state";
@@ -41,6 +42,7 @@ export function ProductList({
   onAdd,
   onInventoryChange,
 }: ProductListProps) {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
   if (isLoading) {
@@ -74,7 +76,14 @@ export function ProductList({
             </IconButton>
           </HStack>
 
-          {/* Botão adicionar */}
+          <Button
+            variant="outline"
+            onClick={() => router.push("/admin-produtos/importacao")}
+          >
+            <IoCloudUpload style={{ marginRight: "8px" }} />
+            Importar em massa
+          </Button>
+
           {onAdd && (
             <Button colorScheme="blue" onClick={onAdd}>
               <IoAdd style={{ marginRight: "8px" }} />
