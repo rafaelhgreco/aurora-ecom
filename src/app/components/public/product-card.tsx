@@ -51,7 +51,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   }, [product]);
 
   const effectiveColor = selectedColor || colorVariants[0]?.color || "";
-  const showColorPicker = colorVariants.length > 1;
+  const hasColorVariants = colorVariants.length > 0;
+  const isMultiColor = colorVariants.length > 1;
 
   const displayImage = useMemo(() => {
     if (!effectiveColor) return imageUrl;
@@ -91,7 +92,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const hasSizes = Boolean(isAvailable && sizes.length > 0);
 
   const renderColorPicker = (compact: boolean) =>
-    !showColorPicker ? null : (
+    !hasColorVariants ? null : (
       <Flex
         w="full"
         gap="1.5"
@@ -120,7 +121,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
               borderColor={active ? "black" : "gray.300"}
               bg={active ? "gray.100" : "white"}
               fontWeight={active ? "semibold" : "normal"}
-              onClick={(e) => handleColorClick(e, v.color)}
+              cursor={isMultiColor ? "pointer" : "default"}
+              onClick={(e) => {
+                if (isMultiColor) handleColorClick(e, v.color);
+              }}
             >
               {v.color}
             </Button>
@@ -253,7 +257,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             </Button>
           </Box>
 
-          {(showColorPicker || hasSizes) && (
+          {(hasColorVariants || hasSizes) && (
             <Box
               w="full"
               p="2"
@@ -262,7 +266,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
               flexDirection="column"
               gap="2"
             >
-              {showColorPicker && (
+              {hasColorVariants && (
                 <Box>
                   <Text
                     fontSize="2xs"
@@ -294,7 +298,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           {formatted_price_value}
         </Text>
 
-        {showColorPicker && (
+        {hasColorVariants && (
           <Box mt="2" onClick={(e) => e.stopPropagation()}>
             <Text fontSize="2xs" color="gray.500" mb="1" fontWeight="medium">
               Cor

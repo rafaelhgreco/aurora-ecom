@@ -11,7 +11,7 @@ interface ProductColorSelectorProps {
 }
 
 /**
- * Seletor de cor quando há mais de uma variante com fotos próprias.
+ * Exibe as cores disponíveis; com uma única variante, mostra a cor já selecionada.
  */
 export function ProductColorSelector({
   variants,
@@ -19,7 +19,9 @@ export function ProductColorSelector({
   onColorChange,
   disabled = false,
 }: ProductColorSelectorProps) {
-  if (variants.length <= 1) return null;
+  if (variants.length === 0) return null;
+
+  const isSingleColor = variants.length === 1;
 
   return (
     <Box w="full">
@@ -49,10 +51,10 @@ export function ProductColorSelector({
               borderColor={active ? "black" : "gray.200"}
               bg={active ? "gray.100" : "white"}
               fontWeight={active ? "semibold" : "normal"}
-              cursor={disabled ? "not-allowed" : "pointer"}
+              cursor={disabled || isSingleColor ? "default" : "pointer"}
               opacity={disabled ? 0.5 : 1}
               onClick={() => {
-                if (!disabled) onColorChange(v.color);
+                if (!disabled && !isSingleColor) onColorChange(v.color);
               }}
             >
               {v.color}
