@@ -17,7 +17,7 @@ export function ShopHomeHero({
 }: ShopHomeHeroProps) {
   return (
     <VStack align="stretch" gap={{ base: 4, md: 5 }} w="full">
-      <VStack align="stretch" gap={1}>
+      <VStack align="stretch" gap={1} mt={{ base: 10, md: 12 }}>
         <Heading as="h1" size={{ base: "lg", md: "xl" }} color="gray.900">
           {title}
         </Heading>

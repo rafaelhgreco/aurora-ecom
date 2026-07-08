@@ -55,7 +55,7 @@ interface ProductInfoProps {
   stockBySize?: Partial<Record<string, number>>;
   /** false = pausado na vitrine; não permite compra nem carrinho */
   isActive?: boolean;
-  /** Variantes com fotos; quando há mais de uma, o utilizador escolhe a cor */
+  /** Variantes com fotos; exibidas na página; escolha obrigatória só com mais de uma */
   colorVariants?: ProductColorVariant[];
   selectedColor?: string;
   onColorChange?: (color: string) => void;
@@ -260,7 +260,7 @@ export const ProductInfo = ({
         </Box>
       )}
 
-      {colorVariants.length > 1 && onColorChange && (
+      {colorVariants.length > 0 && onColorChange && (
         <ProductColorSelector
           variants={colorVariants}
           selectedColor={selectedColor || colorVariants[0]?.color || ""}
