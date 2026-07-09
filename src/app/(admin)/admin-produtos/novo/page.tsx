@@ -59,6 +59,7 @@ import {
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
 import { buildVariantStockBySize } from "@/shared/admin-product-stock";
+import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
 
 type ColorDraft = {
   id: string;
@@ -458,16 +459,14 @@ export default function NovoProductPage() {
           message: result.error || "Erro ao cadastrar produto",
         });
       }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Erro desconhecido";
+    } catch {
       setSubmitStatus({
         type: "error",
-        message,
+        message: ADMIN_GENERIC,
       });
       toaster.create({
         title: "Erro",
-        description: message,
+        description: ADMIN_GENERIC,
         type: "error",
         duration: 5000,
       });

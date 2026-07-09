@@ -5,6 +5,7 @@ import { useState } from "react";
 import { FaWhatsapp } from "react-icons/fa";
 import { createWhatsAppCheckoutLink } from "@/app/actions/checkout";
 import type { CartItemJSON } from "@/app/types/checkout";
+import { CHECKOUT_GENERIC } from "@/shared/errors/client-error-messages";
 
 const WHATSAPP_GREEN = "#25D366";
 const WHATSAPP_GREEN_HOVER = "#20BD5A";
@@ -81,15 +82,15 @@ export function WhatsAppCheckoutButton({
           onSuccess?.(result.total);
         }
         window.open(result.url, "_blank");
-      } else {
-        throw new Error(result.error || "Erro ao gerar link do WhatsApp");
+        return;
       }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Erro ao processar pedido";
 
+      const message = result.error || CHECKOUT_GENERIC;
       alert(`Erro: ${message}`);
       onError?.(message);
+    } catch {
+      alert(`Erro: ${CHECKOUT_GENERIC}`);
+      onError?.(CHECKOUT_GENERIC);
     } finally {
       setLoading(false);
     }

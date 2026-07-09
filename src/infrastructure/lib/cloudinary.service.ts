@@ -4,6 +4,8 @@
  * Serviço para upload de arquivos no Cloudinary
  */
 
+import { UPLOAD_GENERIC } from "@/shared/errors/client-error-messages";
+
 export interface UploadProgress {
   progress: number;
   bytesTransferred: number;
@@ -61,19 +63,19 @@ export async function uploadFile(
             publicId: response.public_id,
           });
         } catch {
-          reject(new Error("Erro ao processar resposta do Cloudinary"));
+          reject(new Error(UPLOAD_GENERIC));
         }
       } else {
-        reject(new Error(`Erro no upload: ${xhr.status} - ${xhr.statusText}`));
+        reject(new Error(UPLOAD_GENERIC));
       }
     });
 
     xhr.addEventListener("error", () => {
-      reject(new Error("Erro de rede ao fazer upload"));
+      reject(new Error(UPLOAD_GENERIC));
     });
 
     xhr.addEventListener("timeout", () => {
-      reject(new Error("Timeout ao fazer upload"));
+      reject(new Error(UPLOAD_GENERIC));
     });
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -122,6 +124,6 @@ export async function deleteFile(publicId: string): Promise<void> {
     }
   } catch (error) {
     console.error("Erro ao deletar arquivo do Cloudinary:", error);
-    throw error;
+    throw new Error("Erro ao deletar arquivo");
   }
 }

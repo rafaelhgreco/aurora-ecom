@@ -5,6 +5,7 @@ import type {
   OrderStatus,
 } from "@/core/schemas/order.schema";
 import { getAdminDb } from "@/infrastructure/lib/firebase-admin";
+import { InternalError } from "@/shared/errors/internal-error";
 
 const COLLECTION = "orders";
 
@@ -20,7 +21,7 @@ export async function createOrder(
   total: number,
 ): Promise<Order> {
   const db = getAdminDb();
-  if (!db) throw new Error("Firebase Admin não inicializado");
+  if (!db) throw new InternalError("firebase_admin_not_initialized");
 
   const now = new Date();
   const data = {
@@ -72,7 +73,9 @@ export async function getOrderById(id: string): Promise<Order | null> {
   const doc = await db.collection(COLLECTION).doc(id).get();
   if (!doc.exists) return null;
 
-  const d = doc.data()!;
+  const d = doc.data();
+  if (!d) return null;
+
   return {
     id: doc.id,
     items: (d.items as OrderItem[]) || [],

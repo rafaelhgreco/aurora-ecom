@@ -17,6 +17,7 @@ import type { OrderItem } from "@/core/schemas/order.schema";
 import type { ProductSize } from "@/core/schemas/product.schema";
 import { createOrder } from "@/infrastructure/repositories/firestore-order.repository";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
+import { handleActionError } from "@/shared/errors/action-error";
 
 // Número do WhatsApp da loja (formato internacional sem sinais: 55DDDNUMERO)
 const SHOP_WHATSAPP_NUMBER =
@@ -193,12 +194,11 @@ export async function createWhatsAppCheckoutLink(
       orderId: order.id,
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Erro ao processar pedido";
-
-    return {
-      success: false,
-      error: errorMessage,
-    };
+    const { message } = handleActionError(
+      "createWhatsAppCheckoutLink",
+      error,
+      "checkout",
+    );
+    return { success: false, error: message };
   }
 }

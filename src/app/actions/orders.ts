@@ -1,6 +1,7 @@
 "use server";
 
 import { Timestamp } from "firebase-admin/firestore";
+import { requireAdminSession } from "@/app/services/require-admin-session";
 import type {
   Order,
   OrderItemWithStock,
@@ -14,6 +15,8 @@ import {
   listOrders,
   updateOrderStatus as repoUpdateStatus,
 } from "@/infrastructure/repositories/firestore-order.repository";
+import { handleActionError } from "@/shared/errors/action-error";
+import { InternalError } from "@/shared/errors/internal-error";
 import {
   getStockForSize,
   getTotalStock,
@@ -26,14 +29,15 @@ export type OrderActionResult<T> =
   | { success: false; error: string };
 
 export async function listOrdersAction(): Promise<OrderActionResult<Order[]>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
   try {
     const orders = await listOrders();
     return { success: true, data: orders };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao listar pedidos",
-    };
+    const { message } = handleActionError("listOrdersAction", error, "admin");
+    return { success: false, error: message };
   }
 }
 
@@ -44,6 +48,9 @@ export async function listOrdersAction(): Promise<OrderActionResult<Order[]>> {
 export async function listOrdersWithStockAction(): Promise<
   OrderActionResult<OrderWithStock[]>
 > {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
   try {
     const orders = await listOrders();
     const enriched: OrderWithStock[] = [];
@@ -118,24 +125,27 @@ export async function listOrdersWithStockAction(): Promise<
 
     return { success: true, data: enriched };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao listar pedidos",
-    };
+    const { message } = handleActionError(
+      "listOrdersWithStockAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message };
   }
 }
 
 export async function getOrderByIdAction(
   id: string,
 ): Promise<OrderActionResult<Order | null>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
   try {
     const order = await getOrderById(id);
     return { success: true, data: order };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao buscar pedido",
-    };
+    const { message } = handleActionError("getOrderByIdAction", error, "admin");
+    return { success: false, error: message };
   }
 }
 
@@ -149,6 +159,9 @@ export async function updateOrderStatusAction(
   orderId: string,
   newStatus: OrderStatus,
 ): Promise<OrderActionResult<Order>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
   try {
     const order = await getOrderById(orderId);
     if (!order) {
@@ -171,11 +184,12 @@ export async function updateOrderStatusAction(
 
     return { success: true, data: updated };
   } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Erro ao atualizar status",
-    };
+    const { message } = handleActionError(
+      "updateOrderStatusAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message };
   }
 }
 
@@ -184,7 +198,7 @@ export async function updateOrderStatusAction(
  */
 async function decrementStockForOrder(order: Order): Promise<void> {
   const db = getAdminDb();
-  if (!db) throw new Error("Firebase Admin não inicializado");
+  if (!db) throw new InternalError("firebase_admin_not_initialized");
 
   const productsRef = db.collection("products");
 
@@ -271,7 +285,7 @@ async function decrementStockForOrder(order: Order): Promise<void> {
  */
 async function incrementStockForOrder(order: Order): Promise<void> {
   const db = getAdminDb();
-  if (!db) throw new Error("Firebase Admin não inicializado");
+  if (!db) throw new InternalError("firebase_admin_not_initialized");
 
   const productsRef = db.collection("products");
 

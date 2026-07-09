@@ -166,10 +166,8 @@ export default function ProdutoPage({
         } else {
           setError(result.error);
         }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Erro ao carregar produto",
-        );
+      } catch {
+        setError("Não foi possível carregar o produto. Tente novamente.");
       } finally {
         setLoading(false);
       }
