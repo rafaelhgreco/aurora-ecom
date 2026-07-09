@@ -4,6 +4,7 @@ import { ProductEntity } from "@/core/entities/product.entity";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
 import { getAdminDb } from "@/infrastructure/lib/firebase-admin";
+import { InternalError } from "@/shared/errors/internal-error";
 
 /**
  * Firestore (Admin SDK + REST) — mesmo transporte que pedidos e auth admin.
@@ -15,7 +16,7 @@ export class FirestoreProductRepository implements IProductRepository {
   private requireDb() {
     const db = getAdminDb();
     if (!db) {
-      throw new Error("Firebase Admin não inicializado");
+      throw new InternalError("firebase_admin_not_initialized");
     }
     return db;
   }
@@ -211,7 +212,7 @@ export class FirestoreProductRepository implements IProductRepository {
 
     const updated = await this.findById(id);
     if (!updated) {
-      throw new Error("Produto não encontrado após atualização");
+      throw new InternalError("product_not_found_after_update");
     }
 
     return updated;

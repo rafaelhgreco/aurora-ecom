@@ -1,6 +1,7 @@
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
 import type { CreateProductInput } from "@/core/schemas/product.schema";
 import { CreateProductUseCase } from "@/core/use-cases/create-product.use-case";
+import { BULK_IMPORT_ITEM_FAILED } from "@/shared/errors/client-error-messages";
 import { ValidationError } from "@/shared/errors/domain-errors";
 
 export type BulkImportItem = {
@@ -47,7 +48,7 @@ export class BulkImportProductsUseCase {
         } else {
           failed.push({
             sku_base: item.sku_base,
-            error: error instanceof Error ? error.message : "Erro desconhecido",
+            error: BULK_IMPORT_ITEM_FAILED,
           });
         }
       }

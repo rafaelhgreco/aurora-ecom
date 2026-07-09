@@ -19,6 +19,7 @@ import type {
   Product,
   UpdateProductInput,
 } from "@/app/types/product";
+import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
 
 export function useProductCRUD() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -36,8 +37,8 @@ export function useProductCRUD() {
       } else {
         setError(!result.success ? result.error : "Erro ao carregar produtos");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
+    } catch {
+      setError(ADMIN_GENERIC);
     } finally {
       setIsLoading(false);
     }
@@ -54,8 +55,8 @@ export function useProductCRUD() {
       } else {
         setError(!result.success ? result.error : "Produto não encontrado");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
+    } catch {
+      setError(ADMIN_GENERIC);
     } finally {
       setIsLoading(false);
     }
@@ -76,11 +77,9 @@ export function useProductCRUD() {
           : "Erro ao criar produto";
         setError(errorMsg);
         return { success: false, error: errorMsg };
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Erro desconhecido";
-        setError(message);
-        return { success: false, error: message };
+      } catch {
+        setError(ADMIN_GENERIC);
+        return { success: false, error: ADMIN_GENERIC };
       } finally {
         setIsLoading(false);
       }
@@ -104,11 +103,9 @@ export function useProductCRUD() {
           setSelectedProduct(result.data);
         }
         return { success: true, data: result.data };
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Erro desconhecido";
-        setError(message);
-        return { success: false, error: message };
+      } catch {
+        setError(ADMIN_GENERIC);
+        return { success: false, error: ADMIN_GENERIC };
       } finally {
         setIsLoading(false);
       }
@@ -128,11 +125,9 @@ export function useProductCRUD() {
         }
         setError(result.error || "Erro ao deletar produto");
         return { success: false, error: result.error };
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Erro desconhecido";
-        setError(message);
-        return { success: false, error: message };
+      } catch {
+        setError(ADMIN_GENERIC);
+        return { success: false, error: ADMIN_GENERIC };
       } finally {
         setIsLoading(false);
       }

@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { listProductsAction } from "@/app/actions/products";
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
+import { PUBLIC_GENERIC } from "@/shared/errors/client-error-messages";
 
 function filterDependencyKey(filter?: ProductFilter): string {
   return filter === undefined ? "" : JSON.stringify(filter);
@@ -39,11 +40,9 @@ export function useProducts(filter?: ProductFilter) {
             setError(result.error);
           }
         }
-      } catch (err) {
+      } catch {
         if (isMounted) {
-          setError(
-            err instanceof Error ? err.message : "Erro ao carregar produtos",
-          );
+          setError(PUBLIC_GENERIC);
         }
       } finally {
         if (isMounted) {

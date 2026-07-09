@@ -36,6 +36,7 @@ import {
 } from "@chakra-ui/react";
 import { useEffect } from "react";
 import { FiMinus, FiPlus, FiTrash2, FiX } from "react-icons/fi";
+import { formatPrice } from "@/app/utils/price-formatter";
 import type { ProductSize } from "@/core/entities";
 import {
   getEffectiveColorVariants,
@@ -242,7 +243,7 @@ export function CartDrawer({
                                 </Text>
                                 {product && (
                                   <Text fontSize="sm" color="gray.600" mt="1">
-                                    R$ {product.price.toFixed(2)}
+                                    {formatPrice(product.price)}
                                   </Text>
                                 )}
                               </Box>
@@ -410,7 +411,7 @@ export function CartDrawer({
                                 fontSize="md"
                                 color="green.600"
                               >
-                                R$ {subtotal.toFixed(2)}
+                                {formatPrice(subtotal)}
                               </Text>
                             </Flex>
 

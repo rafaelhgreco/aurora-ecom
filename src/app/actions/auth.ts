@@ -6,8 +6,9 @@ import { redirect } from "next/navigation";
 import { signAdminToken } from "@/app/lib/jwt";
 import { getAdminFromFirestore } from "@/infrastructure/repositories/firestore-admin.repository";
 
-const GENERIC_LOGIN_ERROR =
-  "Não foi possível entrar. Verifique email e senha e tente novamente.";
+import { LOGIN_GENERIC } from "@/shared/errors/client-error-messages";
+
+const GENERIC_LOGIN_ERROR = LOGIN_GENERIC;
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();

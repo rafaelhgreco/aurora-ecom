@@ -46,6 +46,7 @@ import {
   type SizePresetKind,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
+import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
 
 export function ProductForm() {
   const [isUploading, setIsUploading] = useState(false);
@@ -213,10 +214,10 @@ export function ProductForm() {
           message: result.error || "Erro ao cadastrar produto",
         });
       }
-    } catch (error) {
+    } catch {
       setSubmitStatus({
         type: "error",
-        message: error instanceof Error ? error.message : "Erro desconhecido",
+        message: ADMIN_GENERIC,
       });
     } finally {
       setIsSubmitting(false);

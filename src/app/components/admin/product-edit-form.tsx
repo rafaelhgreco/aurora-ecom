@@ -59,6 +59,7 @@ import {
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
 import { buildVariantStockBySize } from "@/shared/admin-product-stock";
+import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
 
 const MAX_COLORS_EDIT = 12;
 const MAX_IMAGES_PER_COLOR_EDIT = 10;
@@ -485,10 +486,10 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
           message: result.error || "Erro ao atualizar produto",
         });
       }
-    } catch (err) {
+    } catch {
       setSubmitStatus({
         type: "error",
-        message: err instanceof Error ? err.message : "Erro desconhecido",
+        message: ADMIN_GENERIC,
       });
     } finally {
       setIsSubmitting(false);

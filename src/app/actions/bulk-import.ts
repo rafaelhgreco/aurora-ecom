@@ -1,7 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
-import { getSession } from "@/app/services/auth";
+import { requireAdminSession } from "@/app/services/require-admin-session";
 import type { BulkImportPreviewProduct } from "@/core/import/validate-bulk-import";
 import { validateBulkImportRows } from "@/core/import/validate-bulk-import";
 import type { BulkImportRowError } from "@/core/schemas/bulk-import.schema";
@@ -11,6 +10,7 @@ import { generateBulkImportTemplateBuffer } from "@/infrastructure/import/genera
 import { parseXlsxBuffer } from "@/infrastructure/import/parse-xlsx-buffer";
 import { saveImportJob } from "@/infrastructure/repositories/firestore-import-job.repository";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
+import { handleActionError } from "@/shared/errors/action-error";
 
 const productRepository = new FirestoreProductRepository();
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -28,18 +28,6 @@ export type BulkImportValidatePayload = {
   readyItems: Array<{ sku_base: string; input: CreateProductInput }>;
 };
 
-async function requireAdminSession(): Promise<
-  { email: string } | { error: string }
-> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token");
-  const session = await getSession(token);
-  if (!session || session.role !== "admin") {
-    return { error: "Não autorizado" };
-  }
-  return { email: session.sub };
-}
-
 export async function generateBulkImportTemplateAction(): Promise<
   BulkImportActionResult<{ base64: string; fileName: string }>
 > {
@@ -56,10 +44,12 @@ export async function generateBulkImportTemplateAction(): Promise<
       },
     };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao gerar template",
-    };
+    const { message } = handleActionError(
+      "generateBulkImportTemplateAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message };
   }
 }
 
@@ -116,11 +106,12 @@ export async function parseAndValidateBulkImportAction(
       },
     };
   } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Erro ao processar planilha",
-    };
+    const { message } = handleActionError(
+      "parseAndValidateBulkImportAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message };
   }
 }
 
@@ -147,11 +138,12 @@ export async function executeBulkImportChunkAction(
     const result = await useCase.execute(items);
     return { success: true, data: result };
   } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Erro ao importar produtos",
-    };
+    const { message } = handleActionError(
+      "executeBulkImportChunkAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message };
   }
 }
 

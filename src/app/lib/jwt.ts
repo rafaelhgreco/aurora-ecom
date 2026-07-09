@@ -1,8 +1,19 @@
 import { SignJWT } from "jose/jwt/sign";
 import { jwtVerify } from "jose/jwt/verify";
+import { InternalError } from "@/shared/errors/internal-error";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET ?? "aurora-admin-secret-change-in-production";
+function resolveJwtSecret(): string {
+  const secret = process.env.JWT_SECRET?.trim();
+  if (secret) return secret;
+
+  if (process.env.NODE_ENV === "production") {
+    throw new InternalError("JWT_SECRET is required in production");
+  }
+
+  return "aurora-admin-secret-change-in-production";
+}
+
+const JWT_SECRET = resolveJwtSecret();
 const ALG = "HS256";
 const EXPIRES_IN = "7d";
 

@@ -4,6 +4,7 @@ import {
   isAdminSoftDeactivateEnabled,
   isAdminStockToolsEnabled,
 } from "@/app/config/feature-flags";
+import { requireAdminSession } from "@/app/services/require-admin-session";
 import type {
   CreateProductInput,
   Product,
@@ -16,7 +17,7 @@ import { GetProductByIdUseCase } from "@/core/use-cases/get-product-by-id.use-ca
 import { ListProductsUseCase } from "@/core/use-cases/list-products.use-case";
 import { UpdateProductUseCase } from "@/core/use-cases/update-product.use-case";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
-import { NotFoundError, ValidationError } from "@/shared/errors/domain-errors";
+import { handleActionError } from "@/shared/errors/action-error";
 
 const productRepository = new FirestoreProductRepository();
 
@@ -56,13 +57,12 @@ export async function listProductsAction(
       data: serializedProducts,
     };
   } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Erro desconhecido ao listar produtos",
-    };
+    const { message } = handleActionError(
+      "listProductsAction",
+      error,
+      "public",
+    );
+    return { success: false, error: message };
   }
 }
 
@@ -78,26 +78,21 @@ export async function getProductByIdAction(
       data: serializeProductForClient(product as Product),
     };
   } catch (error) {
-    if (error instanceof NotFoundError) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Erro desconhecido ao buscar produto",
-    };
+    const { message } = handleActionError(
+      "getProductByIdAction",
+      error,
+      "public",
+    );
+    return { success: false, error: message };
   }
 }
 
 export async function createProductAction(
   input: CreateProductInput,
 ): Promise<ActionResult<Product>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
   try {
     const useCase = new CreateProductUseCase(productRepository);
     const product = await useCase.execute(input);
@@ -107,27 +102,21 @@ export async function createProductAction(
       data: serializeProductForClient(product as Product),
     };
   } catch (error) {
-    if (error instanceof ValidationError) {
-      return {
-        success: false,
-        error: error.message,
-        details: error.errors,
-      };
-    }
-
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Erro desconhecido ao criar produto",
-    };
+    const { message, details } = handleActionError(
+      "createProductAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message, ...(details && { details }) };
   }
 }
 
 export async function updateProductAction(
   input: UpdateProductInput,
 ): Promise<ActionResult<Product>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
   try {
     const payload: UpdateProductInput = { ...input };
     if (input.isActive === false && input.id) {
@@ -151,34 +140,21 @@ export async function updateProductAction(
       data: serializeProductForClient(product as Product),
     };
   } catch (error) {
-    if (error instanceof ValidationError) {
-      return {
-        success: false,
-        error: error.message,
-        details: error.errors,
-      };
-    }
-
-    if (error instanceof NotFoundError) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Erro desconhecido ao atualizar produto",
-    };
+    const { message, details } = handleActionError(
+      "updateProductAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message, ...(details && { details }) };
   }
 }
 
 export async function deleteProductAction(
   id: string,
 ): Promise<ActionResult<void>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
   try {
     const useCase = new DeleteProductUseCase(productRepository);
     await useCase.execute(id);
@@ -188,20 +164,12 @@ export async function deleteProductAction(
       data: undefined,
     };
   } catch (error) {
-    if (error instanceof NotFoundError) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Erro desconhecido ao deletar produto",
-    };
+    const { message } = handleActionError(
+      "deleteProductAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message };
   }
 }
 
@@ -212,6 +180,9 @@ export async function adjustProductStockAction(
   id: string,
   delta: number,
 ): Promise<ActionResult<Product>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
   if (!isAdminStockToolsEnabled()) {
     return { success: false, error: "Recurso indisponível." };
   }
@@ -239,20 +210,12 @@ export async function adjustProductStockAction(
       data: serializeProductForClient(product as Product),
     };
   } catch (error) {
-    if (error instanceof NotFoundError) {
-      return { success: false, error: error.message };
-    }
-    if (error instanceof ValidationError) {
-      return {
-        success: false,
-        error: error.message,
-        details: error.errors,
-      };
-    }
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Erro ao ajustar estoque",
-    };
+    const { message, details } = handleActionError(
+      "adjustProductStockAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message, ...(details && { details }) };
   }
 }
 
@@ -263,6 +226,9 @@ export async function setProductActiveFlagAction(
   id: string,
   isActive: boolean,
 ): Promise<ActionResult<Product>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
   if (!isAdminSoftDeactivateEnabled()) {
     return { success: false, error: "Recurso indisponível." };
   }
@@ -303,22 +269,11 @@ export async function setProductActiveFlagAction(
       data: serializeProductForClient(product as Product),
     };
   } catch (error) {
-    if (error instanceof NotFoundError) {
-      return { success: false, error: error.message };
-    }
-    if (error instanceof ValidationError) {
-      return {
-        success: false,
-        error: error.message,
-        details: error.errors,
-      };
-    }
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Erro ao atualizar disponibilidade",
-    };
+    const { message, details } = handleActionError(
+      "setProductActiveFlagAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message, ...(details && { details }) };
   }
 }
