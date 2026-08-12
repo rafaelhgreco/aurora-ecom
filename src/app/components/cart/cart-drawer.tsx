@@ -34,7 +34,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FiMinus, FiPlus, FiTrash2, FiX } from "react-icons/fi";
 import { formatPrice } from "@/app/utils/price-formatter";
 import type { ProductSize } from "@/core/entities";
@@ -79,6 +79,18 @@ export function CartDrawer({
 }: CartDrawerProps) {
   const isEmpty = items.length === 0;
 
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const totalCount = items.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+
+  // Sincroniza página se remover itens
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(Math.max(1, totalPages));
+    }
+  }, [totalPages, page]);
+
   // Sincroniza quantidade com estoque disponível quando exceder
   useEffect(() => {
     for (const { item, product } of items) {
@@ -97,6 +109,8 @@ export function CartDrawer({
       }
     }
   }, [items, onUpdateQuantity]);
+
+  const paginatedItems = items.slice((page - 1) * limit, page * limit);
 
   return (
     <DrawerRoot
@@ -168,7 +182,7 @@ export function CartDrawer({
 
               {!loading && !isEmpty && (
                 <Stack gap="4" flex="1" pb="4">
-                  {items.map((enrichedItem) => {
+                  {paginatedItems.map((enrichedItem) => {
                     const { item, product, subtotal, error } = enrichedItem;
                     const itemKey = item.getUniqueKey();
                     const selectedSize = item.variants?.size;
@@ -437,6 +451,34 @@ export function CartDrawer({
                       </Box>
                     );
                   })}
+
+                  {totalPages > 1 && (
+                    <HStack justify="center" mt="4" gap="4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={page === 1}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      >
+                        Anterior
+                      </Button>
+
+                      <Text fontSize="sm" fontWeight="medium">
+                        Página {page} de {totalPages}
+                      </Text>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={page === totalPages}
+                        onClick={() =>
+                          setPage((p) => Math.min(totalPages, p + 1))
+                        }
+                      >
+                        Próxima
+                      </Button>
+                    </HStack>
+                  )}
                 </Stack>
               )}
             </DrawerBody>

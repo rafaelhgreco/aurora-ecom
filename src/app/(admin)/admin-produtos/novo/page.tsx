@@ -149,7 +149,6 @@ export default function NovoProductPage() {
   });
 
   const rawSizes = watch("sizes");
-  /** `?? EMPTY_SIZES` evita `|| []` (novo array a cada render → loop no useEffect abaixo). */
   const selectedSizes = rawSizes ?? EMPTY_SIZES;
   const isActive = watch("isActive") ?? true;
 

@@ -1,7 +1,9 @@
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
 
 export interface IProductRepository {
-  findAll(filter?: ProductFilter): Promise<Product[]>;
+  findAll(
+    filter?: ProductFilter,
+  ): Promise<{ data: Product[]; totalCount: number }>;
 
   findById(id: string): Promise<Product | null>;
 

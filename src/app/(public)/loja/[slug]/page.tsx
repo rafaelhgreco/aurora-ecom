@@ -2,7 +2,7 @@
 
 import { Heading, Text, VStack } from "@chakra-ui/react";
 import { notFound, useParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ProductGrid } from "@/app/components/public/product-grid";
 import { ProductGridSkeleton } from "@/app/components/public/product-grid-skeleton";
 import { ShopPageShell } from "@/app/components/public/shop";
@@ -24,8 +24,11 @@ export default function LojaCategoryPage() {
     notFound();
   }
 
-  const { products, loading, error } = useProducts({
+  const [page, setPage] = useState(1);
+  const { products, loading, error, totalPages } = useProducts({
     shopCategory: catalog.shopCategory,
+    page,
+    limitCount: 12,
   });
 
   const sortedProducts = useMemo(
@@ -63,7 +66,13 @@ export default function LojaCategoryPage() {
         )}
 
         {!loading && !error && sortedProducts.length > 0 && (
-          <ProductGrid products={sortedProducts} embed />
+          <ProductGrid
+            products={sortedProducts}
+            embed
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         )}
       </VStack>
     </ShopPageShell>

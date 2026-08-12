@@ -43,10 +43,10 @@ export type ActionResult<T> =
 
 export async function listProductsAction(
   filter?: ProductFilter,
-): Promise<ActionResult<Product[]>> {
+): Promise<ActionResult<{ data: Product[]; totalCount: number }>> {
   try {
     const useCase = new ListProductsUseCase(productRepository);
-    const products = await useCase.execute(filter);
+    const { data: products, totalCount } = await useCase.execute(filter);
 
     const serializedProducts = products.map((p) =>
       serializeProductForClient(p as Product),
@@ -54,7 +54,7 @@ export async function listProductsAction(
 
     return {
       success: true,
-      data: serializedProducts,
+      data: { data: serializedProducts, totalCount },
     };
   } catch (error) {
     const { message } = handleActionError(

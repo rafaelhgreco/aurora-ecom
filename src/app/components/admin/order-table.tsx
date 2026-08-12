@@ -18,8 +18,9 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useState } from "react";
-import { IoRefresh } from "react-icons/io5";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { IoChevronBack, IoChevronForward, IoRefresh } from "react-icons/io5";
 import {
   listOrdersWithStockAction,
   updateOrderStatusAction,
@@ -46,41 +47,44 @@ const STATUS_COLORS: Record<OrderStatus, "yellow" | "red" | "green"> = {
 type FilterStatus = OrderStatus | "TODOS";
 
 export function OrderTable() {
-  const [orders, setOrders] = useState<OrderWithStock[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterStatus>("TODOS");
   const [declineConfirmOrderId, setDeclineConfirmOrderId] = useState<
     string | null
   >(null);
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
-  const loadOrders = useCallback(async (showFullLoading = true) => {
-    if (showFullLoading) {
-      setIsLoading(true);
-    } else {
-      setIsRefreshing(true);
-    }
-    const result = await listOrdersWithStockAction();
-    setIsLoading(false);
-    setIsRefreshing(false);
-    if (result.success) {
-      setOrders(result.data);
-    } else {
-      const errMsg =
-        "error" in result ? result.error : "Erro ao carregar pedidos";
-      toaster.create({
-        title: "Erro",
-        description: errMsg,
-        type: "error",
-        duration: 5000,
+  const handleFilterChange = (f: FilterStatus) => {
+    setFilter(f);
+    setPage(1);
+  };
+
+  const {
+    data: result,
+    isFetching,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["orders", filter, page],
+    queryFn: async () => {
+      const res = await listOrdersWithStockAction({
+        limitCount: limit,
+        page,
+        status: filter === "TODOS" ? undefined : filter,
       });
-    }
-  }, []);
+      if (!res.success) {
+        throw new Error(res.error || "Erro ao carregar pedidos");
+      }
+      return res.data;
+    },
+  });
 
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+  const orders = result?.data || [];
+  const totalCount = result?.totalCount || 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+  const isRefreshing = isFetching && !isLoading;
 
   const handleStatusChange = async (
     orderId: string,
@@ -91,7 +95,7 @@ export function OrderTable() {
     setUpdatingId(null);
 
     if (result.success) {
-      await loadOrders(false);
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
       const desc =
         newStatus === "DECLINADA"
           ? "Pedido declinado e estoque devolvido."
@@ -122,9 +126,6 @@ export function OrderTable() {
     }
   };
 
-  const filtered =
-    filter === "TODOS" ? orders : orders.filter((o) => o.status === filter);
-
   const itemsPreview = (order: OrderWithStock) =>
     order.items
       .map((i) => {
@@ -143,7 +144,7 @@ export function OrderTable() {
     return <LoadingState minHeight="200px" fullPage={false} />;
   }
 
-  if (filtered.length === 0) {
+  if (orders.length === 0) {
     return (
       <EmptyState
         title="Nenhum pedido"
@@ -170,7 +171,7 @@ export function OrderTable() {
                 colorScheme={
                   f === "TODOS" ? "gray" : STATUS_COLORS[f as OrderStatus]
                 }
-                onClick={() => setFilter(f)}
+                onClick={() => handleFilterChange(f)}
               >
                 {f === "TODOS" ? "Todos" : STATUS_LABELS[f as OrderStatus]}
               </Button>
@@ -181,7 +182,7 @@ export function OrderTable() {
           size="sm"
           colorScheme="green"
           loading={isRefreshing}
-          onClick={() => loadOrders(false)}
+          onClick={() => refetch()}
         >
           <IoRefresh style={{ marginRight: "6px" }} />
           Atualizar
@@ -202,7 +203,7 @@ export function OrderTable() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {filtered.map((order) => {
+            {orders.map((order) => {
               const id = order.id ?? "";
               return (
                 <Table.Row key={id}>
@@ -356,6 +357,32 @@ export function OrderTable() {
           </Table.Body>
         </Table.Root>
       </Box>
+
+      {totalPages > 1 && (
+        <HStack justify="center" mt={6} gap={4}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            <IoChevronBack /> Anterior
+          </Button>
+
+          <Text fontSize="sm" fontWeight="medium">
+            Página {page} de {totalPages}
+          </Text>
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Próxima <IoChevronForward />
+          </Button>
+        </HStack>
+      )}
 
       <DeclineFinishedOrderDialog
         orderId={declineConfirmOrderId}

@@ -260,6 +260,8 @@ export const productFilterSchema = z.object({
   sizes: z.array(productSizeSchema).optional(),
   isActive: z.boolean().optional(),
   search: z.string().optional(),
+  page: z.number().positive().optional(),
+  limitCount: z.number().positive().optional(),
 });
 
 export type Product = z.infer<typeof productSchema>;

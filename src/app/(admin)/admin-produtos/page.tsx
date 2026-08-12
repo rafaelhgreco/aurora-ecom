@@ -6,9 +6,12 @@
 
 "use client";
 
-import { Box, Button, Container, HStack } from "@chakra-ui/react";
+import { Box, Button, Container, HStack, Text } from "@chakra-ui/react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { IoChevronBack, IoChevronForward } from "react-icons/io5";
+import { listProductsAction } from "@/app/actions/products";
 import { DeleteConfirmDialog } from "@/app/components/admin/delete-confirm-dialog";
 import { OrderTable } from "@/app/components/admin/order-table";
 import { ProductList } from "@/app/components/admin/product-list";
@@ -37,8 +40,31 @@ function AdminPageContent() {
     viewParam === "pedidos" ? "pedidos" : "produtos",
   );
 
-  const { products, isLoading, error, loadProducts, deleteProduct } =
-    useProductCRUD();
+  const { deleteProduct } = useProductCRUD();
+
+  const [page, setPage] = useState(1);
+  const limit = 20;
+
+  const {
+    data: result,
+    isLoading: isQueryLoading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin-products", page],
+    queryFn: async () => {
+      const res = await listProductsAction({ page, limitCount: limit });
+      if (!res.success)
+        throw new Error(res.error || "Erro ao carregar produtos");
+      return res.data;
+    },
+    enabled: view === "produtos",
+  });
+
+  const products = result?.data || [];
+  const totalCount = result?.totalCount || 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+  const isLoading = isQueryLoading && view === "produtos";
 
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
   const [deleteProductData, setDeleteProductData] = useState<Product | null>(
@@ -56,21 +82,15 @@ function AdminPageContent() {
   }, [viewParam]);
 
   useEffect(() => {
-    if (isMounted && view === "produtos") {
-      loadProducts();
-    }
-  }, [isMounted, view, loadProducts]);
-
-  useEffect(() => {
-    if (error) {
+    if (queryError) {
       toaster.create({
         title: "Erro",
-        description: error,
+        description: queryError.message || "Erro ao carregar produtos",
         type: "error",
         duration: 5000,
       });
     }
-  }, [error]);
+  }, [queryError]);
 
   const handleView = (product: Product) => setViewProduct(product);
 
@@ -151,8 +171,34 @@ function AdminPageContent() {
             onEdit={handleEdit}
             onDelete={handleDeleteClick}
             onAdd={handleAdd}
-            onInventoryChange={loadProducts}
+            onInventoryChange={() => refetch()}
           />
+
+          {totalPages > 1 && (
+            <HStack justify="center" mt={8} gap={4}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <IoChevronBack /> Anterior
+              </Button>
+
+              <Text fontSize="sm" fontWeight="medium">
+                Página {page} de {totalPages}
+              </Text>
+
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Próxima <IoChevronForward />
+              </Button>
+            </HStack>
+          )}
         </Box>
       )}
 

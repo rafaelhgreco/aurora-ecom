@@ -1,7 +1,8 @@
 "use client";
 
-import { Heading, VStack } from "@chakra-ui/react";
+import { Button, Heading, HStack, Text, VStack } from "@chakra-ui/react";
 import { useCallback, useMemo, useState } from "react";
+import { IoChevronBack, IoChevronForward } from "react-icons/io5";
 import { ProductGrid } from "@/app/components/public/product-grid";
 import { ProductGridSkeleton } from "@/app/components/public/product-grid-skeleton";
 import {
@@ -29,7 +30,13 @@ export default function LojaPage() {
     () => new Set(),
   );
 
-  const { products, loading, error } = useProducts();
+  const [page, setPage] = useState(1);
+  const limit = 20;
+
+  const { products, loading, error, totalPages } = useProducts({
+    page,
+    limitCount: limit,
+  });
 
   const toggleCategory = useCallback((id: ShopCategoryId) => {
     setSelectedIds((prev) => {
@@ -38,10 +45,12 @@ export default function LojaPage() {
       else next.add(id);
       return next;
     });
+    setPage(1);
   }, []);
 
   const clearCategories = useCallback(() => {
     setSelectedIds(new Set());
+    setPage(1);
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -113,6 +122,32 @@ export default function LojaPage() {
                 <ProductGrid products={section.products} embed />
               </VStack>
             ))}
+
+            {totalPages && totalPages > 1 && (
+              <HStack justify="center" mt={8} gap={4}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <IoChevronBack /> Anterior
+                </Button>
+
+                <Text fontSize="sm" fontWeight="medium">
+                  Página {page} de {totalPages}
+                </Text>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Próxima <IoChevronForward />
+                </Button>
+              </HStack>
+            )}
           </VStack>
         )}
       </VStack>

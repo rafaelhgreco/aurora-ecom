@@ -5,7 +5,9 @@ import { productFilterSchema } from "@/core/schemas/product.schema";
 export class ListProductsUseCase {
   constructor(private readonly productRepository: IProductRepository) {}
 
-  async execute(filter?: ProductFilter): Promise<Product[]> {
+  async execute(
+    filter?: ProductFilter,
+  ): Promise<{ data: Product[]; totalCount: number }> {
     if (filter) {
       const validatedFilter = productFilterSchema.parse(filter);
       return this.productRepository.findAll(validatedFilter);

@@ -96,7 +96,9 @@ export class FirestoreProductRepository implements IProductRepository {
     return docSnap.exists;
   }
 
-  async findAll(filters?: ProductFilter): Promise<ProductEntity[]> {
+  async findAll(
+    filters?: ProductFilter,
+  ): Promise<{ data: ProductEntity[]; totalCount: number }> {
     const db = this.requireDb();
 
     let q: Query = db
@@ -118,6 +120,10 @@ export class FirestoreProductRepository implements IProductRepository {
     if (filters?.maxPrice !== undefined) {
       q = q.where("price", "<=", filters.maxPrice);
     }
+
+    // Because we filter client-side for search, sizes, shopCategory, we might have an issue
+    // applying offset and limit here directly on the query.
+    // Let's fetch the relevant docs, then filter, then paginate.
 
     q = q.orderBy("createdAt", "desc");
 
@@ -147,7 +153,15 @@ export class FirestoreProductRepository implements IProductRepository {
       results = results.filter((p) => (p.shopCategory ?? "roupas") === target);
     }
 
-    return results;
+    const totalCount = results.length;
+
+    const limitCount = filters?.limitCount ?? 20;
+    const page = filters?.page ?? 1;
+    const offset = (page - 1) * limitCount;
+
+    const data = results.slice(offset, offset + limitCount);
+
+    return { data, totalCount };
   }
 
   async findById(id: string): Promise<ProductEntity | null> {

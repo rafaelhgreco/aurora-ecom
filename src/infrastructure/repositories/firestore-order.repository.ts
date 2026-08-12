@@ -44,16 +44,35 @@ export async function createOrder(
   };
 }
 
-export async function listOrders(): Promise<Order[]> {
+export async function listOrders(options?: {
+  limitCount?: number;
+  page?: number;
+  status?: OrderStatus;
+}): Promise<{ data: Order[]; totalCount: number }> {
   const db = getAdminDb();
-  if (!db) return [];
+  if (!db) return { data: [], totalCount: 0 };
 
-  const snapshot = await db
-    .collection(COLLECTION)
-    .orderBy("createdAt", "desc")
-    .get();
+  const { limitCount = 20, page = 1, status } = options || {};
 
-  return snapshot.docs.map((doc) => {
+  let query: FirebaseFirestore.Query = db.collection(COLLECTION);
+
+  if (status) {
+    query = query.where("status", "==", status);
+  }
+
+  const countSnapshot = await query.count().get();
+  const totalCount = countSnapshot.data().count;
+
+  query = query.orderBy("createdAt", "desc");
+
+  const offset = (page - 1) * limitCount;
+  if (offset > 0) {
+    query = query.offset(offset);
+  }
+
+  const snapshot = await query.limit(limitCount).get();
+
+  const data = snapshot.docs.map((doc) => {
     const d = doc.data();
     return {
       id: doc.id,
@@ -64,6 +83,8 @@ export async function listOrders(): Promise<Order[]> {
       updatedAt: toDate(d.updatedAt),
     };
   });
+
+  return { data, totalCount };
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {

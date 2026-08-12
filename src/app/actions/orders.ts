@@ -28,13 +28,17 @@ export type OrderActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
-export async function listOrdersAction(): Promise<OrderActionResult<Order[]>> {
+export async function listOrdersAction(options?: {
+  limitCount?: number;
+  page?: number;
+  status?: OrderStatus;
+}): Promise<OrderActionResult<{ data: Order[]; totalCount: number }>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
   try {
-    const orders = await listOrders();
-    return { success: true, data: orders };
+    const result = await listOrders(options);
+    return { success: true, data: result };
   } catch (error) {
     const { message } = handleActionError("listOrdersAction", error, "admin");
     return { success: false, error: message };
@@ -45,28 +49,33 @@ export async function listOrdersAction(): Promise<OrderActionResult<Order[]>> {
  * Lista pedidos enriquecidos com estoque atual de cada item.
  * Permite ao admin ver se há estoque suficiente antes de finalizar.
  */
-export async function listOrdersWithStockAction(): Promise<
-  OrderActionResult<OrderWithStock[]>
-> {
+export async function listOrdersWithStockAction(options?: {
+  limitCount?: number;
+  page?: number;
+  status?: OrderStatus;
+}): Promise<OrderActionResult<{ data: OrderWithStock[]; totalCount: number }>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
   try {
-    const orders = await listOrders();
+    const { data: orders, totalCount } = await listOrders(options);
     const enriched: OrderWithStock[] = [];
 
     const db = getAdminDb();
     if (!db) {
       return {
         success: true,
-        data: orders.map((o) => ({
-          ...o,
-          items: o.items.map((i) => ({
-            ...i,
-            currentStock: 0,
-            sufficient: false,
+        data: {
+          data: orders.map((o) => ({
+            ...o,
+            items: o.items.map((i) => ({
+              ...i,
+              currentStock: 0,
+              sufficient: false,
+            })),
           })),
-        })),
+          totalCount,
+        },
       };
     }
 
@@ -123,7 +132,7 @@ export async function listOrdersWithStockAction(): Promise<
       });
     }
 
-    return { success: true, data: enriched };
+    return { success: true, data: { data: enriched, totalCount } };
   } catch (error) {
     const { message } = handleActionError(
       "listOrdersWithStockAction",
