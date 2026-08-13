@@ -33,7 +33,7 @@ export function useProductCRUD() {
     try {
       const result = await listProductsAction();
       if (result.success && result.data) {
-        setProducts(result.data);
+        setProducts(result.data.data);
       } else {
         setError(!result.success ? result.error : "Erro ao carregar produtos");
       }

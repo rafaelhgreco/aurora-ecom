@@ -90,7 +90,9 @@ export class InMemoryProductRepository implements IProductRepository {
     },
   ];
 
-  async findAll(filter?: ProductFilter): Promise<Product[]> {
+  async findAll(
+    filter?: ProductFilter,
+  ): Promise<{ data: Product[]; totalCount: number }> {
     let filtered = [...this.products];
 
     if (filter) {
@@ -135,7 +137,16 @@ export class InMemoryProductRepository implements IProductRepository {
       }
     }
 
-    return filtered;
+    const totalCount = filtered.length;
+
+    if (filter) {
+      const limit = filter.limitCount ?? 20;
+      const page = filter.page ?? 1;
+      const offset = (page - 1) * limit;
+      filtered = filtered.slice(offset, offset + limit);
+    }
+
+    return { data: filtered, totalCount };
   }
 
   async findById(id: string): Promise<Product | null> {
