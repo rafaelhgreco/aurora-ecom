@@ -1,8 +1,12 @@
+"use client";
+
+import { ProductBasicDataCard } from "./product-form/product-basic-data-card";
+import { ProductPriceStockCard } from "./product-form/product-price-stock-card";
+import { ProductSizesCard } from "./product-form/product-sizes-card";
+
 /**
  * Formulário de edição de produto (Firestore) — alinhado a schemas e use case de update.
  */
-
-"use client";
 
 import {
   Badge,
@@ -17,9 +21,7 @@ import {
   IconButton,
   Image,
   Input,
-  Stack,
   Text,
-  Textarea,
   VStack,
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,15 +39,10 @@ import {
 import { updateProductAction } from "@/app/actions/products";
 import type { Product } from "@/app/types/product";
 import { Alert } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import { toaster } from "@/components/ui/toaster";
-import {
-  SHOP_CATEGORY_IDS,
-  SHOP_CATEGORY_LABELS,
-  type ShopCategoryId,
-} from "@/core/catalog/shop-catalog";
+import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import type { ProductColorVariant } from "@/core/schemas/product.schema";
 import {
   inferSizePresetFromSizes,
@@ -767,227 +764,28 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
               </Card.Body>
             </Card.Root>
 
-            <Card.Root>
-              <Card.Header>
-                <Heading size="lg">Dados básicos</Heading>
-              </Card.Header>
-              <Card.Body>
-                <Stack gap={4}>
-                  <Field
-                    label="Título *"
-                    invalid={!!errors.title}
-                    errorText={errors.title?.message}
-                  >
-                    <Input {...register("title")} />
-                  </Field>
-                  <Field
-                    label="Subtítulo"
-                    invalid={!!errors.subtitle}
-                    errorText={errors.subtitle?.message}
-                  >
-                    <Input {...register("subtitle")} />
-                  </Field>
-                  <Field
-                    label="Descrição *"
-                    invalid={!!errors.description}
-                    errorText={errors.description?.message}
-                  >
-                    <Textarea {...register("description")} rows={4} />
-                  </Field>
-                  <Field
-                    label="Categoria"
-                    invalid={!!errors.category}
-                    errorText={errors.category?.message}
-                  >
-                    <Input
-                      {...register("category")}
-                      placeholder="Ex: camisetas"
-                    />
-                  </Field>
-                  <Field
-                    label="Seção do catálogo (loja)"
-                    helperText="Define em qual página /loja/... o produto aparece."
-                    invalid={!!errors.shopCategory}
-                    errorText={errors.shopCategory?.message}
-                  >
-                    <Box
-                      as="select"
-                      borderWidth="1px"
-                      borderRadius="md"
-                      px={3}
-                      py={2}
-                      w="full"
-                      bg="white"
-                      {...register("shopCategory")}
-                    >
-                      {SHOP_CATEGORY_IDS.map((id) => (
-                        <option key={id} value={id}>
-                          {SHOP_CATEGORY_LABELS[id]}
-                        </option>
-                      ))}
-                    </Box>
-                  </Field>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
+            <ProductBasicDataCard register={register} errors={errors} isEdit />
 
-            <Card.Root>
-              <Card.Header>
-                <Heading size="lg">Preço e estoque</Heading>
-              </Card.Header>
-              <Card.Body>
-                <Stack gap={4}>
-                  <Field
-                    label="Preço (R$) *"
-                    invalid={!!errors.price}
-                    errorText={errors.price?.message}
-                  >
-                    <Input
-                      {...register("price", { valueAsNumber: true })}
-                      type="number"
-                      step="0.01"
-                    />
-                  </Field>
-                  {selectedSizes.length === 0 ? (
-                    <Field
-                      label="Estoque *"
-                      invalid={!!errors.stock}
-                      errorText={errors.stock?.message}
-                    >
-                      <Input
-                        {...register("stock", { valueAsNumber: true })}
-                        type="number"
-                      />
-                    </Field>
-                  ) : (
-                    <Text fontSize="sm" color="gray.600">
-                      Com tamanhos ativos, o estoque é definido por cor na seção
-                      &quot;Cores e fotos&quot; (cada cor com quantidades por
-                      tamanho).
-                    </Text>
-                  )}
-                </Stack>
-              </Card.Body>
-            </Card.Root>
+            <ProductPriceStockCard
+              register={register}
+              errors={errors}
+              isEdit
+              selectedSizesLength={selectedSizes.length}
+            />
 
-            <Card.Root>
-              <Card.Header>
-                <Heading size="lg">Tamanhos / variações *</Heading>
-                <Text color="gray.600" fontSize="sm" mt={1}>
-                  Escolha roupas, volumes (ml) ou rótulos personalizados.
-                </Text>
-              </Card.Header>
-              <Card.Body>
-                <Text fontWeight="medium" mb={2}>
-                  Tipo de variação
-                </Text>
-                <HStack flexWrap="wrap" gap={2} mb={3}>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={sizePreset === "clothing" ? "solid" : "outline"}
-                    onClick={() => applySizePreset("clothing")}
-                  >
-                    Roupas (PP…XG)
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={sizePreset === "volume" ? "solid" : "outline"}
-                    onClick={() => applySizePreset("volume")}
-                  >
-                    Volumes (ml)
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={sizePreset === "custom" ? "solid" : "outline"}
-                    onClick={() => applySizePreset("custom")}
-                  >
-                    Personalizado
-                  </Button>
-                </HStack>
-                <Text fontSize="sm" color="gray.600" mb={3}>
-                  {sizePreset === "clothing" &&
-                    "Tamanhos de vestuário oferecidos por este produto."}
-                  {sizePreset === "volume" &&
-                    "Capacidades em mililitros (cosméticos, líquidos, etc.)."}
-                  {sizePreset === "custom" &&
-                    "Rótulos livres (ex.: 30ml, Único)."}
-                </Text>
-                {sizePreset !== "custom" ? (
-                  <Flex gap={4} wrap="wrap">
-                    {presetOptions.map((size) => (
-                      <Checkbox
-                        key={size}
-                        checked={selectedSizes.includes(size)}
-                        onCheckedChange={() => handleToggleSize(size)}
-                      >
-                        {size}
-                      </Checkbox>
-                    ))}
-                  </Flex>
-                ) : (
-                  <Stack gap={3}>
-                    <HStack flexWrap="wrap" gap={2}>
-                      <Input
-                        maxLength={32}
-                        placeholder='Ex.: 30ml, "Único"'
-                        value={customSizeDraft}
-                        onChange={(e) => setCustomSizeDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddCustomSize();
-                          }
-                        }}
-                        maxW="280px"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleAddCustomSize}
-                      >
-                        Adicionar
-                      </Button>
-                    </HStack>
-                    {selectedSizes.length > 0 ? (
-                      <Flex flexWrap="wrap" gap={2}>
-                        {selectedSizes.map((s) => (
-                          <HStack
-                            key={s}
-                            bg="gray.100"
-                            borderRadius="md"
-                            px={2}
-                            py={1}
-                            gap={1}
-                          >
-                            <Text fontSize="sm">{s}</Text>
-                            <IconButton
-                              aria-label={`Remover ${s}`}
-                              size="2xs"
-                              variant="ghost"
-                              onClick={() => handleRemoveCustomSize(s)}
-                            >
-                              <IoClose />
-                            </IconButton>
-                          </HStack>
-                        ))}
-                      </Flex>
-                    ) : (
-                      <Text fontSize="sm" color="gray.500">
-                        Adicione pelo menos uma variação.
-                      </Text>
-                    )}
-                  </Stack>
-                )}
-                {errors.sizes && (
-                  <Text color="red.500" fontSize="sm" mt={2}>
-                    {errors.sizes.message}
-                  </Text>
-                )}
-              </Card.Body>
-            </Card.Root>
+            <ProductSizesCard
+              sizePreset={sizePreset}
+              applySizePreset={applySizePreset}
+              presetOptions={presetOptions}
+              selectedSizes={selectedSizes}
+              handleToggleSize={handleToggleSize}
+              customSizeDraft={customSizeDraft}
+              setCustomSizeDraft={setCustomSizeDraft}
+              handleAddCustomSize={handleAddCustomSize}
+              handleRemoveCustomSize={handleRemoveCustomSize}
+              errors={errors}
+              isEdit
+            />
 
             <HStack justify="flex-end" gap={4}>
               <Button
