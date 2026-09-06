@@ -14,10 +14,23 @@ const productRepository = new FirestoreProductRepository();
 export async function scanBarcodeAction(
   barcode: string,
 ): Promise<ActionResult<{ product: Product; created: boolean }>> {
+  console.log("[scanBarcodeAction] chamada recebida com barcode:", barcode);
   try {
-    await requireAdminSession();
+    const auth = await requireAdminSession();
+    console.log("[scanBarcodeAction] auth result:", auth);
 
-    if (!isAdminStockScanEnabled()) {
+    if ("error" in auth) {
+      console.warn("[scanBarcodeAction] sessão inválida:", auth.error);
+      return { success: false, error: auth.error };
+    }
+
+    const flagEnabled = isAdminStockScanEnabled();
+    console.log("[scanBarcodeAction] isAdminStockScanEnabled:", flagEnabled);
+
+    if (!flagEnabled) {
+      console.warn(
+        "[scanBarcodeAction] feature flag FEATURE_ADMIN_STOCK_SCAN desabilitada — verifique o .env",
+      );
       return {
         success: false,
         error: "Recurso de bipagem não disponível",
@@ -25,7 +38,9 @@ export async function scanBarcodeAction(
     }
 
     const useCase = new ScanBarcodeUseCase(productRepository);
+    console.log("[scanBarcodeAction] executando use case...");
     const result = await useCase.execute({ barcode } as ScanBarcodeInput);
+    console.log("[scanBarcodeAction] use case retornou:", result);
 
     return {
       success: true,
@@ -35,11 +50,13 @@ export async function scanBarcodeAction(
       },
     };
   } catch (error) {
+    console.error("[scanBarcodeAction] erro capturado:", error);
     const { message, details } = handleActionError(
       "scanBarcodeAction",
       error,
       "admin",
     );
+    console.error("[scanBarcodeAction] mensagem tratada:", message, details);
     return {
       success: false,
       error: message,

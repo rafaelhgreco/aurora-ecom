@@ -267,36 +267,73 @@ export class FirestoreProductRepository implements IProductRepository {
     barcode: string,
     draftFactory: () => Omit<ProductEntity, "id" | "createdAt" | "updatedAt">,
   ): Promise<{ product: ProductEntity; created: boolean }> {
+    console.log(
+      "[FirestoreProductRepository] createOrIncrementByBarcode chamado para barcode:",
+      barcode,
+    );
     const db = this.requireDb();
     const docRef = db.collection(this.collectionName).doc(barcode);
 
     try {
       const draft = draftFactory();
+      console.log("[FirestoreProductRepository] draft gerado:", draft);
+
       const docData = this.entityToDoc({
         ...draft,
         id: barcode,
         barcode,
       } as ProductEntity);
+      console.log(
+        "[FirestoreProductRepository] docData a ser criado:",
+        docData,
+      );
 
       await docRef.create(docData);
+      console.log(
+        "[FirestoreProductRepository] docRef.create() executado com sucesso para:",
+        barcode,
+      );
 
-      return {
-        product: await this.findByBarcode(barcode),
-        created: true,
-      } as { product: ProductEntity; created: boolean };
+      const created = await this.findByBarcode(barcode);
+      console.log(
+        "[FirestoreProductRepository] produto recém-criado buscado:",
+        created,
+      );
+
+      if (!created) {
+        throw new InternalError("product_not_found_after_create");
+      }
+
+      return { product: created, created: true };
     } catch (error) {
-      if (
-        error &&
-        typeof error === "object" &&
-        "code" in error &&
-        error.code === 6
-      ) {
+      console.error(
+        "[FirestoreProductRepository] erro capturado no create():",
+        error,
+      );
+      const errorCode =
+        error && typeof error === "object" && "code" in error
+          ? (error as { code: unknown }).code
+          : undefined;
+      console.log(
+        "[FirestoreProductRepository] error.code:",
+        errorCode,
+        "(6 = ALREADY_EXISTS esperado)",
+      );
+
+      if (errorCode === 6) {
+        console.log(
+          "[FirestoreProductRepository] barcode já existe, incrementando stock...",
+        );
         await docRef.update({
           stock: FieldValue.increment(1),
           updatedAt: Timestamp.now(),
         });
 
         const updated = await this.findByBarcode(barcode);
+        console.log(
+          "[FirestoreProductRepository] produto após incremento:",
+          updated,
+        );
         if (!updated) {
           throw new InternalError("product_not_found_after_increment");
         }
@@ -304,6 +341,10 @@ export class FirestoreProductRepository implements IProductRepository {
         return { product: updated, created: false };
       }
 
+      console.error(
+        "[FirestoreProductRepository] erro não tratado, relançando:",
+        error,
+      );
       throw error;
     }
   }

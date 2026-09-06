@@ -14,11 +14,14 @@ export class ScanBarcodeUseCase {
   constructor(private readonly productRepository: IProductRepository) {}
 
   async execute(input: ScanBarcodeInput): Promise<ScanBarcodeResult> {
+    console.log("[ScanBarcodeUseCase] execute chamado com input:", input);
     let validated: ScanBarcodeInput;
 
     try {
       validated = scanBarcodeSchema.parse(input);
+      console.log("[ScanBarcodeUseCase] validação OK:", validated);
     } catch (error) {
+      console.error("[ScanBarcodeUseCase] erro de validação:", error);
       if (error instanceof Error) {
         throw new ValidationError(error.message, [
           { field: "barcode", message: error.message },
@@ -29,16 +32,34 @@ export class ScanBarcodeUseCase {
 
     const { barcode } = validated;
 
-    return this.productRepository.createOrIncrementByBarcode(barcode, () => ({
-      title: `Produto sem nome (${barcode})`,
-      description: DRAFT_PLACEHOLDER_DESCRIPTION,
-      price: 0,
-      imageUrl: DRAFT_PLACEHOLDER_IMAGE_URL,
-      images: [DRAFT_PLACEHOLDER_IMAGE_URL],
+    console.log(
+      "[ScanBarcodeUseCase] chamando repository.createOrIncrementByBarcode para barcode:",
       barcode,
-      stock: 1,
-      status: "DRAFT",
-      isActive: true,
-    }));
+    );
+
+    try {
+      const result = await this.productRepository.createOrIncrementByBarcode(
+        barcode,
+        () => ({
+          title: `Produto sem nome (${barcode})`,
+          description: DRAFT_PLACEHOLDER_DESCRIPTION,
+          price: 0.01,
+          imageUrl: DRAFT_PLACEHOLDER_IMAGE_URL,
+          images: [DRAFT_PLACEHOLDER_IMAGE_URL],
+          barcode,
+          stock: 1,
+          status: "DRAFT",
+          isActive: true,
+        }),
+      );
+      console.log("[ScanBarcodeUseCase] repository retornou:", result);
+      return result;
+    } catch (error) {
+      console.error(
+        "[ScanBarcodeUseCase] erro no repository.createOrIncrementByBarcode:",
+        error,
+      );
+      throw error;
+    }
   }
 }

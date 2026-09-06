@@ -24,9 +24,17 @@ export function BarcodeScanner() {
     stock: number;
   } | null>(null);
 
+  const handleBarcodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onlyDigits = e.target.value.replace(/\D/g, "");
+    setBarcode(onlyDigits);
+  };
+
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[BarcodeScanner] handleScan iniciado", { barcode });
+
     if (!barcode.trim()) {
+      console.log("[BarcodeScanner] código vazio, abortando");
       toaster.create({
         title: "Código vazio",
         description: "Digite um código de barras",
@@ -37,10 +45,16 @@ export function BarcodeScanner() {
 
     setIsScanning(true);
     try {
+      console.log(
+        "[BarcodeScanner] chamando scanBarcodeAction com",
+        barcode.trim(),
+      );
       const result = await scanBarcodeAction(barcode.trim());
+      console.log("[BarcodeScanner] resultado recebido:", result);
 
       if (result.success) {
         const { product, created } = result.data;
+        console.log("[BarcodeScanner] sucesso", { product, created });
         setLastResult({
           barcode: product.barcode || barcode,
           created,
@@ -58,6 +72,11 @@ export function BarcodeScanner() {
 
         setBarcode("");
       } else {
+        console.error(
+          "[BarcodeScanner] erro retornado pela action:",
+          result.error,
+          result.details,
+        );
         toaster.create({
           title: "Erro ao escanear",
           description: result.error,
@@ -65,6 +84,7 @@ export function BarcodeScanner() {
         });
       }
     } catch (error) {
+      console.error("[BarcodeScanner] exceção capturada:", error);
       toaster.create({
         title: "Erro",
         description:
@@ -96,9 +116,12 @@ export function BarcodeScanner() {
               <Input
                 placeholder="Digite o código de barras..."
                 value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
+                onChange={handleBarcodeChange}
                 disabled={isScanning}
                 autoFocus
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
               />
               <Button
                 type="submit"
