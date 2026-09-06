@@ -36,6 +36,7 @@ export default function LojaPage() {
   const { products, loading, error, totalPages } = useProducts({
     page,
     limitCount: limit,
+    status: "ACTIVE",
   });
 
   const toggleCategory = useCallback((id: ShopCategoryId) => {

@@ -180,7 +180,7 @@ export default function ProdutoPage({
     return <LoadingState />;
   }
 
-  if (error || !product) {
+  if (error || !product || product.status !== "ACTIVE") {
     return (
       <ErrorState
         title="Produto não encontrado"

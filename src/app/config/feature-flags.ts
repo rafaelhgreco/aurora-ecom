@@ -15,6 +15,11 @@ export function isAdminSoftDeactivateEnabled(): boolean {
   return truthy(process.env.FEATURE_ADMIN_SOFT_DEACTIVATE);
 }
 
+/** Bipagem rápida de produtos (cria DRAFT ou incrementa stock) */
+export function isAdminStockScanEnabled(): boolean {
+  return truthy(process.env.FEATURE_ADMIN_STOCK_SCAN);
+}
+
 /** Espelho para o cliente (mostrar botões). Deve acompanhar FEATURE_* no deploy. */
 export const adminFeatureFlagsClient = {
   stockTools: truthy(process.env.NEXT_PUBLIC_FEATURE_ADMIN_STOCK_TOOLS),

@@ -20,7 +20,9 @@ export class ScanBarcodeUseCase {
       validated = scanBarcodeSchema.parse(input);
     } catch (error) {
       if (error instanceof Error) {
-        throw new ValidationError(error.message);
+        throw new ValidationError(error.message, [
+          { field: "barcode", message: error.message },
+        ]);
       }
       throw error;
     }

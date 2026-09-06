@@ -9,37 +9,23 @@ import type {
   CreateProductInput,
   Product,
   ProductFilter,
+  PublishProductInput,
   UpdateProductInput,
 } from "@/core/schemas/product.schema";
 import { CreateProductUseCase } from "@/core/use-cases/create-product.use-case";
 import { DeleteProductUseCase } from "@/core/use-cases/delete-product.use-case";
 import { GetProductByIdUseCase } from "@/core/use-cases/get-product-by-id.use-case";
 import { ListProductsUseCase } from "@/core/use-cases/list-products.use-case";
+import { PublishProductUseCase } from "@/core/use-cases/publish-product.use-case";
 import { UpdateProductUseCase } from "@/core/use-cases/update-product.use-case";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
+import type { ActionResult } from "@/shared/action-result";
 import { handleActionError } from "@/shared/errors/action-error";
+import { serializeProductForClient } from "@/shared/serialize-product";
 
 const productRepository = new FirestoreProductRepository();
 
-function serializeProductForClient(p: Product): Product {
-  return {
-    ...p,
-    createdAt: p.createdAt
-      ? new Date(p.createdAt as Date | string).toISOString()
-      : undefined,
-    updatedAt: p.updatedAt
-      ? new Date(p.updatedAt as Date | string).toISOString()
-      : undefined,
-  } as Product;
-}
-
-export type ActionResult<T> =
-  | { success: true; data: T }
-  | {
-      success: false;
-      error: string;
-      details?: Array<{ field: string; message: string }>;
-    };
+export type { ActionResult };
 
 export async function listProductsAction(
   filter?: ProductFilter,
@@ -271,6 +257,29 @@ export async function setProductActiveFlagAction(
   } catch (error) {
     const { message, details } = handleActionError(
       "setProductActiveFlagAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message, ...(details && { details }) };
+  }
+}
+
+export async function publishProductAction(
+  input: PublishProductInput,
+): Promise<ActionResult<Product>> {
+  try {
+    await requireAdminSession();
+
+    const useCase = new PublishProductUseCase(productRepository);
+    const product = await useCase.execute(input);
+
+    return {
+      success: true,
+      data: serializeProductForClient(product as Product),
+    };
+  } catch (error) {
+    const { message, details } = handleActionError(
+      "publishProductAction",
       error,
       "admin",
     );

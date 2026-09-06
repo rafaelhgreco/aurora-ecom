@@ -29,6 +29,7 @@ export default function LojaCategoryPage() {
     shopCategory: catalog.shopCategory,
     page,
     limitCount: 12,
+    status: "ACTIVE",
   });
 
   const sortedProducts = useMemo(
