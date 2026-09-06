@@ -7,9 +7,16 @@ export interface IProductRepository {
 
   findById(id: string): Promise<Product | null>;
 
+  findByBarcode(barcode: string): Promise<Product | null>;
+
   create(
     product: Omit<Product, "id" | "createdAt" | "updatedAt">,
   ): Promise<Product>;
+
+  createOrIncrementByBarcode(
+    barcode: string,
+    draftFactory: () => Omit<Product, "id" | "createdAt" | "updatedAt">,
+  ): Promise<{ product: Product; created: boolean }>;
 
   update(id: string, product: Partial<Product>): Promise<Product>;
 

@@ -413,6 +413,7 @@ export default function NovoProductPage() {
         sizes,
         colors: colorVariants.map((v) => v.color),
         isActive: data.isActive ?? true,
+        status: "ACTIVE",
       };
 
       const result = await createProduct(productData);

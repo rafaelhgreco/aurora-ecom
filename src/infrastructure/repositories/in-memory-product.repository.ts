@@ -2,93 +2,103 @@ import { randomUUID } from "crypto";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
 
+const DEFAULT_SEED_PRODUCTS: Product[] = [
+  {
+    id: "1",
+    title: "Camiseta Básica Branca",
+    subtitle: "Algodão Premium",
+    description:
+      "Camiseta básica confeccionada em algodão 100% premium. Modelagem regular fit que proporciona conforto durante todo o dia. Perfeita para compor looks casuais.",
+    price: 89.9,
+    imageUrl:
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop",
+    ],
+    category: "Camisetas",
+    shopCategory: "roupas",
+    stock: 50,
+    sizes: ["P", "M", "G", "GG"],
+    colors: ["Branco"],
+    isActive: true,
+    status: "ACTIVE",
+    createdAt: new Date("2024-01-15"),
+    updatedAt: new Date("2024-01-15"),
+  },
+  {
+    id: "2",
+    title: "Camiseta Preta Estampada",
+    subtitle: "Coleção Verão",
+    description:
+      "Camiseta estampada da coleção verão. Design exclusivo e moderno. Tecido leve e respirável, ideal para dias quentes.",
+    price: 119.9,
+    imageUrl:
+      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop",
+    ],
+    category: "Camisetas",
+    shopCategory: "roupas",
+    stock: 30,
+    sizes: ["P", "M", "G"],
+    colors: ["Preto"],
+    isActive: true,
+    status: "ACTIVE",
+    createdAt: new Date("2024-01-20"),
+    updatedAt: new Date("2024-01-20"),
+  },
+  {
+    id: "3",
+    title: "Camiseta Cinza Mescla",
+    subtitle: "Algodão Premium",
+    description:
+      "Camiseta em malha mescla de alta qualidade. Acabamento impecável e durabilidade garantida. Modelagem confortável.",
+    price: 89.9,
+    imageUrl:
+      "https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=800&auto=format&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=800&auto=format&fit=crop",
+    ],
+    category: "Camisetas",
+    shopCategory: "roupas",
+    stock: 45,
+    sizes: ["PP", "P", "M", "G", "GG"],
+    colors: ["Cinza"],
+    isActive: true,
+    status: "ACTIVE",
+    createdAt: new Date("2024-01-25"),
+    updatedAt: new Date("2024-01-25"),
+  },
+  {
+    id: "4",
+    title: "Camiseta Listrada",
+    subtitle: "Edição Limitada",
+    description:
+      "Camiseta com listras em edição limitada. Design atemporal e versátil. Perfeita para qualquer ocasião casual.",
+    price: 149.9,
+    imageUrl:
+      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=800&auto=format&fit=crop",
+    images: [
+      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=800&auto=format&fit=crop",
+    ],
+    category: "Camisetas",
+    shopCategory: "roupas",
+    stock: 15,
+    sizes: ["M", "G"],
+    colors: ["Branco", "Azul"],
+    isActive: true,
+    status: "ACTIVE",
+    createdAt: new Date("2024-02-01"),
+    updatedAt: new Date("2024-02-01"),
+  },
+];
+
 export class InMemoryProductRepository implements IProductRepository {
-  private products: Product[] = [
-    {
-      id: "1",
-      title: "Camiseta Básica Branca",
-      subtitle: "Algodão Premium",
-      description:
-        "Camiseta básica confeccionada em algodão 100% premium. Modelagem regular fit que proporciona conforto durante todo o dia. Perfeita para compor looks casuais.",
-      price: 89.9,
-      imageUrl:
-        "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop",
-      images: [
-        "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop",
-      ],
-      category: "Camisetas",
-      shopCategory: "roupas",
-      stock: 50,
-      sizes: ["P", "M", "G", "GG"],
-      colors: ["Branco"],
-      isActive: true,
-      createdAt: new Date("2024-01-15"),
-      updatedAt: new Date("2024-01-15"),
-    },
-    {
-      id: "2",
-      title: "Camiseta Preta Estampada",
-      subtitle: "Coleção Verão",
-      description:
-        "Camiseta estampada da coleção verão. Design exclusivo e moderno. Tecido leve e respirável, ideal para dias quentes.",
-      price: 119.9,
-      imageUrl:
-        "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop",
-      images: [
-        "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop",
-      ],
-      category: "Camisetas",
-      shopCategory: "roupas",
-      stock: 30,
-      sizes: ["P", "M", "G"],
-      colors: ["Preto"],
-      isActive: true,
-      createdAt: new Date("2024-01-20"),
-      updatedAt: new Date("2024-01-20"),
-    },
-    {
-      id: "3",
-      title: "Camiseta Cinza Mescla",
-      subtitle: "Algodão Premium",
-      description:
-        "Camiseta em malha mescla de alta qualidade. Acabamento impecável e durabilidade garantida. Modelagem confortável.",
-      price: 89.9,
-      imageUrl:
-        "https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=800&auto=format&fit=crop",
-      images: [
-        "https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=800&auto=format&fit=crop",
-      ],
-      category: "Camisetas",
-      shopCategory: "roupas",
-      stock: 45,
-      sizes: ["PP", "P", "M", "G", "GG"],
-      colors: ["Cinza"],
-      isActive: true,
-      createdAt: new Date("2024-01-25"),
-      updatedAt: new Date("2024-01-25"),
-    },
-    {
-      id: "4",
-      title: "Camiseta Listrada",
-      subtitle: "Edição Limitada",
-      description:
-        "Camiseta com listras em edição limitada. Design atemporal e versátil. Perfeita para qualquer ocasião casual.",
-      price: 149.9,
-      imageUrl:
-        "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=800&auto=format&fit=crop",
-      images: [
-        "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=800&auto=format&fit=crop",
-      ],
-      category: "Camisetas",
-      shopCategory: "roupas",
-      stock: 15,
-      sizes: ["M", "G"],
-      colors: ["Branco", "Azul"],
-      isActive: true,
-      createdAt: new Date("2024-02-01"),
-      updatedAt: new Date("2024-02-01"),
-    },
-  ];
+  private products: Product[];
+
+  constructor(seed: Product[] = DEFAULT_SEED_PRODUCTS) {
+    this.products = [...seed];
+  }
 
   async findAll(
     filter?: ProductFilter,
@@ -112,6 +122,10 @@ export class InMemoryProductRepository implements IProductRepository {
 
       if (filter.isActive !== undefined) {
         filtered = filtered.filter((p) => p.isActive === filter.isActive);
+      }
+
+      if (filter.status !== undefined) {
+        filtered = filtered.filter((p) => p.status === filter.status);
       }
 
       if (filter.search) {
@@ -153,6 +167,10 @@ export class InMemoryProductRepository implements IProductRepository {
     return this.products.find((p) => p.id === id) || null;
   }
 
+  async findByBarcode(barcode: string): Promise<Product | null> {
+    return this.products.find((p) => p.barcode === barcode) || null;
+  }
+
   async create(
     product: Omit<Product, "id" | "createdAt" | "updatedAt">,
   ): Promise<Product> {
@@ -165,6 +183,31 @@ export class InMemoryProductRepository implements IProductRepository {
 
     this.products.push(newProduct);
     return newProduct;
+  }
+
+  async createOrIncrementByBarcode(
+    barcode: string,
+    draftFactory: () => Omit<Product, "id" | "createdAt" | "updatedAt">,
+  ): Promise<{ product: Product; created: boolean }> {
+    const existing = this.products.find((p) => p.barcode === barcode);
+
+    if (existing) {
+      existing.stock += 1;
+      existing.updatedAt = new Date();
+      return { product: existing, created: false };
+    }
+
+    const draft = draftFactory();
+    const newProduct: Product = {
+      ...draft,
+      id: barcode,
+      barcode,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    this.products.push(newProduct);
+    return { product: newProduct, created: true };
   }
 
   async update(id: string, updates: Partial<Product>): Promise<Product> {

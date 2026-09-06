@@ -1,4 +1,4 @@
-import { type Query, Timestamp } from "firebase-admin/firestore";
+import { FieldValue, type Query, Timestamp } from "firebase-admin/firestore";
 import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import { ProductEntity } from "@/core/entities/product.entity";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
@@ -37,6 +37,7 @@ export class FirestoreProductRepository implements IProductRepository {
 
     return new ProductEntity({
       id,
+      barcode: data.barcode as string | undefined,
       title: data.title as string,
       subtitle: data.subtitle as string | undefined,
       description: data.description as string,
@@ -55,6 +56,7 @@ export class FirestoreProductRepository implements IProductRepository {
       colors: data.colors as string[] | undefined,
       colorVariants: data.colorVariants as Product["colorVariants"],
       isActive: (data.isActive as boolean) ?? true,
+      status: (data.status as "DRAFT" | "ACTIVE") ?? "ACTIVE",
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
       deletedAt: data.deletedAt ? toDate(data.deletedAt) : null,
@@ -66,6 +68,7 @@ export class FirestoreProductRepository implements IProductRepository {
    */
   private entityToDoc(entity: ProductEntity): Record<string, unknown> {
     return {
+      barcode: entity.barcode,
       title: entity.title,
       subtitle: entity.subtitle,
       description: entity.description,
@@ -80,6 +83,7 @@ export class FirestoreProductRepository implements IProductRepository {
       colors: entity.colors,
       colorVariants: entity.colorVariants,
       isActive: entity.isActive,
+      status: entity.status,
       createdAt: entity.createdAt
         ? Timestamp.fromDate(entity.createdAt)
         : Timestamp.now(),
@@ -111,6 +115,10 @@ export class FirestoreProductRepository implements IProductRepository {
 
     if (filters?.isActive !== undefined) {
       q = q.where("isActive", "==", filters.isActive);
+    }
+
+    if (filters?.status !== undefined) {
+      q = q.where("status", "==", filters.status);
     }
 
     if (filters?.minPrice !== undefined) {
@@ -221,6 +229,7 @@ export class FirestoreProductRepository implements IProductRepository {
     if (product.shopCategory !== undefined)
       updateData.shopCategory = product.shopCategory;
     if (product.isActive !== undefined) updateData.isActive = product.isActive;
+    if (product.status !== undefined) updateData.status = product.status;
 
     await docRef.update(updateData);
 
@@ -235,6 +244,68 @@ export class FirestoreProductRepository implements IProductRepository {
   async delete(id: string): Promise<void> {
     const db = this.requireDb();
     await db.collection(this.collectionName).doc(id).delete();
+  }
+
+  async findByBarcode(barcode: string): Promise<ProductEntity | null> {
+    const db = this.requireDb();
+    const docSnap = await db.collection(this.collectionName).doc(barcode).get();
+
+    if (!docSnap.exists) {
+      return null;
+    }
+
+    const data = docSnap.data() as Record<string, unknown>;
+
+    if (data.deletedAt) {
+      return null;
+    }
+
+    return this.docToEntity(docSnap.id, data);
+  }
+
+  async createOrIncrementByBarcode(
+    barcode: string,
+    draftFactory: () => Omit<ProductEntity, "id" | "createdAt" | "updatedAt">,
+  ): Promise<{ product: ProductEntity; created: boolean }> {
+    const db = this.requireDb();
+    const docRef = db.collection(this.collectionName).doc(barcode);
+
+    try {
+      const draft = draftFactory();
+      const docData = this.entityToDoc({
+        ...draft,
+        id: barcode,
+        barcode,
+      } as ProductEntity);
+
+      await docRef.create(docData);
+
+      return {
+        product: await this.findByBarcode(barcode),
+        created: true,
+      } as { product: ProductEntity; created: boolean };
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === 6
+      ) {
+        await docRef.update({
+          stock: FieldValue.increment(1),
+          updatedAt: Timestamp.now(),
+        });
+
+        const updated = await this.findByBarcode(barcode);
+        if (!updated) {
+          throw new InternalError("product_not_found_after_increment");
+        }
+
+        return { product: updated, created: false };
+      }
+
+      throw error;
+    }
   }
 
   /**
