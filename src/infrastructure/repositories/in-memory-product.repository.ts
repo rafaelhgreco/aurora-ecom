@@ -22,6 +22,7 @@ export class InMemoryProductRepository implements IProductRepository {
       sizes: ["P", "M", "G", "GG"],
       colors: ["Branco"],
       isActive: true,
+      status: "ACTIVE",
       createdAt: new Date("2024-01-15"),
       updatedAt: new Date("2024-01-15"),
     },
@@ -43,6 +44,7 @@ export class InMemoryProductRepository implements IProductRepository {
       sizes: ["P", "M", "G"],
       colors: ["Preto"],
       isActive: true,
+      status: "ACTIVE",
       createdAt: new Date("2024-01-20"),
       updatedAt: new Date("2024-01-20"),
     },
@@ -64,6 +66,7 @@ export class InMemoryProductRepository implements IProductRepository {
       sizes: ["PP", "P", "M", "G", "GG"],
       colors: ["Cinza"],
       isActive: true,
+      status: "ACTIVE",
       createdAt: new Date("2024-01-25"),
       updatedAt: new Date("2024-01-25"),
     },
@@ -85,6 +88,7 @@ export class InMemoryProductRepository implements IProductRepository {
       sizes: ["M", "G"],
       colors: ["Branco", "Azul"],
       isActive: true,
+      status: "ACTIVE",
       createdAt: new Date("2024-02-01"),
       updatedAt: new Date("2024-02-01"),
     },
@@ -101,12 +105,15 @@ export class InMemoryProductRepository implements IProductRepository {
       }
 
       if (filter.minPrice !== undefined) {
-        filtered = filtered.filter((p) => p.price >= (filter.minPrice ?? 0));
+        filtered = filtered.filter(
+          (p) => (p.price || 0) >= (filter.minPrice ?? 0),
+        );
       }
 
       if (filter.maxPrice !== undefined) {
         filtered = filtered.filter(
-          (p) => p.price <= (filter.maxPrice ?? Number.POSITIVE_INFINITY),
+          (p) =>
+            (p.price || 0) <= (filter.maxPrice ?? Number.POSITIVE_INFINITY),
         );
       }
 
@@ -118,8 +125,8 @@ export class InMemoryProductRepository implements IProductRepository {
         const search = filter.search.toLowerCase();
         filtered = filtered.filter(
           (p) =>
-            p.title.toLowerCase().includes(search) ||
-            p.description.toLowerCase().includes(search),
+            (p.title || "").toLowerCase().includes(search) ||
+            (p.description || "").toLowerCase().includes(search),
         );
       }
 

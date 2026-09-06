@@ -161,7 +161,7 @@ export function ProductViewDialog({
                       Preço
                     </Text>
                     <Text fontSize="xl" fontWeight="bold" color="blue.500">
-                      {formatPrice(product.price)}
+                      {formatPrice(product.price || 0)}
                     </Text>
                   </Box>
 

@@ -113,16 +113,16 @@ function ProductDetailView({
               <Box w="full" overflow="hidden">
                 <ProductImageGallery
                   images={productData.images}
-                  alt={productData.title}
+                  alt={productData.title || "Produto"}
                 />
               </Box>
 
               <Box w="full">
                 <ProductInfo
                   productId={productData.id}
-                  title={productData.title}
-                  price={productData.price}
-                  description={productData.description}
+                  title={productData.title || "Produto"}
+                  price={productData.price || 0}
+                  description={productData.description || ""}
                   sizes={productData.sizes}
                   availableSizes={productData.availableSizes}
                   maxQuantity={10}

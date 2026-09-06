@@ -193,7 +193,9 @@ export function ProductTable({
                 <Text>{product.category || "-"}</Text>
               </Table.Cell>
               <Table.Cell>
-                <Text fontWeight="medium">{formatPrice(product.price)}</Text>
+                <Text fontWeight="medium">
+                  {formatPrice(product.price || 0)}
+                </Text>
               </Table.Cell>
               <Table.Cell>
                 <Badge

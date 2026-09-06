@@ -36,7 +36,7 @@ export class BulkImportProductsUseCase {
         created.push({
           sku_base: item.sku_base,
           id: product.id ?? "",
-          title: product.title,
+          title: product.title || "Produto",
         });
       } catch (error) {
         if (error instanceof ValidationError) {

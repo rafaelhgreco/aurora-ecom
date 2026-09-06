@@ -57,7 +57,7 @@ export function ProductCard({
 
           <HStack justify="space-between">
             <Text fontWeight="bold" fontSize="xl" color="blue.500">
-              {formatPrice(product.price)}
+              {formatPrice(product.price || 0)}
             </Text>
             <Badge colorScheme={product.isActive ? "green" : "gray"}>
               {product.isActive ? "Ativo" : "Inativo"}

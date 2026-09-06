@@ -83,7 +83,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     setSelectedColor(color);
   };
 
-  const formatted_price_value = formatPrice(price);
+  const formatted_price_value = formatPrice(price || 0);
 
   const ctaLabel = isAvailable
     ? "COMPRAR"

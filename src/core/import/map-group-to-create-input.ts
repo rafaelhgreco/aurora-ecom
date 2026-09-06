@@ -57,6 +57,7 @@ export function mapGroupToCreateInput(
     sizes,
     colorVariants,
     isActive: first.isActive,
+    status: "ACTIVE",
     imageUrl: first.imageUrl_principal ?? colorVariants[0].images[0],
     images: [...new Set(colorVariants.flatMap((v) => v.images))],
     stock: 0,

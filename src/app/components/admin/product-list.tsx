@@ -84,6 +84,21 @@ export function ProductList({
             Importar em massa
           </Button>
 
+          <Button
+            variant="outline"
+            onClick={() => router.push("/admin-produtos/pendentes")}
+          >
+            Pendentes
+          </Button>
+
+          <Button
+            variant="outline"
+            colorScheme="green"
+            onClick={() => router.push("/admin-produtos/scan")}
+          >
+            Escanear
+          </Button>
+
           {onAdd && (
             <Button colorScheme="blue" onClick={onAdd}>
               <IoAdd style={{ marginRight: "8px" }} />

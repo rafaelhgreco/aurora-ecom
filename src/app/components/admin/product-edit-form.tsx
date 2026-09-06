@@ -98,6 +98,7 @@ function productToFormDefaults(product: Product): ProductAdminEditFormValues {
     shopCategory: (product.shopCategory ?? "roupas") as ShopCategoryId,
     sizes,
     isActive: product.isActive ?? true,
+    status: product.status || "ACTIVE",
     colorsText: "",
   };
 }

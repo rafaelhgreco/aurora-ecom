@@ -14,11 +14,11 @@ import {
 
 export class ProductEntity implements Product {
   id?: string;
-  title: string;
+  title?: string;
   subtitle?: string;
-  description: string;
-  price: number;
-  imageUrl: string;
+  description?: string;
+  price?: number;
+  imageUrl?: string;
   images: string[];
   category?: string;
   shopCategory?: ShopCategoryId;
@@ -190,7 +190,7 @@ export class ProductEntity implements Product {
     if (discountPercentage < 0 || discountPercentage > 100) {
       throw new Error("Desconto deve estar entre 0 e 100");
     }
-    return this.price * (1 - discountPercentage / 100);
+    return (this.price || 0) * (1 - discountPercentage / 100);
   }
 
   activate(): void {

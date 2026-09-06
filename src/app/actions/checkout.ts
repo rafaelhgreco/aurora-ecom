@@ -80,7 +80,13 @@ async function enrichCartItems(
           : product.getTotalStock();
     if (available < item.quantity) {
       throw new Error(
-        `Estoque insuficiente para "${product.title}". Disponível: ${available}`,
+        `Estoque insuficiente para "${product.title || "Produto"}". Disponível: ${available}`,
+      );
+    }
+
+    if (product.price === undefined) {
+      throw new Error(
+        `Preço não definido para o produto "${product.title || "Produto"}"`,
       );
     }
 
@@ -90,9 +96,9 @@ async function enrichCartItems(
       ...item,
       product: {
         id: product.id || "",
-        title: product.title,
+        title: product.title || "Produto",
         price: product.price,
-        imageUrl: product.imageUrl,
+        imageUrl: product.imageUrl || "",
         isActive: product.isActive,
         stock: product.stock,
       },

@@ -257,7 +257,7 @@ export function CartDrawer({
                                 </Text>
                                 {product && (
                                   <Text fontSize="sm" color="gray.600" mt="1">
-                                    {formatPrice(product.price)}
+                                    {formatPrice(product.price || 0)}
                                   </Text>
                                 )}
                               </Box>

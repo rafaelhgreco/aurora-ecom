@@ -16,7 +16,9 @@ export function getEffectiveShopCategory(product: Product): ShopCategoryId {
 }
 
 function sortProductsByTitlePt(a: Product, b: Product): number {
-  return a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" });
+  return (a.title || "").localeCompare(b.title || "", "pt-BR", {
+    sensitivity: "base",
+  });
 }
 
 /** Lista única ordenada alfabeticamente (ex.: página de uma seção). */

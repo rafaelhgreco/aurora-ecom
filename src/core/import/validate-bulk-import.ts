@@ -50,11 +50,11 @@ export function validateBulkImportRows(
     const input = mapped.input;
     products.push({
       sku_base: group.sku_base,
-      title: input.title,
+      title: input.title || "Produto",
       colors: input.colorVariants?.map((v) => v.color) ?? [],
       sizes: input.sizes ?? [],
       totalStock: input.stock ?? 0,
-      price: input.price,
+      price: input.price || 0,
       isActive: input.isActive ?? true,
     });
   }

@@ -141,8 +141,8 @@ export class FirestoreProductRepository implements IProductRepository {
       const needle = filters.search.toLowerCase();
       results = results.filter(
         (p) =>
-          p.title.toLowerCase().includes(needle) ||
-          p.description.toLowerCase().includes(needle),
+          (p.title || "").toLowerCase().includes(needle) ||
+          (p.description || "").toLowerCase().includes(needle),
       );
     }
 

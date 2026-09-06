@@ -63,9 +63,9 @@ export function enrichCartItem(
     ...item.toJSON(),
     product: {
       id: product.id || "",
-      title: product.title,
-      price: product.price,
-      imageUrl: product.imageUrl,
+      title: product.title || "Produto",
+      price: product.price || 0,
+      imageUrl: product.imageUrl || "",
       isActive: product.isActive,
       stock: product.stock,
     },
