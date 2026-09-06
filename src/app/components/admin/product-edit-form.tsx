@@ -36,14 +36,20 @@ import {
   IoCloudUpload,
   IoRemoveOutline,
 } from "react-icons/io5";
-import { updateProductAction } from "@/app/actions/products";
+import {
+  publishProductAction,
+  updateProductAction,
+} from "@/app/actions/products";
 import type { Product } from "@/app/types/product";
 import { Alert } from "@/components/ui/alert";
 import { Field } from "@/components/ui/field";
 import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import { toaster } from "@/components/ui/toaster";
 import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
-import type { ProductColorVariant } from "@/core/schemas/product.schema";
+import type {
+  ProductColorVariant,
+  PublishProductInput,
+} from "@/core/schemas/product.schema";
 import {
   inferSizePresetFromSizes,
   PRODUCT_SIZES_CLOTHING,
@@ -456,12 +462,30 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
           : {}),
       };
 
-      const result = await updateProductAction(payload);
+      let result: ReturnType<typeof updateProductAction>;
+
+      if (product.status === "DRAFT") {
+        const publishInput: PublishProductInput = {
+          id: data.id,
+          title: data.title,
+          price: data.price,
+          category: data.category || "",
+        };
+        result = await publishProductAction(publishInput);
+      } else {
+        result = await updateProductAction(payload);
+      }
 
       if (result.success) {
         toaster.create({
-          title: "Produto atualizado",
-          description: "As alterações foram salvas no Firestore.",
+          title:
+            product.status === "DRAFT"
+              ? "Produto publicado"
+              : "Produto atualizado",
+          description:
+            product.status === "DRAFT"
+              ? "O produto foi publicado e está visível na loja."
+              : "As alterações foram salvas no Firestore.",
           type: "success",
           duration: 4000,
         });
@@ -481,7 +505,11 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
       } else {
         setSubmitStatus({
           type: "error",
-          message: result.error || "Erro ao atualizar produto",
+          message:
+            result.error ||
+            (product.status === "DRAFT"
+              ? "Erro ao publicar produto"
+              : "Erro ao atualizar produto"),
         });
       }
     } catch {
@@ -509,9 +537,22 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
         </HStack>
 
         <Box>
-          <Heading size="2xl">Editar produto</Heading>
+          <HStack gap={3} mb={2}>
+            <Heading size="2xl">
+              {product.status === "DRAFT"
+                ? "Enriquecer produto"
+                : "Editar produto"}
+            </Heading>
+            {product.status === "DRAFT" && (
+              <Badge colorScheme="orange" fontSize="md" px={3} py={1}>
+                Rascunho — bipado como {product.barcode}
+              </Badge>
+            )}
+          </HStack>
           <Text color="gray.600" mt={2}>
-            Atualize dados, imagens, estoque e disponibilidade na loja.
+            {product.status === "DRAFT"
+              ? "Preencha os dados do produto para publicá-lo na loja."
+              : "Atualize dados, imagens, estoque e disponibilidade na loja."}
           </Text>
         </Box>
 
@@ -798,10 +839,12 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
               </Button>
               <Button
                 type="submit"
-                colorScheme="blue"
+                colorScheme={product.status === "DRAFT" ? "green" : "blue"}
                 loading={isSubmitting || isUploading}
               >
-                Salvar alterações
+                {product.status === "DRAFT"
+                  ? "Publicar produto"
+                  : "Salvar alterações"}
               </Button>
             </HStack>
           </VStack>
