@@ -65,9 +65,12 @@ export class FirestoreProductRepository implements IProductRepository {
 
   /**
    * Converte ProductEntity para documento Firestore
+   * Firestore não aceita `undefined` como valor de campo — campos opcionais
+   * ausentes (ex.: subtitle, category em produtos DRAFT recém-bipados) são
+   * removidos em vez de enviados como undefined.
    */
   private entityToDoc(entity: ProductEntity): Record<string, unknown> {
-    return {
+    const doc: Record<string, unknown> = {
       barcode: entity.barcode,
       title: entity.title,
       subtitle: entity.subtitle,
@@ -92,6 +95,14 @@ export class FirestoreProductRepository implements IProductRepository {
         : Timestamp.now(),
       deletedAt: entity.deletedAt ? Timestamp.fromDate(entity.deletedAt) : null,
     };
+
+    for (const key of Object.keys(doc)) {
+      if (doc[key] === undefined) {
+        delete doc[key];
+      }
+    }
+
+    return doc;
   }
 
   async exists(id: string): Promise<boolean> {
