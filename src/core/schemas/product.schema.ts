@@ -118,7 +118,8 @@ const productObjectSchema = z.object({
     .string({ message: "Título é obrigatório" })
     .min(3, "Título deve ter no mínimo 3 caracteres")
     .max(100, "Título deve ter no máximo 100 caracteres")
-    .trim(),
+    .trim()
+    .optional(), // Make optional because a DRAFT might not have it yet
 
   subtitle: z
     .string()
@@ -131,18 +132,21 @@ const productObjectSchema = z.object({
     .string({ message: "Descrição é obrigatória" })
     .min(10, "Descrição deve ter no mínimo 10 caracteres")
     .max(5000, "Descrição deve ter no máximo 5000 caracteres")
-    .trim(),
+    .trim()
+    .optional(), // Optional for DRAFT
 
   price: z
     .number({ message: "Preço é obrigatório" })
     .positive("Preço deve ser maior que zero")
     .finite("Preço deve ser um número válido")
-    .multipleOf(0.01, "Preço deve ter no máximo 2 casas decimais"),
+    .multipleOf(0.01, "Preço deve ter no máximo 2 casas decimais")
+    .optional(), // Optional for DRAFT
 
   imageUrl: z
     .string({ message: "Imagem principal é obrigatória" })
     .url("URL da imagem inválida")
-    .min(1, "URL da imagem é obrigatória"),
+    .min(1, "URL da imagem é obrigatória")
+    .optional(), // Optional for DRAFT
 
   images: z
     .array(z.string().url("URL da imagem inválida"))
@@ -189,6 +193,12 @@ const productObjectSchema = z.object({
   createdAt: z.date().optional(),
 
   updatedAt: z.date().optional(),
+
+  /** Enum status DRAFT / ACTIVE */
+  status: z.enum(["DRAFT", "ACTIVE"]).default("ACTIVE"),
+
+  /** Código de barras escaneado */
+  barcode: z.string().optional(),
 });
 
 export const productSchema = productObjectSchema.superRefine(

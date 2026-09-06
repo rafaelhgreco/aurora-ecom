@@ -28,6 +28,8 @@ export class ProductEntity implements Product {
   colors?: string[];
   colorVariants?: ProductColorVariant[];
   isActive: boolean;
+  status: "DRAFT" | "ACTIVE";
+  barcode?: string;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -48,6 +50,8 @@ export class ProductEntity implements Product {
     this.colors = data.colors;
     this.colorVariants = data.colorVariants;
     this.isActive = data.isActive ?? true;
+    this.status = data.status || "ACTIVE";
+    this.barcode = data.barcode;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
     this.deletedAt = data.deletedAt || null;
@@ -214,6 +218,8 @@ export class ProductEntity implements Product {
       colors: this.colors,
       colorVariants: this.colorVariants,
       isActive: this.isActive,
+      status: this.status,
+      barcode: this.barcode,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

@@ -55,6 +55,8 @@ export class FirestoreProductRepository implements IProductRepository {
       colors: data.colors as string[] | undefined,
       colorVariants: data.colorVariants as Product["colorVariants"],
       isActive: (data.isActive as boolean) ?? true,
+      status: (data.status as "DRAFT" | "ACTIVE") ?? "ACTIVE",
+      barcode: data.barcode as string | undefined,
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
       deletedAt: data.deletedAt ? toDate(data.deletedAt) : null,
@@ -80,6 +82,8 @@ export class FirestoreProductRepository implements IProductRepository {
       colors: entity.colors,
       colorVariants: entity.colorVariants,
       isActive: entity.isActive,
+      status: entity.status,
+      barcode: entity.barcode,
       createdAt: entity.createdAt
         ? Timestamp.fromDate(entity.createdAt)
         : Timestamp.now(),
@@ -221,6 +225,8 @@ export class FirestoreProductRepository implements IProductRepository {
     if (product.shopCategory !== undefined)
       updateData.shopCategory = product.shopCategory;
     if (product.isActive !== undefined) updateData.isActive = product.isActive;
+    if (product.status !== undefined) updateData.status = product.status;
+    if (product.barcode !== undefined) updateData.barcode = product.barcode;
 
     await docRef.update(updateData);
 
