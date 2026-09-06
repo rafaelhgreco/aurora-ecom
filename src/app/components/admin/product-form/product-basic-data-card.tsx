@@ -60,29 +60,52 @@ export function ProductBasicDataCard({
           </Field>
 
           {isEdit && (
-            <Field
-              label="Seção do catálogo (loja)"
-              helperText="Define em qual página /loja/... o produto aparece."
-              invalid={!!errors.shopCategory}
-              errorText={errors.shopCategory?.message}
-            >
-              <Box
-                as="select"
-                borderWidth="1px"
-                borderRadius="md"
-                px={3}
-                py={2}
-                w="full"
-                bg="white"
-                {...register("shopCategory")}
+            <>
+              <Field
+                label="Seção do catálogo (loja)"
+                helperText="Define em qual página /loja/... o produto aparece."
+                invalid={!!errors.shopCategory}
+                errorText={errors.shopCategory?.message}
               >
-                {SHOP_CATEGORY_IDS.map((id) => (
-                  <option key={id} value={id}>
-                    {SHOP_CATEGORY_LABELS[id]}
-                  </option>
-                ))}
-              </Box>
-            </Field>
+                <Box
+                  as="select"
+                  borderWidth="1px"
+                  borderRadius="md"
+                  px={3}
+                  py={2}
+                  w="full"
+                  bg="white"
+                  {...register("shopCategory")}
+                >
+                  {SHOP_CATEGORY_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {SHOP_CATEGORY_LABELS[id]}
+                    </option>
+                  ))}
+                </Box>
+              </Field>
+
+              <Field
+                label="Status"
+                helperText="DRAFT: produto ainda não enriquecido. ACTIVE: publicado na loja."
+                invalid={!!errors.status}
+                errorText={errors.status?.message}
+              >
+                <Box
+                  as="select"
+                  borderWidth="1px"
+                  borderRadius="md"
+                  px={3}
+                  py={2}
+                  w="full"
+                  bg="white"
+                  {...register("status")}
+                >
+                  <option value="DRAFT">🔄 DRAFT - Em rascunho</option>
+                  <option value="ACTIVE">✅ ACTIVE - Publicado</option>
+                </Box>
+              </Field>
+            </>
           )}
         </Stack>
       </Card.Body>

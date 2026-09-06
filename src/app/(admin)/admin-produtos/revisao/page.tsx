@@ -11,6 +11,7 @@ import {
 } from "@chakra-ui/react";
 import { Suspense, useState } from "react";
 import { IoChevronBack, IoChevronForward } from "react-icons/io5";
+import { BarcodeScanner } from "@/app/components/admin/barcode-scanner";
 import { DraftProductTable } from "@/app/components/admin/draft-product-table";
 import { EmptyState } from "@/app/components/states/empty-state";
 import { LoadingState } from "@/app/components/states/loading-state";
@@ -66,6 +67,8 @@ function RevisaoContent() {
               : `${products.length} produto(s) em rascunho`}
           </Text>
         </VStack>
+
+        <BarcodeScanner />
 
         {loading ? (
           <LoadingState minHeight="300px" />
