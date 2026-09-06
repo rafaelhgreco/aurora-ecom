@@ -26,7 +26,7 @@ export function DraftProductTable({ products }: DraftProductTableProps) {
 
   return (
     <VStack align="stretch" gap={4} w="full">
-      <Table.Root size="sm" striped="odd" variant="outline">
+      <Table.Root size="sm" striped variant="outline">
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>Código de Barras</Table.ColumnHeader>

@@ -462,7 +462,7 @@ export function ProductEditForm({ product }: ProductEditFormProps) {
           : {}),
       };
 
-      let result: ReturnType<typeof updateProductAction>;
+      let result: Awaited<ReturnType<typeof updateProductAction>>;
 
       if (product.status === "DRAFT") {
         const publishInput: PublishProductInput = {
