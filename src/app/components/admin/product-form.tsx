@@ -1,3 +1,9 @@
+"use client";
+
+import { ProductBasicDataCard } from "./product-form/product-basic-data-card";
+import { ProductPriceStockCard } from "./product-form/product-price-stock-card";
+import { ProductSizesCard } from "./product-form/product-sizes-card";
+
 /**
  * Formulário de Cadastro de Produto
  *
@@ -8,24 +14,19 @@
  * - Integration com Server Actions
  */
 
-"use client";
-
 import {
   Badge,
   Box,
   Button,
   Card,
   Container,
-  Flex,
   Grid,
   Heading,
   HStack,
   IconButton,
   Image,
   Input,
-  Stack,
   Text,
-  Textarea,
   VStack,
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,8 +35,6 @@ import { useForm } from "react-hook-form";
 import { IoClose, IoCloudUpload } from "react-icons/io5";
 import { createProductAction } from "@/app/actions/products";
 import { Alert } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Field } from "@/components/ui/field";
 import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import {
   type CreateProductInput,
@@ -358,203 +357,24 @@ export function ProductForm() {
             </Card.Root>
 
             {/* === DADOS BÁSICOS === */}
-            <Card.Root>
-              <Card.Header>
-                <Heading size="lg">Dados Básicos</Heading>
-              </Card.Header>
-              <Card.Body>
-                <Stack gap={4}>
-                  {/* Título */}
-                  <Field
-                    label="Título *"
-                    invalid={!!errors.title}
-                    errorText={errors.title?.message}
-                  >
-                    <Input
-                      {...register("title")}
-                      placeholder="Ex: Camiseta Básica"
-                    />
-                  </Field>
-
-                  {/* Subtítulo */}
-                  <Field
-                    label="Subtítulo"
-                    invalid={!!errors.subtitle}
-                    errorText={errors.subtitle?.message}
-                  >
-                    <Input
-                      {...register("subtitle")}
-                      placeholder="Ex: 100% Algodão"
-                    />
-                  </Field>
-
-                  {/* Descrição */}
-                  <Field
-                    label="Descrição *"
-                    invalid={!!errors.description}
-                    errorText={errors.description?.message}
-                  >
-                    <Textarea
-                      {...register("description")}
-                      placeholder="Descreva o produto..."
-                      rows={4}
-                    />
-                  </Field>
-
-                  {/* Categoria */}
-                  <Field
-                    label="Categoria *"
-                    invalid={!!errors.category}
-                    errorText={errors.category?.message}
-                  >
-                    <Input
-                      {...register("category")}
-                      placeholder="Ex: Camisetas"
-                    />
-                  </Field>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
+            <ProductBasicDataCard register={register} errors={errors} />
 
             {/* === PREÇO E ESTOQUE === */}
-            <Card.Root>
-              <Card.Header>
-                <Heading size="lg">Preço e Estoque</Heading>
-              </Card.Header>
-              <Card.Body>
-                <Grid
-                  templateColumns="repeat(auto-fit, minmax(200px, 1fr))"
-                  gap={4}
-                >
-                  {/* Preço */}
-                  <Field
-                    label="Preço (R$) *"
-                    invalid={!!errors.price}
-                    errorText={errors.price?.message}
-                  >
-                    <Input
-                      {...register("price", { valueAsNumber: true })}
-                      type="number"
-                      step="0.01"
-                      placeholder="99.90"
-                    />
-                  </Field>
-
-                  {/* Estoque */}
-                  <Field
-                    label="Estoque *"
-                    invalid={!!errors.stock}
-                    errorText={errors.stock?.message}
-                  >
-                    <Input
-                      {...register("stock", { valueAsNumber: true })}
-                      type="number"
-                      placeholder="100"
-                    />
-                  </Field>
-                </Grid>
-              </Card.Body>
-            </Card.Root>
+            <ProductPriceStockCard register={register} errors={errors} />
 
             {/* === TAMANHOS === */}
-            <Card.Root>
-              <Card.Header>
-                <Heading size="lg">Tamanhos / variações *</Heading>
-              </Card.Header>
-              <Card.Body>
-                <HStack flexWrap="wrap" gap={2} mb={3}>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={sizePreset === "clothing" ? "solid" : "outline"}
-                    onClick={() => applySizePreset("clothing")}
-                  >
-                    Roupas
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={sizePreset === "volume" ? "solid" : "outline"}
-                    onClick={() => applySizePreset("volume")}
-                  >
-                    Volumes (ml)
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={sizePreset === "custom" ? "solid" : "outline"}
-                    onClick={() => applySizePreset("custom")}
-                  >
-                    Personalizado
-                  </Button>
-                </HStack>
-                {sizePreset !== "custom" ? (
-                  <Flex gap={4} wrap="wrap">
-                    {presetOptions.map((size) => (
-                      <Checkbox
-                        key={size}
-                        checked={selectedSizes.includes(size)}
-                        onCheckedChange={() => handleToggleSize(size)}
-                      >
-                        {size}
-                      </Checkbox>
-                    ))}
-                  </Flex>
-                ) : (
-                  <Stack gap={3}>
-                    <HStack flexWrap="wrap" gap={2}>
-                      <Input
-                        maxLength={32}
-                        placeholder="Ex.: 30ml"
-                        value={customSizeDraft}
-                        onChange={(e) => setCustomSizeDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddCustomSize();
-                          }
-                        }}
-                        maxW="280px"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleAddCustomSize}
-                      >
-                        Adicionar
-                      </Button>
-                    </HStack>
-                    <Flex flexWrap="wrap" gap={2}>
-                      {(selectedSizes || []).map((s) => (
-                        <HStack
-                          key={s}
-                          bg="gray.100"
-                          borderRadius="md"
-                          px={2}
-                          py={1}
-                          gap={1}
-                        >
-                          <Text fontSize="sm">{s}</Text>
-                          <IconButton
-                            aria-label={`Remover ${s}`}
-                            size="2xs"
-                            variant="ghost"
-                            onClick={() => handleRemoveCustomSize(s)}
-                          >
-                            <IoClose />
-                          </IconButton>
-                        </HStack>
-                      ))}
-                    </Flex>
-                  </Stack>
-                )}
-                {errors.sizes && (
-                  <Text color="red.500" fontSize="sm" mt={2}>
-                    {errors.sizes.message}
-                  </Text>
-                )}
-              </Card.Body>
-            </Card.Root>
+            <ProductSizesCard
+              sizePreset={sizePreset}
+              applySizePreset={applySizePreset}
+              presetOptions={presetOptions}
+              selectedSizes={selectedSizes}
+              handleToggleSize={handleToggleSize}
+              customSizeDraft={customSizeDraft}
+              setCustomSizeDraft={setCustomSizeDraft}
+              handleAddCustomSize={handleAddCustomSize}
+              handleRemoveCustomSize={handleRemoveCustomSize}
+              errors={errors}
+            />
 
             {/* === BOTÕES === */}
             <HStack justify="flex-end" gap={4}>
