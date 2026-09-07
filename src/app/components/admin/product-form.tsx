@@ -472,7 +472,7 @@ export function ProductForm({ product }: ProductFormProps) {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form noValidate onSubmit={handleSubmit(onSubmit)}>
           {isEdit && <Input type="hidden" {...register("id")} />}
           <VStack gap={6} align="stretch">
             <ProductColorVariantsCard
