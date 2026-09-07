@@ -277,10 +277,13 @@ export class FirestoreProductRepository implements IProductRepository {
   async createOrIncrementByBarcode(
     barcode: string,
     draftFactory: () => Omit<ProductEntity, "id" | "createdAt" | "updatedAt">,
+    incrementBy = 1,
   ): Promise<{ product: ProductEntity; created: boolean }> {
     console.log(
       "[FirestoreProductRepository] createOrIncrementByBarcode chamado para barcode:",
       barcode,
+      "incrementBy:",
+      incrementBy,
     );
     const db = this.requireDb();
     const docRef = db.collection(this.collectionName).doc(barcode);
@@ -336,7 +339,7 @@ export class FirestoreProductRepository implements IProductRepository {
           "[FirestoreProductRepository] barcode já existe, incrementando stock...",
         );
         await docRef.update({
-          stock: FieldValue.increment(1),
+          stock: FieldValue.increment(incrementBy),
           updatedAt: Timestamp.now(),
         });
 

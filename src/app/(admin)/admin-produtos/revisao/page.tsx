@@ -1,16 +1,9 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Container,
-  Heading,
-  HStack,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Button, Container, HStack, Text, VStack } from "@chakra-ui/react";
+import { useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
-import { IoChevronBack, IoChevronForward } from "react-icons/io5";
+import { IoArrowBack, IoChevronBack, IoChevronForward } from "react-icons/io5";
 import { BarcodeScanner } from "@/app/components/admin/barcode-scanner";
 import { DraftProductTable } from "@/app/components/admin/draft-product-table";
 import { EmptyState } from "@/app/components/states/empty-state";
@@ -26,6 +19,7 @@ export default function RevisaoProdutosPage() {
 }
 
 function RevisaoContent() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -34,14 +28,22 @@ function RevisaoContent() {
     limitCount: limit,
   });
 
-  if (error) {
-    return (
-      <Container maxW="container.lg" py={8}>
-        <VStack align="stretch" gap={6}>
-          <VStack align="start" gap={1}>
-            <Heading size="lg">Revisão de Produtos</Heading>
-            <Text color="gray.600">Enriqueça produtos bipados</Text>
-          </VStack>
+  return (
+    <Container maxW="container.lg" py={8}>
+      <VStack align="stretch" gap={6}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push("/admin-produtos")}
+          alignSelf="flex-start"
+        >
+          <IoArrowBack style={{ marginRight: 6 }} />
+          Voltar
+        </Button>
+
+        <BarcodeScanner />
+
+        {error ? (
           <Box
             p={4}
             borderWidth={1}
@@ -51,26 +53,7 @@ function RevisaoContent() {
           >
             <Text color="red.700">{error}</Text>
           </Box>
-        </VStack>
-      </Container>
-    );
-  }
-
-  return (
-    <Container maxW="container.lg" py={8}>
-      <VStack align="stretch" gap={6}>
-        <VStack align="start" gap={1}>
-          <Heading size="lg">Revisão de Produtos</Heading>
-          <Text color="gray.600">
-            {loading
-              ? "Carregando..."
-              : `${products.length} produto(s) em rascunho`}
-          </Text>
-        </VStack>
-
-        <BarcodeScanner />
-
-        {loading ? (
+        ) : loading ? (
           <LoadingState minHeight="300px" />
         ) : products.length === 0 ? (
           <EmptyState

@@ -188,11 +188,12 @@ export class InMemoryProductRepository implements IProductRepository {
   async createOrIncrementByBarcode(
     barcode: string,
     draftFactory: () => Omit<Product, "id" | "createdAt" | "updatedAt">,
+    incrementBy = 1,
   ): Promise<{ product: Product; created: boolean }> {
     const existing = this.products.find((p) => p.barcode === barcode);
 
     if (existing) {
-      existing.stock += 1;
+      existing.stock += incrementBy;
       existing.updatedAt = new Date();
       return { product: existing, created: false };
     }

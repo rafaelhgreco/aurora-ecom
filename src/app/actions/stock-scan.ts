@@ -11,13 +11,48 @@ import { serializeProductForClient } from "@/shared/serialize-product";
 
 const productRepository = new FirestoreProductRepository();
 
-export async function scanBarcodeAction(
+export async function checkBarcodeAction(
   barcode: string,
-): Promise<ActionResult<{ product: Product; created: boolean }>> {
-  console.log("[scanBarcodeAction] chamada recebida com barcode:", barcode);
+): Promise<ActionResult<{ exists: boolean; product: Product | null }>> {
   try {
     const auth = await requireAdminSession();
-    console.log("[scanBarcodeAction] auth result:", auth);
+    if ("error" in auth) return { success: false, error: auth.error };
+
+    if (!isAdminStockScanEnabled()) {
+      return { success: false, error: "Recurso de bipagem não disponível" };
+    }
+
+    const product = await productRepository.findByBarcode(barcode.trim());
+
+    return {
+      success: true,
+      data: {
+        exists: !!product,
+        product: product ? serializeProductForClient(product) : null,
+      },
+    };
+  } catch (error) {
+    const { message, details } = handleActionError(
+      "checkBarcodeAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message, details };
+  }
+}
+
+export async function scanBarcodeAction(
+  barcode: string,
+  quantity?: number,
+): Promise<ActionResult<{ product: Product; created: boolean }>> {
+  console.log(
+    "[scanBarcodeAction] chamada recebida com barcode:",
+    barcode,
+    "quantity:",
+    quantity,
+  );
+  try {
+    const auth = await requireAdminSession();
 
     if ("error" in auth) {
       console.warn("[scanBarcodeAction] sessão inválida:", auth.error);
@@ -25,7 +60,6 @@ export async function scanBarcodeAction(
     }
 
     const flagEnabled = isAdminStockScanEnabled();
-    console.log("[scanBarcodeAction] isAdminStockScanEnabled:", flagEnabled);
 
     if (!flagEnabled) {
       console.warn(
@@ -38,8 +72,10 @@ export async function scanBarcodeAction(
     }
 
     const useCase = new ScanBarcodeUseCase(productRepository);
-    console.log("[scanBarcodeAction] executando use case...");
-    const result = await useCase.execute({ barcode } as ScanBarcodeInput);
+    const result = await useCase.execute({
+      barcode,
+      quantity,
+    } as ScanBarcodeInput);
     console.log("[scanBarcodeAction] use case retornou:", result);
 
     return {
@@ -56,7 +92,6 @@ export async function scanBarcodeAction(
       error,
       "admin",
     );
-    console.error("[scanBarcodeAction] mensagem tratada:", message, details);
     return {
       success: false,
       error: message,

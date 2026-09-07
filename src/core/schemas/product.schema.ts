@@ -284,8 +284,10 @@ export const productFilterSchema = z.object({
 
 export const scanBarcodeSchema = z.object({
   barcode: z.string().min(1, "Código de barras é obrigatório").trim(),
+  quantity: z.number().int().positive().default(1),
 });
-export type ScanBarcodeInput = z.infer<typeof scanBarcodeSchema>;
+/** Tipo de entrada (pré-parse): `quantity` é opcional pois tem default no schema. */
+export type ScanBarcodeInput = z.input<typeof scanBarcodeSchema>;
 
 export const publishProductSchema = z.object({
   id: z.string().min(1, "ID do produto é obrigatório"),

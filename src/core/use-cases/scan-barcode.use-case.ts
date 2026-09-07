@@ -15,7 +15,7 @@ export class ScanBarcodeUseCase {
 
   async execute(input: ScanBarcodeInput): Promise<ScanBarcodeResult> {
     console.log("[ScanBarcodeUseCase] execute chamado com input:", input);
-    let validated: ScanBarcodeInput;
+    let validated: { barcode: string; quantity: number };
 
     try {
       validated = scanBarcodeSchema.parse(input);
@@ -30,11 +30,13 @@ export class ScanBarcodeUseCase {
       throw error;
     }
 
-    const { barcode } = validated;
+    const { barcode, quantity } = validated;
 
     console.log(
       "[ScanBarcodeUseCase] chamando repository.createOrIncrementByBarcode para barcode:",
       barcode,
+      "quantity:",
+      quantity,
     );
 
     try {
@@ -51,6 +53,7 @@ export class ScanBarcodeUseCase {
           status: "DRAFT",
           isActive: true,
         }),
+        quantity,
       );
       console.log("[ScanBarcodeUseCase] repository retornou:", result);
       return result;

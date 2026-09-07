@@ -16,6 +16,7 @@ export interface IProductRepository {
   createOrIncrementByBarcode(
     barcode: string,
     draftFactory: () => Omit<Product, "id" | "createdAt" | "updatedAt">,
+    incrementBy?: number,
   ): Promise<{ product: Product; created: boolean }>;
 
   update(id: string, product: Partial<Product>): Promise<Product>;
