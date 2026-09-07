@@ -4,11 +4,12 @@ import {
   type ButtonProps,
   Flex,
   Heading,
+  HStack,
   Text,
   VStack,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
-import { FiShoppingCart } from "react-icons/fi";
+import { FiAlertTriangle, FiShoppingCart, FiXCircle } from "react-icons/fi";
 import { calculateInstallment, formatPrice } from "@/app/utils/price-formatter";
 import { toaster } from "@/components/ui/toaster";
 import type { ProductSize } from "@/core/entities";
@@ -305,9 +306,12 @@ export const ProductInfo = ({
 
             {/* Aviso de sem estoque */}
             {effectiveStock === 0 && (
-              <Text fontSize="sm" color="red.600" mt="2" fontWeight="semibold">
-                ❌ Produto fora de estoque
-              </Text>
+              <HStack gap="1" color="red.600" mt="2">
+                <FiXCircle size={16} />
+                <Text fontSize="sm" fontWeight="semibold">
+                  Produto fora de estoque
+                </Text>
+              </HStack>
             )}
           </>
         ) : (
@@ -328,9 +332,12 @@ export const ProductInfo = ({
           borderWidth="1px"
           borderColor="red.200"
         >
-          <Text fontSize="sm" color="red.700" fontWeight="semibold" mb="1">
-            ⚠️ Estoque Insuficiente
-          </Text>
+          <HStack gap="1" color="red.700" mb="1">
+            <FiAlertTriangle size={16} />
+            <Text fontSize="sm" fontWeight="semibold">
+              Estoque Insuficiente
+            </Text>
+          </HStack>
           <Text fontSize="sm" color="red.600">
             Você selecionou {quantity} {quantity === 1 ? "unidade" : "unidades"}
             , mas temos apenas <strong>{effectiveStock}</strong>{" "}
