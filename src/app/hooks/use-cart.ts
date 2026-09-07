@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/app/utils/price-formatter";
 import type { CartItemEntity, ProductSize } from "@/core/entities";
 import { ProductEntity } from "@/core/entities";
+import { sumCurrency } from "@/shared/money";
 import { getProductByIdAction } from "../actions/products";
 import { useCartContext } from "../contexts/cart-context";
 import type { CartItemJSON } from "../types/checkout";
@@ -80,7 +81,7 @@ export function useCart() {
    * Calcula o total do carrinho
    */
   const calculateTotal = useCallback((): number => {
-    return enrichedItems.reduce((sum, item) => sum + item.subtotal, 0);
+    return sumCurrency(enrichedItems.map((item) => item.subtotal));
   }, [enrichedItems]);
 
   /**
