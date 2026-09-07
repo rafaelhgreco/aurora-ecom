@@ -35,8 +35,24 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { FiMinus, FiPlus, FiTrash2, FiX } from "react-icons/fi";
+import {
+  FiAlertTriangle,
+  FiMinus,
+  FiPlus,
+  FiTrash2,
+  FiX,
+} from "react-icons/fi";
 import { formatPrice } from "@/app/utils/price-formatter";
+import {
+  DialogActionTrigger,
+  DialogBody,
+  DialogCloseTrigger,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogRoot,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ProductSize } from "@/core/entities";
 import {
   getEffectiveColorVariants,
@@ -78,18 +94,7 @@ export function CartDrawer({
   checkoutBlockReason = "",
 }: CartDrawerProps) {
   const isEmpty = items.length === 0;
-
-  const [page, setPage] = useState(1);
-  const limit = 10;
-  const totalCount = items.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
-
-  // Sincroniza página se remover itens
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(Math.max(1, totalPages));
-    }
-  }, [totalPages, page]);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   // Sincroniza quantidade com estoque disponível quando exceder
   useEffect(() => {
@@ -110,446 +115,479 @@ export function CartDrawer({
     }
   }, [items, onUpdateQuantity]);
 
-  const paginatedItems = items.slice((page - 1) * limit, page * limit);
-
   return (
-    <DrawerRoot
-      open={isOpen}
-      onOpenChange={(e) => !e.open && onClose()}
-      size={{ base: "full", md: "md" }}
-      placement="end"
-    >
-      <Portal>
-        <DrawerBackdrop />
-        <DrawerPositioner>
-          <DrawerContent>
-            <DrawerHeader pr="2">
-              <DrawerTitle>
-                <Flex align="center" justify="space-between" gap="3" w="full">
-                  <Heading as="h2" size="lg" flex="1" minW="0">
-                    Seu Carrinho
-                  </Heading>
-                  <HStack gap="1" flexShrink={0}>
-                    {!isEmpty && (
-                      <Button
+    <>
+      <DrawerRoot
+        open={isOpen}
+        onOpenChange={(e) => !e.open && onClose()}
+        size={{ base: "full", md: "md" }}
+        placement="end"
+      >
+        <Portal>
+          <DrawerBackdrop />
+          <DrawerPositioner>
+            <DrawerContent>
+              <DrawerHeader pr="2">
+                <DrawerTitle>
+                  <Flex align="center" justify="space-between" gap="3" w="full">
+                    <Heading as="h2" size="lg" flex="1" minW="0">
+                      Seu Carrinho
+                    </Heading>
+                    <HStack gap="1" flexShrink={0}>
+                      {!isEmpty && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          colorScheme="red"
+                          onClick={() => setConfirmClearOpen(true)}
+                        >
+                          Limpar Carrinho
+                        </Button>
+                      )}
+                      <IconButton
+                        aria-label="Fechar carrinho"
                         variant="ghost"
-                        size="sm"
-                        colorScheme="red"
-                        onClick={onClearCart}
+                        size="md"
+                        colorScheme="gray"
+                        onClick={onClose}
                       >
-                        Limpar Carrinho
-                      </Button>
-                    )}
-                    <IconButton
-                      aria-label="Fechar carrinho"
-                      variant="ghost"
-                      size="md"
-                      colorScheme="gray"
-                      onClick={onClose}
-                    >
-                      <FiX size={22} />
-                    </IconButton>
-                  </HStack>
-                </Flex>
-              </DrawerTitle>
-            </DrawerHeader>
+                        <FiX size={22} />
+                      </IconButton>
+                    </HStack>
+                  </Flex>
+                </DrawerTitle>
+              </DrawerHeader>
 
-            <DrawerBody
-              bg="white"
-              display="flex"
-              flexDirection="column"
-              gap="4"
-            >
-              {loading && (
-                <Text textAlign="center" py="8" color="gray.500">
-                  Carregando...
-                </Text>
-              )}
-
-              {!loading && isEmpty && (
-                <VStack py="12" gap="4" flex="1" justify="center">
-                  <Text fontSize="lg" color="gray.600">
-                    Seu carrinho está vazio
+              <DrawerBody
+                bg="white"
+                display="flex"
+                flexDirection="column"
+                gap="4"
+                minH={0}
+                overflowY="auto"
+              >
+                {loading && (
+                  <Text textAlign="center" py="8" color="gray.500">
+                    Carregando...
                   </Text>
-                  <Text fontSize="sm" color="gray.500">
-                    Adicione produtos para começar
-                  </Text>
-                  <Button mt="4" variant="outline" onClick={onClose}>
-                    Continuar Comprando
-                  </Button>
-                </VStack>
-              )}
+                )}
 
-              {!loading && !isEmpty && (
-                <Stack gap="4" flex="1" pb="4">
-                  {paginatedItems.map((enrichedItem) => {
-                    const { item, product, subtotal, error } = enrichedItem;
-                    const itemKey = item.getUniqueKey();
-                    const selectedSize = item.variants?.size;
-                    const selectedColor = item.variants?.color;
-                    const colorVariants = product
-                      ? getEffectiveColorVariants(product)
-                      : [];
-                    const colorOptions = colorVariants.map((v) => v.color);
-                    const thumbImgs =
-                      product && selectedColor
-                        ? getImagesForColor(product, selectedColor)
+                {!loading && isEmpty && (
+                  <VStack py="12" gap="4" flex="1" justify="center">
+                    <Text fontSize="lg" color="gray.600">
+                      Seu carrinho está vazio
+                    </Text>
+                    <Text fontSize="sm" color="gray.500">
+                      Adicione produtos para começar
+                    </Text>
+                    <Button mt="4" variant="outline" onClick={onClose}>
+                      Continuar Comprando
+                    </Button>
+                  </VStack>
+                )}
+
+                {!loading && !isEmpty && (
+                  <Stack gap="4" flex="1" pb="4">
+                    {items.map((enrichedItem) => {
+                      const { item, product, subtotal, error } = enrichedItem;
+                      const itemKey = item.getUniqueKey();
+                      const selectedSize = item.variants?.size;
+                      const selectedColor = item.variants?.color;
+                      const colorVariants = product
+                        ? getEffectiveColorVariants(product)
                         : [];
-                    const thumbUrl =
-                      thumbImgs[0] ?? product?.imageUrl ?? "/placeholder.png";
-                    const hasSizes = product?.sizes && product.sizes.length > 0;
-                    const availableSizes = product
-                      ? product.getAvailableSizes(selectedColor)
-                      : [];
-                    const stockForSize =
-                      hasSizes && selectedSize && product
-                        ? product.getStockForSize(selectedSize, selectedColor)
-                        : product
-                          ? selectedColor
-                            ? product.getTotalStockForColor(selectedColor)
-                            : product.getTotalStock()
-                          : 0;
-                    const maxQty = Math.max(1, stockForSize);
-                    const showColorPicker =
-                      Boolean(onUpdateColor) && colorOptions.length > 1;
+                      const colorOptions = colorVariants.map((v) => v.color);
+                      const thumbImgs =
+                        product && selectedColor
+                          ? getImagesForColor(product, selectedColor)
+                          : [];
+                      const thumbUrl =
+                        thumbImgs[0] ?? product?.imageUrl ?? "/placeholder.png";
+                      const hasSizes =
+                        product?.sizes && product.sizes.length > 0;
+                      const availableSizes = product
+                        ? product.getAvailableSizes(selectedColor)
+                        : [];
+                      const stockForSize =
+                        hasSizes && selectedSize && product
+                          ? product.getStockForSize(selectedSize, selectedColor)
+                          : product
+                            ? selectedColor
+                              ? product.getTotalStockForColor(selectedColor)
+                              : product.getTotalStock()
+                            : 0;
+                      const maxQty = Math.max(1, stockForSize);
+                      const showColorPicker =
+                        Boolean(onUpdateColor) && colorOptions.length > 1;
 
-                    return (
-                      <Box
-                        key={itemKey}
-                        p="3"
-                        borderWidth="1px"
-                        borderRadius="md"
-                        bg={error ? "red.50" : "white"}
-                      >
-                        <Flex gap="3" direction="row" align="flex-start">
-                          <Box
-                            flexShrink={0}
-                            position="relative"
-                            w="80px"
-                            h="80px"
-                            bg="gray.50"
-                            borderRadius="md"
-                            borderWidth="1px"
-                            borderColor="gray.100"
-                            overflow="hidden"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                          >
-                            <Image
-                              src={thumbUrl}
-                              alt={product?.title || "Produto"}
-                              w="full"
-                              h="full"
-                              objectFit="contain"
-                            />
-                          </Box>
-
-                          <VStack align="stretch" flex="1" gap="2">
-                            <Flex justify="space-between" align="start">
-                              <Box flex="1" pr="2">
-                                <Text
-                                  fontWeight="semibold"
-                                  fontSize="md"
-                                  lineClamp={2}
-                                >
-                                  {product?.title || "Carregando..."}
-                                </Text>
-                                {product && (
-                                  <Text fontSize="sm" color="gray.600" mt="1">
-                                    {formatPrice(product.price)}
-                                  </Text>
-                                )}
-                              </Box>
-
-                              <IconButton
-                                aria-label="Remover item"
-                                size="sm"
-                                variant="surface"
-                                colorScheme="red"
-                                onClick={() => onRemoveItem(itemKey)}
-                              >
-                                <FiTrash2 />
-                              </IconButton>
-                            </Flex>
-
-                            <Flex
-                              direction="row"
-                              align="center"
-                              justify="space-between"
-                              mt="1"
-                              flexWrap="wrap"
-                              gap="2"
+                      return (
+                        <Box
+                          key={itemKey}
+                          p="3"
+                          borderWidth="1px"
+                          borderRadius="md"
+                          bg={error ? "red.50" : "white"}
+                        >
+                          <Flex gap="3" direction="row" align="flex-start">
+                            <Box
+                              flexShrink={0}
+                              position="relative"
+                              w="80px"
+                              h="80px"
+                              bg="gray.50"
+                              borderRadius="md"
+                              borderWidth="1px"
+                              borderColor="gray.100"
+                              overflow="hidden"
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
                             >
-                              {showColorPicker && product && (
-                                <Box>
-                                  <SelectRoot
-                                    collection={createListCollection({
-                                      items: colorOptions.map((c) => ({
-                                        label: c,
-                                        value: c,
-                                      })),
-                                    })}
-                                    value={[selectedColor || ""]}
-                                    onValueChange={(details) => {
-                                      const color = details.value[0];
-                                      if (color && onUpdateColor) {
-                                        onUpdateColor(itemKey, color);
-                                      }
-                                    }}
-                                    size="sm"
-                                    width={{ base: "100%", sm: "120px" }}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValueText placeholder="Cor" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {colorOptions.map((c) => (
-                                        <SelectItem key={c} item={c}>
-                                          {c}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </SelectRoot>
-                                </Box>
-                              )}
+                              <Image
+                                src={thumbUrl}
+                                alt={product?.title || "Produto"}
+                                w="full"
+                                h="full"
+                                objectFit="contain"
+                              />
+                            </Box>
 
-                              {hasSizes && availableSizes.length > 0 && (
-                                <Box>
-                                  <SelectRoot
-                                    collection={createListCollection({
-                                      items: availableSizes.map((size) => ({
-                                        label: size,
-                                        value: size,
-                                      })),
-                                    })}
-                                    value={[selectedSize || ""]}
-                                    onValueChange={(details) => {
-                                      const size = details.value[0];
-                                      if (size && product) {
-                                        onUpdateSize(
-                                          itemKey,
-                                          size as ProductSize,
-                                        );
-                                      }
-                                    }}
-                                    size="sm"
-                                    width={{ base: "100%", sm: "100px" }}
+                            <VStack align="stretch" flex="1" gap="2">
+                              <Flex justify="space-between" align="start">
+                                <Box flex="1" pr="2">
+                                  <Text
+                                    fontWeight="semibold"
+                                    fontSize="md"
+                                    lineClamp={2}
                                   >
-                                    <SelectTrigger>
-                                      <SelectValueText placeholder="Tamanho" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {availableSizes.map((size) => (
-                                        <SelectItem key={size} item={size}>
-                                          {size} (
-                                          {product
-                                            ? product.getStockForSize(
-                                                size,
-                                                item.variants?.color,
-                                              )
-                                            : 0}{" "}
-                                          em estoque)
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </SelectRoot>
-                                  {selectedSize && (
-                                    <Text fontSize="xs" color="gray.500" mt="1">
-                                      {stockForSize} em estoque para{" "}
-                                      {selectedSize}
+                                    {product?.title || "Carregando..."}
+                                  </Text>
+                                  {product && (
+                                    <Text fontSize="sm" color="gray.600" mt="1">
+                                      {formatPrice(product.price)}
                                     </Text>
                                   )}
                                 </Box>
-                              )}
 
-                              <HStack bg="gray.50" borderRadius="md" p="1">
                                 <IconButton
-                                  aria-label="Diminuir quantidade"
+                                  aria-label="Remover item"
                                   size="sm"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    onUpdateQuantity(
-                                      itemKey,
-                                      Math.max(1, item.quantity - 1),
-                                    )
-                                  }
-                                  disabled={item.quantity <= 1}
+                                  variant="surface"
+                                  colorScheme="red"
+                                  onClick={() => onRemoveItem(itemKey)}
                                 >
-                                  <FiMinus />
+                                  <FiTrash2 />
                                 </IconButton>
-                                <Input
-                                  value={item.quantity}
-                                  onChange={(e) => {
-                                    const qty =
-                                      Number.parseInt(
-                                        e.target.value.replace(/\D/g, ""),
-                                        10,
-                                      ) || 1;
-                                    onUpdateQuantity(
-                                      itemKey,
-                                      Math.max(1, Math.min(qty, maxQty)),
-                                    );
-                                  }}
-                                  size="sm"
-                                  width="48px"
-                                  textAlign="center"
-                                  bg="white"
-                                  border="1px solid"
-                                  borderColor="gray.300"
-                                  type="text"
-                                  inputMode="numeric"
-                                  pattern="[0-9]*"
-                                  px="1"
-                                />
-                                <IconButton
-                                  aria-label="Aumentar quantidade"
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    onUpdateQuantity(
-                                      itemKey,
-                                      Math.min(item.quantity + 1, maxQty),
-                                    )
-                                  }
-                                  disabled={!product || item.quantity >= maxQty}
-                                >
-                                  <FiPlus />
-                                </IconButton>
-                              </HStack>
-                            </Flex>
+                              </Flex>
 
-                            <Flex justify="flex-end" mt="2">
-                              <Text
-                                fontWeight="bold"
-                                fontSize="md"
-                                color="green.600"
+                              <Flex
+                                direction="row"
+                                align="center"
+                                justify="space-between"
+                                mt="1"
+                                flexWrap="wrap"
+                                gap="2"
                               >
-                                {formatPrice(subtotal)}
-                              </Text>
-                            </Flex>
+                                {showColorPicker && product && (
+                                  <Box>
+                                    <SelectRoot
+                                      collection={createListCollection({
+                                        items: colorOptions.map((c) => ({
+                                          label: c,
+                                          value: c,
+                                        })),
+                                      })}
+                                      value={[selectedColor || ""]}
+                                      onValueChange={(details) => {
+                                        const color = details.value[0];
+                                        if (color && onUpdateColor) {
+                                          onUpdateColor(itemKey, color);
+                                        }
+                                      }}
+                                      size="sm"
+                                      width={{ base: "100%", sm: "120px" }}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValueText placeholder="Cor" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {colorOptions.map((c) => (
+                                          <SelectItem key={c} item={c}>
+                                            {c}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </SelectRoot>
+                                  </Box>
+                                )}
 
-                            {error && (
-                              <Text fontSize="xs" color="red.600">
-                                ⚠️ {error}
-                              </Text>
-                            )}
+                                {hasSizes && availableSizes.length > 0 && (
+                                  <Box>
+                                    <SelectRoot
+                                      collection={createListCollection({
+                                        items: availableSizes.map((size) => ({
+                                          label: size,
+                                          value: size,
+                                        })),
+                                      })}
+                                      value={[selectedSize || ""]}
+                                      onValueChange={(details) => {
+                                        const size = details.value[0];
+                                        if (size && product) {
+                                          onUpdateSize(
+                                            itemKey,
+                                            size as ProductSize,
+                                          );
+                                        }
+                                      }}
+                                      size="sm"
+                                      width={{ base: "100%", sm: "100px" }}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValueText placeholder="Tamanho" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {availableSizes.map((size) => (
+                                          <SelectItem key={size} item={size}>
+                                            {size} (
+                                            {product
+                                              ? product.getStockForSize(
+                                                  size,
+                                                  item.variants?.color,
+                                                )
+                                              : 0}{" "}
+                                            em estoque)
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </SelectRoot>
+                                    {selectedSize && (
+                                      <Text
+                                        fontSize="xs"
+                                        color="gray.500"
+                                        mt="1"
+                                      >
+                                        {stockForSize} em estoque para{" "}
+                                        {selectedSize}
+                                      </Text>
+                                    )}
+                                  </Box>
+                                )}
 
-                            {product &&
-                              item.quantity > maxQty &&
-                              stockForSize > 0 && (
-                                <Text fontSize="xs" color="orange.600">
-                                  ⚠️ Apenas {maxQty} em estoque
-                                  {selectedSize ? ` para ${selectedSize}` : ""}
-                                  {selectedColor && colorOptions.length > 1
-                                    ? ` · ${selectedColor}`
-                                    : ""}
+                                <HStack bg="gray.50" borderRadius="md" p="1">
+                                  <IconButton
+                                    aria-label="Diminuir quantidade"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      onUpdateQuantity(
+                                        itemKey,
+                                        Math.max(1, item.quantity - 1),
+                                      )
+                                    }
+                                    disabled={item.quantity <= 1}
+                                  >
+                                    <FiMinus />
+                                  </IconButton>
+                                  <Input
+                                    value={item.quantity}
+                                    onChange={(e) => {
+                                      const qty =
+                                        Number.parseInt(
+                                          e.target.value.replace(/\D/g, ""),
+                                          10,
+                                        ) || 1;
+                                      onUpdateQuantity(
+                                        itemKey,
+                                        Math.max(1, Math.min(qty, maxQty)),
+                                      );
+                                    }}
+                                    size="sm"
+                                    width="48px"
+                                    textAlign="center"
+                                    bg="white"
+                                    border="1px solid"
+                                    borderColor="gray.300"
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    px="1"
+                                  />
+                                  <IconButton
+                                    aria-label="Aumentar quantidade"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      onUpdateQuantity(
+                                        itemKey,
+                                        Math.min(item.quantity + 1, maxQty),
+                                      )
+                                    }
+                                    disabled={
+                                      !product || item.quantity >= maxQty
+                                    }
+                                  >
+                                    <FiPlus />
+                                  </IconButton>
+                                </HStack>
+                              </Flex>
+
+                              <Flex justify="flex-end" mt="2">
+                                <Text
+                                  fontWeight="bold"
+                                  fontSize="md"
+                                  color="green.600"
+                                >
+                                  {formatPrice(subtotal)}
                                 </Text>
+                              </Flex>
+
+                              {error && (
+                                <HStack gap="1" color="red.600">
+                                  <FiAlertTriangle size={12} />
+                                  <Text fontSize="xs">{error}</Text>
+                                </HStack>
                               )}
-                          </VStack>
-                        </Flex>
-                      </Box>
-                    );
-                  })}
 
-                  {totalPages > 1 && (
-                    <HStack justify="center" mt="4" gap="4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={page === 1}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      >
-                        Anterior
-                      </Button>
+                              {product &&
+                                item.quantity > maxQty &&
+                                stockForSize > 0 && (
+                                  <HStack gap="1" color="orange.600">
+                                    <FiAlertTriangle size={12} />
+                                    <Text fontSize="xs">
+                                      Apenas {maxQty} em estoque
+                                      {selectedSize
+                                        ? ` para ${selectedSize}`
+                                        : ""}
+                                      {selectedColor && colorOptions.length > 1
+                                        ? ` · ${selectedColor}`
+                                        : ""}
+                                    </Text>
+                                  </HStack>
+                                )}
+                            </VStack>
+                          </Flex>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                )}
+              </DrawerBody>
 
-                      <Text fontSize="sm" fontWeight="medium">
-                        Página {page} de {totalPages}
-                      </Text>
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={page === totalPages}
-                        onClick={() =>
-                          setPage((p) => Math.min(totalPages, p + 1))
-                        }
-                      >
-                        Próxima
-                      </Button>
-                    </HStack>
-                  )}
-                </Stack>
-              )}
-            </DrawerBody>
-
-            <DrawerFooter
-              display="flex"
-              flexDirection="column"
-              gap="4"
-              bg="white"
-              borderTopWidth="1px"
-              p="4"
-            >
-              {!isEmpty && (
-                <Flex
-                  justify="space-between"
-                  align="center"
-                  p="4"
-                  w="full"
-                  bg="gray.50"
-                  borderRadius="md"
-                >
-                  <Text fontSize="lg" fontWeight="semibold">
-                    Total:
-                  </Text>
-                  <Text fontSize="xl" fontWeight="bold" color="green.600">
-                    {total}
-                  </Text>
-                </Flex>
-              )}
-
-              {!isEmpty && !canCheckout && checkoutBlockReason && (
-                <Box
-                  p="3"
-                  w="full"
-                  bg="orange.50"
-                  borderRadius="md"
-                  borderWidth="1px"
-                  borderColor="orange.200"
-                >
-                  <Text fontSize="sm" color="orange.700" fontWeight="semibold">
-                    ⚠️ Não é possível finalizar
-                  </Text>
-                  <Text fontSize="sm" color="orange.600" mt="1">
-                    {checkoutBlockReason}
-                  </Text>
-                </Box>
-              )}
-
-              <Flex gap="3" width="full" direction="column">
+              <DrawerFooter
+                display="flex"
+                flexDirection="column"
+                gap="4"
+                bg="white"
+                borderTopWidth="1px"
+                p="4"
+              >
                 {!isEmpty && (
-                  <Box w="full">
-                    <WhatsAppCheckoutButton
-                      cart={cartItems}
-                      buttonText="Finalizar pelo WhatsApp"
-                      size="lg"
-                      disabled={!canCheckout}
-                      onSuccess={() => {
-                        onClose();
-                      }}
-                    />
+                  <Flex
+                    justify="space-between"
+                    align="center"
+                    p="4"
+                    w="full"
+                    bg="gray.50"
+                    borderRadius="md"
+                  >
+                    <Text fontSize="lg" fontWeight="semibold">
+                      Total:
+                    </Text>
+                    <Text fontSize="xl" fontWeight="bold" color="green.600">
+                      {total}
+                    </Text>
+                  </Flex>
+                )}
+
+                {!isEmpty && !canCheckout && checkoutBlockReason && (
+                  <Box
+                    p="3"
+                    w="full"
+                    bg="orange.50"
+                    borderRadius="md"
+                    borderWidth="1px"
+                    borderColor="orange.200"
+                  >
+                    <HStack
+                      gap="1"
+                      color="orange.700"
+                      fontSize="sm"
+                      fontWeight="semibold"
+                    >
+                      <FiAlertTriangle size={14} />
+                      <Text>Não é possível finalizar</Text>
+                    </HStack>
+                    <Text fontSize="sm" color="orange.600" mt="1">
+                      {checkoutBlockReason}
+                    </Text>
                   </Box>
                 )}
 
-                <Button variant="outline" onClick={onClose} size="lg" w="full">
-                  Continuar Comprando
-                </Button>
-              </Flex>
-            </DrawerFooter>
-          </DrawerContent>
-        </DrawerPositioner>
-      </Portal>
-    </DrawerRoot>
+                <Flex gap="3" width="full" direction="column">
+                  {!isEmpty && (
+                    <Box w="full">
+                      <WhatsAppCheckoutButton
+                        cart={cartItems}
+                        buttonText="Finalizar pelo WhatsApp"
+                        size="lg"
+                        disabled={!canCheckout}
+                        onSuccess={() => {
+                          onClose();
+                        }}
+                      />
+                    </Box>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    onClick={onClose}
+                    size="lg"
+                    w="full"
+                  >
+                    Continuar Comprando
+                  </Button>
+                </Flex>
+              </DrawerFooter>
+            </DrawerContent>
+          </DrawerPositioner>
+        </Portal>
+      </DrawerRoot>
+
+      <DialogRoot
+        id="cart-clear-confirm"
+        open={confirmClearOpen}
+        onOpenChange={(e) => setConfirmClearOpen(e.open)}
+      >
+        <Portal>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Limpar carrinho</DialogTitle>
+              <DialogCloseTrigger />
+            </DialogHeader>
+            <DialogBody>
+              <Text>
+                Tem certeza que deseja remover todos os itens do carrinho? Esta
+                ação não pode ser desfeita.
+              </Text>
+            </DialogBody>
+            <DialogFooter>
+              <DialogActionTrigger asChild>
+                <Button variant="outline">Cancelar</Button>
+              </DialogActionTrigger>
+              <Button
+                colorScheme="red"
+                onClick={() => {
+                  onClearCart();
+                  setConfirmClearOpen(false);
+                }}
+              >
+                Limpar carrinho
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Portal>
+      </DialogRoot>
+    </>
   );
 }

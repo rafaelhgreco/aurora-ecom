@@ -20,7 +20,13 @@ import {
 } from "@chakra-ui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { IoChevronBack, IoChevronForward, IoRefresh } from "react-icons/io5";
+import {
+  IoAlertCircleOutline,
+  IoCheckmarkCircleOutline,
+  IoChevronBack,
+  IoChevronForward,
+  IoRefresh,
+} from "react-icons/io5";
 import {
   listOrdersWithStockAction,
   updateOrderStatusAction,
@@ -239,11 +245,17 @@ export function OrderTable() {
                           {hasStockIssue(order) &&
                           order.status === "PENDENTE" ? (
                             <Badge colorScheme="orange" fontSize="xs">
-                              ⚠️ Verificar
+                              <HStack gap="1">
+                                <IoAlertCircleOutline size={12} />
+                                <Text as="span">Verificar</Text>
+                              </HStack>
                             </Badge>
                           ) : (
                             <Badge colorScheme="green" fontSize="xs">
-                              ✓ OK
+                              <HStack gap="1">
+                                <IoCheckmarkCircleOutline size={12} />
+                                <Text as="span">OK</Text>
+                              </HStack>
                             </Badge>
                           )}
                         </Button>
@@ -274,8 +286,27 @@ export function OrderTable() {
                                     <Text as="span" fontWeight="bold">
                                       {i.currentStock}
                                     </Text>{" "}
-                                    em estoque
-                                    {i.sufficient ? " ✓" : " — insuficiente ⚠️"}
+                                    em estoque{" "}
+                                    {i.sufficient ? (
+                                      <IoCheckmarkCircleOutline
+                                        color="var(--chakra-colors-green-600)"
+                                        style={{
+                                          display: "inline",
+                                          verticalAlign: "middle",
+                                        }}
+                                      />
+                                    ) : (
+                                      <>
+                                        — insuficiente{" "}
+                                        <IoAlertCircleOutline
+                                          color="var(--chakra-colors-orange-600)"
+                                          style={{
+                                            display: "inline",
+                                            verticalAlign: "middle",
+                                          }}
+                                        />
+                                      </>
+                                    )}
                                   </Text>
                                 ))}
                               </VStack>

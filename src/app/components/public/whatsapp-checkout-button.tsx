@@ -120,7 +120,7 @@ export function WhatsAppCheckoutButton({
         display="inline-flex"
         alignItems="center"
       >
-        💬
+        <FaWhatsapp />
       </Box>
       {buttonText}
     </Button>

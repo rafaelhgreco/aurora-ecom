@@ -258,6 +258,10 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
         </Flex>
       </Box>
 
+      {/* Reserva o espaço do header fixo no fluxo normal — sem isso, o
+          conteúdo da página começa por baixo do header. */}
+      <Box aria-hidden h={{ base: "50px", md: "60px" }} flexShrink={0} />
+
       <CartDrawer
         isOpen={isOpen}
         onClose={closeCart}
