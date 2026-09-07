@@ -27,6 +27,7 @@ import {
   Portal,
   SelectContent,
   SelectItem,
+  SelectPositioner,
   SelectRoot,
   SelectTrigger,
   SelectValueText,
@@ -310,13 +311,17 @@ export function CartDrawer({
                                       <SelectTrigger>
                                         <SelectValueText placeholder="Cor" />
                                       </SelectTrigger>
-                                      <SelectContent>
-                                        {colorOptions.map((c) => (
-                                          <SelectItem key={c} item={c}>
-                                            {c}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
+                                      <Portal>
+                                        <SelectPositioner>
+                                          <SelectContent>
+                                            {colorOptions.map((c) => (
+                                              <SelectItem key={c} item={c}>
+                                                {c}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </SelectPositioner>
+                                      </Portal>
                                     </SelectRoot>
                                   </Box>
                                 )}
@@ -346,20 +351,27 @@ export function CartDrawer({
                                       <SelectTrigger>
                                         <SelectValueText placeholder="Tamanho" />
                                       </SelectTrigger>
-                                      <SelectContent>
-                                        {availableSizes.map((size) => (
-                                          <SelectItem key={size} item={size}>
-                                            {size} (
-                                            {product
-                                              ? product.getStockForSize(
-                                                  size,
-                                                  item.variants?.color,
-                                                )
-                                              : 0}{" "}
-                                            em estoque)
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
+                                      <Portal>
+                                        <SelectPositioner>
+                                          <SelectContent>
+                                            {availableSizes.map((size) => (
+                                              <SelectItem
+                                                key={size}
+                                                item={size}
+                                              >
+                                                {size} (
+                                                {product
+                                                  ? product.getStockForSize(
+                                                      size,
+                                                      item.variants?.color,
+                                                    )
+                                                  : 0}{" "}
+                                                em estoque)
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </SelectPositioner>
+                                      </Portal>
                                     </SelectRoot>
                                     {selectedSize && (
                                       <Text

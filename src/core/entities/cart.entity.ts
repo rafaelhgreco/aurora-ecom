@@ -1,3 +1,4 @@
+import { roundCurrency, sumCurrency } from "@/shared/money";
 import { CartItemEntity } from "./cart-item.entity";
 import type { ProductEntity } from "./product.entity";
 
@@ -159,7 +160,7 @@ export class CartEntity {
    * Requer um mapeamento de produtos (productId -> ProductEntity)
    */
   calculateTotal(products: Map<string, ProductEntity>): number {
-    let total = 0;
+    const subtotals: number[] = [];
 
     for (const item of this.items.values()) {
       const product = products.get(item.productId);
@@ -168,10 +169,10 @@ export class CartEntity {
         throw new Error(`Produto ${item.productId} não encontrado`);
       }
 
-      total += item.calculateSubtotal(product);
+      subtotals.push(item.calculateSubtotal(product));
     }
 
-    return total;
+    return sumCurrency(subtotals);
   }
 
   /**
@@ -252,9 +253,11 @@ export class CartEntity {
     }
 
     const originalTotal = this.calculateTotal(products);
-    const discountAmount = originalTotal * (discountPercentage / 100);
+    const discountAmount = roundCurrency(
+      originalTotal * (discountPercentage / 100),
+    );
 
-    return originalTotal - discountAmount;
+    return roundCurrency(originalTotal - discountAmount);
   }
 
   /**
@@ -269,7 +272,9 @@ export class CartEntity {
     }
 
     const originalTotal = this.calculateTotal(products);
-    const finalTotal = Math.max(0, originalTotal - discountAmount);
+    const finalTotal = roundCurrency(
+      Math.max(0, originalTotal - discountAmount),
+    );
 
     return finalTotal;
   }
@@ -292,10 +297,12 @@ export class CartEntity {
   }
 
   /**
-   * Clona o carrinho
+   * Clona o carrinho (nova instância independente — os itens também são
+   * clonados, senão mutar um item no clone, como updateItemQuantity,
+   * mutaria o mesmo CartItemEntity compartilhado com o carrinho original).
    */
   clone(): CartEntity {
-    return new CartEntity(this.getItems());
+    return new CartEntity(this.getItems().map((item) => item.clone()));
   }
 
   /**

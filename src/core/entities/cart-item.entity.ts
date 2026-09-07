@@ -1,4 +1,5 @@
 import type { ProductSize } from "@/core/schemas/product.schema";
+import { roundCurrency } from "@/shared/money";
 import type { ProductEntity } from "./product.entity";
 
 /**
@@ -77,7 +78,7 @@ export class CartItemEntity {
    * Para calcular com preço, use calculateSubtotal(product)
    */
   calculateSubtotal(product: ProductEntity): number {
-    return product.price * this.quantity;
+    return roundCurrency(product.price * this.quantity);
   }
 
   /**
@@ -158,6 +159,18 @@ export class CartItemEntity {
     }
 
     return { valid: true };
+  }
+
+  /**
+   * Clona o item (nova instância independente — mutar o clone, como um
+   * updateQuantity, não deve afetar o item original).
+   */
+  clone(): CartItemEntity {
+    return new CartItemEntity(
+      this.productId,
+      this.quantity,
+      this.variants ? { ...this.variants } : undefined,
+    );
   }
 
   /**
