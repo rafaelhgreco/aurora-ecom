@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { SHOP_CATEGORY_IDS } from "@/core/catalog/shop-catalog";
 
+export const PRODUCT_STATUSES = ["DRAFT", "ACTIVE"] as const;
+export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+export const productStatusSchema = z.enum(PRODUCT_STATUSES);
+
+export const DRAFT_PLACEHOLDER_IMAGE_URL = "/images/product-placeholder.png";
+export const DRAFT_PLACEHOLDER_DESCRIPTION =
+  "Produto ainda não descrito. Preencha os detalhes para publicar.";
+
 /**
  * Presets de variação (cadastro admin escolhe um tipo; também há modo personalizado).
  */
@@ -114,6 +122,13 @@ const productObjectSchema = z.object({
   /** IDs do Firestore não são UUID; aceita qualquer string não vazia */
   id: z.string().min(1, "ID inválido").optional(),
 
+  barcode: z
+    .string()
+    .min(1, "Código de barras é inválido")
+    .max(64, "Código de barras deve ter no máximo 64 caracteres")
+    .trim()
+    .optional(),
+
   title: z
     .string({ message: "Título é obrigatório" })
     .min(3, "Título deve ter no mínimo 3 caracteres")
@@ -186,6 +201,8 @@ const productObjectSchema = z.object({
 
   isActive: z.boolean().default(true),
 
+  status: productStatusSchema.default("ACTIVE"),
+
   createdAt: z.date().optional(),
 
   updatedAt: z.date().optional(),
@@ -229,10 +246,11 @@ export const productEditFormSchema = productObjectSchema
 export type ProductEditFormInput = z.infer<typeof productEditFormSchema>;
 
 /**
- * Formulário admin: imagens tratadas no componente (URLs existentes + upload);
- * cores como texto livre (vírgulas).
+ * Formulário admin único (cadastro + edição/enriquecimento): imagens tratadas
+ * no componente por cor (`colorVariants`, upload) — `id` é opcional pois no
+ * cadastro o produto ainda não existe no Firestore.
  */
-export const productAdminEditFormSchema = productObjectSchema
+export const productFormSchema = productObjectSchema
   .omit({
     createdAt: true,
     updatedAt: true,
@@ -241,14 +259,12 @@ export const productAdminEditFormSchema = productObjectSchema
     imageUrl: true,
   })
   .extend({
-    id: z.string().min(1, "ID do produto é obrigatório"),
+    id: z.string().optional(),
     colorsText: z.string().optional(),
   })
   .superRefine(refineProductSizesConsistency);
 
-export type ProductAdminEditFormValues = z.infer<
-  typeof productAdminEditFormSchema
->;
+export type ProductFormValues = z.infer<typeof productFormSchema>;
 
 export const productFilterSchema = z.object({
   category: z.string().optional(),
@@ -259,10 +275,26 @@ export const productFilterSchema = z.object({
   maxPrice: z.number().positive().optional(),
   sizes: z.array(productSizeSchema).optional(),
   isActive: z.boolean().optional(),
+  status: productStatusSchema.optional(),
   search: z.string().optional(),
   page: z.number().positive().optional(),
   limitCount: z.number().positive().optional(),
 });
+
+export const scanBarcodeSchema = z.object({
+  barcode: z.string().min(1, "Código de barras é obrigatório").trim(),
+  quantity: z.number().int().positive().default(1),
+});
+/** Tipo de entrada (pré-parse): `quantity` é opcional pois tem default no schema. */
+export type ScanBarcodeInput = z.input<typeof scanBarcodeSchema>;
+
+export const publishProductSchema = z.object({
+  id: z.string().min(1, "ID do produto é obrigatório"),
+  title: productObjectSchema.shape.title,
+  price: productObjectSchema.shape.price,
+  category: z.string().min(2, "Categoria é obrigatória").max(50),
+});
+export type PublishProductInput = z.infer<typeof publishProductSchema>;
 
 export type Product = z.infer<typeof productSchema>;
 export type SerializedProduct = z.infer<typeof serializedProductSchema>;

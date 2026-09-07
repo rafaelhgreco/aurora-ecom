@@ -9,12 +9,17 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { IoClose } from "react-icons/io5";
+import type { FieldErrors } from "react-hook-form";
+import { IoClose, IoResizeOutline } from "react-icons/io5";
 import { Checkbox } from "@/components/ui/checkbox";
+import type {
+  ProductFormValues,
+  SizePresetKind,
+} from "@/core/schemas/product.schema";
 
 interface ProductSizesCardProps {
   sizePreset: string;
-  applySizePreset: (preset: any) => void;
+  applySizePreset: (preset: SizePresetKind) => void;
   presetOptions: readonly string[];
   selectedSizes: string[];
   handleToggleSize: (size: string) => void;
@@ -22,8 +27,7 @@ interface ProductSizesCardProps {
   setCustomSizeDraft: (draft: string) => void;
   handleAddCustomSize: () => void;
   handleRemoveCustomSize: (size: string) => void;
-  errors?: any;
-  isEdit?: boolean;
+  errors?: FieldErrors<ProductFormValues>;
 }
 
 export function ProductSizesCard({
@@ -37,24 +41,22 @@ export function ProductSizesCard({
   handleAddCustomSize,
   handleRemoveCustomSize,
   errors,
-  isEdit,
 }: ProductSizesCardProps) {
   return (
     <Card.Root>
       <Card.Header>
-        <Heading size="lg">Tamanhos / variações *</Heading>
-        {isEdit && (
-          <Text color="gray.600" fontSize="sm" mt={1}>
-            Escolha roupas, volumes (ml) ou rótulos personalizados.
-          </Text>
-        )}
+        <HStack gap={2}>
+          <IoResizeOutline />
+          <Heading size="lg">Tamanhos / variações</Heading>
+        </HStack>
+        <Text color="gray.600" fontSize="sm" mt={1}>
+          (opcional) — escolha roupas, volumes (ml) ou rótulos personalizados.
+        </Text>
       </Card.Header>
       <Card.Body>
-        {isEdit && (
-          <Text fontWeight="medium" mb={2}>
-            Tipo de variação
-          </Text>
-        )}
+        <Text fontWeight="medium" mb={2}>
+          Tipo de variação
+        </Text>
         <HStack flexWrap="wrap" gap={2} mb={3}>
           <Button
             type="button"
@@ -62,7 +64,7 @@ export function ProductSizesCard({
             variant={sizePreset === "clothing" ? "solid" : "outline"}
             onClick={() => applySizePreset("clothing")}
           >
-            {isEdit ? "Roupas (PP…XG)" : "Roupas"}
+            Roupas (PP…XG)
           </Button>
           <Button
             type="button"
@@ -82,15 +84,13 @@ export function ProductSizesCard({
           </Button>
         </HStack>
 
-        {isEdit && (
-          <Text fontSize="sm" color="gray.600" mb={3}>
-            {sizePreset === "clothing" &&
-              "Tamanhos de vestuário oferecidos por este produto."}
-            {sizePreset === "volume" &&
-              "Capacidades em mililitros (cosméticos, líquidos, etc.)."}
-            {sizePreset === "custom" && "Rótulos livres (ex.: 30ml, Único)."}
-          </Text>
-        )}
+        <Text fontSize="sm" color="gray.600" mb={3}>
+          {sizePreset === "clothing" &&
+            "Tamanhos de vestuário oferecidos por este produto."}
+          {sizePreset === "volume" &&
+            "Capacidades em mililitros (cosméticos, líquidos, etc.)."}
+          {sizePreset === "custom" && "Rótulos livres (ex.: 30ml, Único)."}
+        </Text>
 
         {sizePreset !== "custom" ? (
           <Flex gap={4} wrap="wrap">
@@ -109,7 +109,7 @@ export function ProductSizesCard({
             <HStack flexWrap="wrap" gap={2}>
               <Input
                 maxLength={32}
-                placeholder={isEdit ? 'Ex.: 30ml, "Único"' : "Ex.: 30ml"}
+                placeholder='Ex.: 30ml, "Único"'
                 value={customSizeDraft}
                 onChange={(e) => setCustomSizeDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -124,9 +124,9 @@ export function ProductSizesCard({
                 Adicionar
               </Button>
             </HStack>
-            {(!isEdit || selectedSizes.length > 0) && (
+            {selectedSizes.length > 0 ? (
               <Flex flexWrap="wrap" gap={2}>
-                {(selectedSizes || []).map((s) => (
+                {selectedSizes.map((s) => (
                   <HStack
                     key={s}
                     bg="gray.100"
@@ -147,8 +147,7 @@ export function ProductSizesCard({
                   </HStack>
                 ))}
               </Flex>
-            )}
-            {isEdit && selectedSizes.length === 0 && (
+            ) : (
               <Text fontSize="sm" color="gray.500">
                 Nenhum rótulo personalizado adicionado.
               </Text>

@@ -10,7 +10,7 @@ import { Box, Button, Container, HStack, Text } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { IoChevronBack, IoChevronForward } from "react-icons/io5";
+import { IoBarcode, IoChevronBack, IoChevronForward } from "react-icons/io5";
 import { listProductsAction } from "@/app/actions/products";
 import { DeleteConfirmDialog } from "@/app/components/admin/delete-confirm-dialog";
 import { OrderTable } from "@/app/components/admin/order-table";
@@ -138,27 +138,31 @@ function AdminPageContent() {
 
   return (
     <Container maxW="container.xl" py={8}>
-      <HStack
-        gap={1}
-        bg="gray.100"
-        borderRadius="md"
-        p={1}
-        mb={6}
-        w="fit-content"
-      >
+      <HStack justify="space-between" mb={6} flexWrap="wrap" gap={4}>
+        <HStack gap={1} bg="gray.100" borderRadius="md" p={1} w="fit-content">
+          <Button
+            size="sm"
+            variant={view === "produtos" ? "solid" : "ghost"}
+            onClick={() => updateView("produtos")}
+          >
+            Produtos
+          </Button>
+          <Button
+            size="sm"
+            variant={view === "pedidos" ? "solid" : "ghost"}
+            onClick={() => updateView("pedidos")}
+          >
+            Pedidos
+          </Button>
+        </HStack>
+
         <Button
           size="sm"
-          variant={view === "produtos" ? "solid" : "ghost"}
-          onClick={() => updateView("produtos")}
+          colorScheme="orange"
+          onClick={() => router.push("/admin-produtos/revisao")}
         >
-          Produtos
-        </Button>
-        <Button
-          size="sm"
-          variant={view === "pedidos" ? "solid" : "ghost"}
-          onClick={() => updateView("pedidos")}
-        >
-          Pedidos
+          <IoBarcode style={{ marginRight: 6 }} />
+          Bipagem de Produtos
         </Button>
       </HStack>
 

@@ -3,6 +3,7 @@ import type {
   Product,
   ProductColorVariant,
   ProductSize,
+  ProductStatus,
 } from "@/core/schemas/product.schema";
 import {
   getAvailableSizes as getAvailableSizesHelper,
@@ -14,6 +15,7 @@ import {
 
 export class ProductEntity implements Product {
   id?: string;
+  barcode?: string;
   title: string;
   subtitle?: string;
   description: string;
@@ -28,12 +30,14 @@ export class ProductEntity implements Product {
   colors?: string[];
   colorVariants?: ProductColorVariant[];
   isActive: boolean;
+  status: ProductStatus;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
 
   constructor(data: Product & { deletedAt?: Date | null }) {
     this.id = data.id;
+    this.barcode = data.barcode;
     this.title = data.title;
     this.subtitle = data.subtitle;
     this.description = data.description;
@@ -48,6 +52,7 @@ export class ProductEntity implements Product {
     this.colors = data.colors;
     this.colorVariants = data.colorVariants;
     this.isActive = data.isActive ?? true;
+    this.status = data.status ?? "ACTIVE";
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
     this.deletedAt = data.deletedAt || null;
@@ -197,9 +202,18 @@ export class ProductEntity implements Product {
     this.isActive = false;
   }
 
+  publish(): void {
+    this.status = "ACTIVE";
+  }
+
+  isDraft(): boolean {
+    return this.status === "DRAFT";
+  }
+
   toJSON(): Product {
     return {
       id: this.id,
+      barcode: this.barcode,
       title: this.title,
       subtitle: this.subtitle,
       description: this.description,
@@ -214,6 +228,7 @@ export class ProductEntity implements Product {
       colors: this.colors,
       colorVariants: this.colorVariants,
       isActive: this.isActive,
+      status: this.status,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

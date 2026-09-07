@@ -1,53 +1,168 @@
 "use client";
 
-import { ProductBasicDataCard } from "./product-form/product-basic-data-card";
-import { ProductPriceStockCard } from "./product-form/product-price-stock-card";
-import { ProductSizesCard } from "./product-form/product-sizes-card";
-
 /**
- * Formulário de Cadastro de Produto
+ * Formulário único de produto — cadastro, edição e enriquecimento (DRAFT → ACTIVE).
  *
- * Formulário completo com:
- * - Validação com Zod + React Hook Form
- * - Upload de imagens para Cloudinary
- * - Feedback visual de loading/sucesso/erro
- * - Integration com Server Actions
+ * Sem `product`: cadastro de produto novo (chama createProductAction).
+ * Com `product` status ACTIVE: edição (chama updateProductAction).
+ * Com `product` status DRAFT: enriquecimento (chama publishProductAction).
  */
 
 import {
   Badge,
   Box,
   Button,
-  Card,
   Container,
-  Grid,
   Heading,
   HStack,
-  IconButton,
-  Image,
   Input,
   Text,
   VStack,
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { IoClose, IoCloudUpload } from "react-icons/io5";
-import { createProductAction } from "@/app/actions/products";
+import { IoArrowBack } from "react-icons/io5";
+import type { ActionResult } from "@/app/actions/products";
+import {
+  createProductAction,
+  publishProductAction,
+  updateProductAction,
+} from "@/app/actions/products";
+import type { Product } from "@/app/types/product";
 import { Alert } from "@/components/ui/alert";
-import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
+import { toaster } from "@/components/ui/toaster";
+import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import {
   type CreateProductInput,
-  createProductSchema,
+  inferSizePresetFromSizes,
   PRODUCT_SIZES_CLOTHING,
   PRODUCT_SIZES_VOLUME,
+  type ProductColorVariant,
+  type ProductFormValues,
   type ProductSize,
+  type PublishProductInput,
+  productFormSchema,
   type SizePresetKind,
+  type UpdateProductInput,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
+import { buildVariantStockBySize } from "@/shared/admin-product-stock";
 import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
+import { ProductBasicDataCard } from "./product-form/product-basic-data-card";
+import { ProductColorVariantsCard } from "./product-form/product-color-variants-card";
+import { ProductPriceStockCard } from "./product-form/product-price-stock-card";
+import { ProductSizesCard } from "./product-form/product-sizes-card";
+import {
+  type ColorEditRow,
+  useColorVariantRows,
+} from "./product-form/use-color-variant-rows";
 
-export function ProductForm() {
+/** Referência estável: evita `|| []` novo a cada render (loop em useEffect). */
+const EMPTY_SIZES: ProductSize[] = [];
+
+function createFormDefaults(): ProductFormValues {
+  return {
+    title: "",
+    subtitle: "",
+    description: "",
+    price: 0,
+    stock: 0,
+    category: "",
+    shopCategory: "roupas" as ShopCategoryId,
+    sizes: [],
+    isActive: true,
+    status: "ACTIVE",
+    colorsText: "",
+  };
+}
+
+function productToFormDefaults(product: Product): ProductFormValues {
+  const sizes = product.sizes ?? [];
+  const hasPerColorStock = product.colorVariants?.some(
+    (v) => v.stockBySize && Object.keys(v.stockBySize).length > 0,
+  );
+  const stockBySize = hasPerColorStock
+    ? {}
+    : (product.stockBySize ??
+      (sizes.length > 0
+        ? Object.fromEntries(
+            sizes.map((s, i) => [s, i === 0 ? (product.stock ?? 0) : 0]),
+          )
+        : undefined));
+  return {
+    id: product.id || "",
+    title: product.title,
+    subtitle: product.subtitle ?? "",
+    description: product.description,
+    price: product.price,
+    stock: product.stock,
+    stockBySize,
+    category: product.category ?? "",
+    shopCategory: (product.shopCategory ?? "roupas") as ShopCategoryId,
+    sizes,
+    isActive: product.isActive ?? true,
+    status: product.status ?? "ACTIVE",
+    colorsText: "",
+  };
+}
+
+function buildColorRowsFromProduct(product?: Product): ColorEditRow[] {
+  if (!product) {
+    return [
+      {
+        id: "0",
+        color: "",
+        existingUrls: [],
+        files: [],
+        previews: [],
+        stockBySize: {},
+      },
+    ];
+  }
+  if (product.colorVariants?.length) {
+    return product.colorVariants.map((v, i) => ({
+      id: String(i),
+      color: v.color,
+      existingUrls: [...v.images],
+      files: [],
+      previews: [],
+      stockBySize: { ...(v.stockBySize ?? {}) },
+    }));
+  }
+  const urls =
+    product.images?.length > 0
+      ? [...product.images]
+      : product.imageUrl
+        ? [product.imageUrl]
+        : [];
+  const sizes = product.sizes ?? [];
+  const sb = product.stockBySize ?? {};
+  const stockBySize: Partial<Record<ProductSize, number>> = {};
+  for (const s of sizes) {
+    stockBySize[s] = sb[s] ?? 0;
+  }
+  return [
+    {
+      id: "0",
+      color: "Padrão",
+      existingUrls: urls,
+      files: [],
+      previews: [],
+      stockBySize,
+    },
+  ];
+}
+
+interface ProductFormProps {
+  product?: Product;
+}
+
+export function ProductForm({ product }: ProductFormProps) {
+  const router = useRouter();
+  const isEdit = !!product;
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>(
     {},
@@ -58,11 +173,15 @@ export function ProductForm() {
     message: string;
   } | null>(null);
 
-  const [sizePreset, setSizePreset] = useState<SizePresetKind>("clothing");
+  const [sizePreset, setSizePreset] = useState<SizePresetKind>(() =>
+    inferSizePresetFromSizes(product?.sizes ?? []),
+  );
   const [customSizeDraft, setCustomSizeDraft] = useState("");
 
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const defaults = useMemo(
+    () => (product ? productToFormDefaults(product) : createFormDefaults()),
+    [product],
+  );
 
   const {
     register,
@@ -71,77 +190,43 @@ export function ProductForm() {
     setValue,
     watch,
     reset,
-  } = useForm<CreateProductInput>({
+  } = useForm<ProductFormValues>({
     // biome-ignore lint/suspicious/noExplicitAny: zodResolver type compatibility
-    resolver: zodResolver(createProductSchema) as any,
-    defaultValues: {
-      stock: 0,
-      isActive: true,
-      images: [],
-    },
+    resolver: zodResolver(productFormSchema) as any,
+    defaultValues: defaults,
   });
 
-  const selectedSizes = watch("sizes") || [];
+  const rawSizes = watch("sizes");
+  /** `?? EMPTY_SIZES` evita `|| []` (novo array a cada render → loop no hook abaixo). */
+  const selectedSizes = rawSizes ?? EMPTY_SIZES;
 
-  /**
-   * Adiciona imagens selecionadas
-   */
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const {
+    colorRows,
+    resetRows,
+    addColorRow,
+    removeColorRow,
+    setRowColor,
+    addRowImageFiles,
+    removeExistingUrl,
+    removeNewFile,
+    adjustRowStock,
+  } = useColorVariantRows({
+    initialRows: buildColorRowsFromProduct(product),
+    selectedSizes,
+  });
 
-    if (files.length === 0) return;
-
-    const remainingSlots = 10 - imageFiles.length;
-    const filesToAdd = files.slice(0, remainingSlots);
-
-    const newPreviews = filesToAdd.map((file) => URL.createObjectURL(file));
-
-    setImageFiles([...imageFiles, ...filesToAdd]);
-    setImagePreviews([...imagePreviews, ...newPreviews]);
-  };
-
-  /**
-   * Remove imagem
-   */
-  const handleRemoveImage = (index: number) => {
-    const newFiles = imageFiles.filter((_, i) => i !== index);
-    const newPreviews = imagePreviews.filter((_, i) => i !== index);
-
-    URL.revokeObjectURL(imagePreviews[index]);
-
-    setImageFiles(newFiles);
-    setImagePreviews(newPreviews);
-  };
-
-  /**
-   * Faz upload das imagens
-   */
-  const handleUploadImages = async (): Promise<string[]> => {
-    if (imageFiles.length === 0) {
-      throw new Error("Selecione pelo menos uma imagem");
+  useEffect(() => {
+    if (selectedSizes.length > 0) {
+      setValue("stockBySize", {});
+      setValue("stock", 0);
     }
+  }, [selectedSizes.length, setValue]);
 
-    setIsUploading(true);
-    setUploadProgress({});
-
-    try {
-      const results = await uploadMultipleFiles(
-        imageFiles,
-        "products/images",
-        (fileIndex, progress) => {
-          setUploadProgress((prev) => ({
-            ...prev,
-            [fileIndex]: progress.progress,
-          }));
-        },
-      );
-
-      const urls = results.map((r) => r.url);
-      return urls;
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  useEffect(() => {
+    reset(defaults);
+    resetRows(buildColorRowsFromProduct(product));
+    setSizePreset(inferSizePresetFromSizes(product?.sizes ?? []));
+  }, [product, defaults, reset, resetRows]);
 
   const presetOptions =
     sizePreset === "clothing"
@@ -158,59 +243,176 @@ export function ProductForm() {
   };
 
   const handleToggleSize = (size: ProductSize) => {
-    const current = selectedSizes || [];
-    const newSizes = current.includes(size)
+    const current = selectedSizes;
+    const next = current.includes(size)
       ? current.filter((s) => s !== size)
       : [...current, size];
-    setValue("sizes", newSizes);
+    setValue("sizes", next);
   };
 
   const handleAddCustomSize = () => {
     const t = customSizeDraft.trim();
     if (!t || t.length > 32) return;
     if (selectedSizes.includes(t)) return;
-    setValue("sizes", [...(selectedSizes || []), t]);
+    setValue("sizes", [...selectedSizes, t]);
     setCustomSizeDraft("");
   };
 
   const handleRemoveCustomSize = (size: string) => {
     setValue(
       "sizes",
-      (selectedSizes || []).filter((s) => s !== size),
+      selectedSizes.filter((s) => s !== size),
     );
   };
 
-  /**
-   * Submit do formulário
-   */
-  const onSubmit = async (data: CreateProductInput) => {
+  const uploadNewFilesBatch = async (files: File[]): Promise<string[]> => {
+    if (files.length === 0) return [];
+    setIsUploading(true);
+    setUploadProgress({});
+    try {
+      return (
+        await uploadMultipleFiles(
+          files,
+          "products/images",
+          (fileIndex, progress) => {
+            setUploadProgress((prev) => ({
+              ...prev,
+              [fileIndex]: progress.progress,
+            }));
+          },
+        )
+      ).map((r) => r.url);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const onSubmit = async (data: ProductFormValues) => {
+    setSubmitStatus(null);
+
+    for (const row of colorRows) {
+      if (!row.color.trim()) {
+        setSubmitStatus({
+          type: "error",
+          message: "Preencha o nome de cada cor.",
+        });
+        return;
+      }
+      if (row.existingUrls.length + row.files.length === 0) {
+        setSubmitStatus({
+          type: "error",
+          message: `A cor "${row.color.trim()}" precisa de pelo menos uma foto.`,
+        });
+        return;
+      }
+    }
+
     try {
       setIsSubmitting(true);
-      setSubmitStatus(null);
+      const allNewFiles = colorRows.flatMap((r) => r.files);
+      const uploadedList = await uploadNewFilesBatch(allNewFiles);
+      let offset = 0;
+      const sizes = data.sizes ?? [];
+      const colorVariants: ProductColorVariant[] = colorRows.map((row) => {
+        const n = row.files.length;
+        const slice = uploadedList.slice(offset, offset + n);
+        offset += n;
+        const stockBySize =
+          sizes.length > 0
+            ? buildVariantStockBySize(row.stockBySize, sizes)
+            : undefined;
+        return {
+          color: row.color.trim(),
+          images: [...row.existingUrls, ...slice],
+          ...(stockBySize ? { stockBySize } : {}),
+        };
+      });
 
-      const imageUrls = await handleUploadImages();
+      const flatImages = [...new Set(colorVariants.flatMap((v) => v.images))];
 
-      const productData: CreateProductInput = {
-        ...data,
-        imageUrl: imageUrls[0],
-        images: imageUrls,
-      };
+      let result: ActionResult<Product>;
 
-      const result = await createProductAction(productData);
+      if (!product) {
+        const createPayload: CreateProductInput = {
+          title: data.title,
+          subtitle: data.subtitle || undefined,
+          description: data.description,
+          price: data.price,
+          imageUrl: colorVariants[0].images[0],
+          images: flatImages.length > 0 ? flatImages : colorVariants[0].images,
+          colorVariants,
+          colors: colorVariants.map((v) => v.color),
+          category: data.category || undefined,
+          shopCategory: data.shopCategory,
+          stock: sizes.length > 0 ? 0 : (data.stock ?? 0),
+          sizes: sizes.length ? sizes : undefined,
+          isActive: data.isActive ?? true,
+          status: "ACTIVE",
+        };
+        result = await createProductAction(createPayload);
+      } else if (product.status === "DRAFT") {
+        const publishInput: PublishProductInput = {
+          id: data.id as string,
+          title: data.title,
+          price: data.price,
+          category: data.category || "",
+        };
+        result = await publishProductAction(publishInput);
+      } else {
+        const payload: UpdateProductInput = {
+          id: data.id as string,
+          title: data.title,
+          subtitle: data.subtitle || undefined,
+          description: data.description,
+          price: data.price,
+          category: data.category || undefined,
+          shopCategory: data.shopCategory,
+          imageUrl: colorVariants[0].images[0],
+          images: flatImages.length > 0 ? flatImages : colorVariants[0].images,
+          colorVariants,
+          colors: colorVariants.map((v) => v.color),
+          sizes: sizes.length ? sizes : undefined,
+          isActive: data.isActive,
+          ...(sizes.length === 0
+            ? {
+                stock: data.stock,
+                stockBySize:
+                  data.stockBySize && Object.keys(data.stockBySize).length > 0
+                    ? data.stockBySize
+                    : undefined,
+              }
+            : {}),
+        };
+        result = await updateProductAction(payload);
+      }
 
       if (result.success) {
-        setSubmitStatus({
+        toaster.create({
+          title: !product
+            ? "Produto cadastrado"
+            : product.status === "DRAFT"
+              ? "Produto publicado"
+              : "Produto atualizado",
+          description: !product
+            ? "O produto foi cadastrado com sucesso."
+            : product.status === "DRAFT"
+              ? "O produto foi publicado e está visível na loja."
+              : "As alterações foram salvas no Firestore.",
           type: "success",
-          message: "Produto cadastrado com sucesso!",
+          duration: 4000,
         });
-
-        reset();
-        setImageFiles([]);
-        setImagePreviews([]);
+        router.push("/admin-produtos");
+        router.refresh();
       } else {
         setSubmitStatus({
           type: "error",
-          message: result.error || "Erro ao cadastrar produto",
+          message:
+            result.error ||
+            (!product
+              ? "Erro ao cadastrar produto"
+              : product.status === "DRAFT"
+                ? "Erro ao publicar produto"
+                : "Erro ao atualizar produto"),
         });
       }
     } catch {
@@ -226,143 +428,80 @@ export function ProductForm() {
   return (
     <Container maxW="container.lg" py={8}>
       <VStack gap={6} align="stretch">
-        {/* Header */}
+        <HStack justify="space-between" flexWrap="wrap" gap={4}>
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/admin-produtos")}
+            size="sm"
+          >
+            <IoArrowBack style={{ marginRight: 8 }} />
+            Voltar
+          </Button>
+        </HStack>
+
         <Box>
-          <Heading size="2xl">Cadastrar Produto</Heading>
+          <HStack gap={3} mb={2}>
+            <Heading size="2xl">
+              {!product
+                ? "Cadastrar Produto"
+                : product.status === "DRAFT"
+                  ? "Enriquecer produto"
+                  : "Editar produto"}
+            </Heading>
+            {product?.status === "DRAFT" && (
+              <Badge colorScheme="orange" fontSize="md" px={3} py={1}>
+                Rascunho — bipado como {product.barcode}
+              </Badge>
+            )}
+          </HStack>
           <Text color="gray.600" mt={2}>
-            Preencha os dados do produto e faça upload das imagens
+            {!product
+              ? "Preencha os dados do produto e faça upload das imagens por cor."
+              : product.status === "DRAFT"
+                ? "Preencha os dados do produto para publicá-lo na loja."
+                : "Atualize dados, imagens, estoque e disponibilidade na loja."}
           </Text>
         </Box>
 
-        {/* Status Message */}
         {submitStatus && (
           <Alert
             status={submitStatus.type}
-            title={submitStatus.type === "success" ? "Sucesso!" : "Erro"}
+            title={submitStatus.type === "success" ? "Sucesso" : "Erro"}
           >
             {submitStatus.message}
           </Alert>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
+          {isEdit && <Input type="hidden" {...register("id")} />}
           <VStack gap={6} align="stretch">
-            {/* === SEÇÃO DE UPLOAD === */}
-            <Card.Root>
-              <Card.Header>
-                <Heading size="lg">Imagens do Produto</Heading>
-                <Text color="gray.600" fontSize="sm">
-                  Selecione até 10 imagens (a primeira será a principal)
-                </Text>
-              </Card.Header>
-              <Card.Body>
-                <VStack gap={4} align="stretch">
-                  {/* Botão de Seleção */}
-                  <Box>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageSelect}
-                      display="none"
-                      id="image-upload"
-                    />
-                    <label htmlFor="image-upload">
-                      <Button
-                        as="span"
-                        colorScheme="blue"
-                        variant="outline"
-                        width="full"
-                        cursor="pointer"
-                      >
-                        <IoCloudUpload style={{ marginRight: "8px" }} />
-                        Selecionar Imagens ({imageFiles.length}/10)
-                      </Button>
-                    </label>
-                  </Box>
+            <ProductColorVariantsCard
+              colorRows={colorRows}
+              selectedSizes={selectedSizes}
+              isUploading={isUploading}
+              uploadProgress={uploadProgress}
+              addColorRow={addColorRow}
+              removeColorRow={removeColorRow}
+              setRowColor={setRowColor}
+              addRowImageFiles={addRowImageFiles}
+              removeExistingUrl={removeExistingUrl}
+              removeNewFile={removeNewFile}
+              adjustRowStock={adjustRowStock}
+            />
 
-                  {/* Preview das Imagens */}
-                  {imagePreviews.length > 0 && (
-                    <Grid
-                      templateColumns="repeat(auto-fill, minmax(150px, 1fr))"
-                      gap={4}
-                    >
-                      {imagePreviews.map((preview, index) => (
-                        <Box key={preview} position="relative">
-                          <Image
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
-                            borderRadius="md"
-                            objectFit="cover"
-                            height="150px"
-                            width="100%"
-                          />
+            <ProductBasicDataCard
+              register={register}
+              errors={errors}
+              isEdit={isEdit}
+              descriptionValue={watch("description")}
+            />
 
-                          {/* Badge da posição */}
-                          <Badge
-                            position="absolute"
-                            top={2}
-                            left={2}
-                            colorScheme={index === 0 ? "green" : "gray"}
-                          >
-                            {index === 0 ? "Principal" : `#${index + 1}`}
-                          </Badge>
+            <ProductPriceStockCard
+              register={register}
+              errors={errors}
+              selectedSizesLength={selectedSizes.length}
+            />
 
-                          {/* Botão Remover */}
-                          <IconButton
-                            position="absolute"
-                            top={2}
-                            right={2}
-                            size="sm"
-                            colorScheme="red"
-                            onClick={() => handleRemoveImage(index)}
-                            aria-label="Remover imagem"
-                          >
-                            <IoClose />
-                          </IconButton>
-
-                          {/* Progress Bar durante upload */}
-                          {isUploading &&
-                            uploadProgress[index] !== undefined && (
-                              <Box
-                                position="absolute"
-                                bottom={0}
-                                left={0}
-                                right={0}
-                                p={2}
-                                bg="blackAlpha.700"
-                                borderBottomRadius="md"
-                              >
-                                <ProgressRoot
-                                  value={uploadProgress[index]}
-                                  size="sm"
-                                >
-                                  <ProgressBar />
-                                </ProgressRoot>
-                                <Text
-                                  color="white"
-                                  fontSize="xs"
-                                  textAlign="center"
-                                  mt={1}
-                                >
-                                  {Math.round(uploadProgress[index])}%
-                                </Text>
-                              </Box>
-                            )}
-                        </Box>
-                      ))}
-                    </Grid>
-                  )}
-                </VStack>
-              </Card.Body>
-            </Card.Root>
-
-            {/* === DADOS BÁSICOS === */}
-            <ProductBasicDataCard register={register} errors={errors} />
-
-            {/* === PREÇO E ESTOQUE === */}
-            <ProductPriceStockCard register={register} errors={errors} />
-
-            {/* === TAMANHOS === */}
             <ProductSizesCard
               sizePreset={sizePreset}
               applySizePreset={applySizePreset}
@@ -376,26 +515,26 @@ export function ProductForm() {
               errors={errors}
             />
 
-            {/* === BOTÕES === */}
             <HStack justify="flex-end" gap={4}>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  reset();
-                  setImageFiles([]);
-                  setImagePreviews([]);
-                }}
+                onClick={() => router.push("/admin-produtos")}
               >
-                Limpar
+                Cancelar
               </Button>
               <Button
                 type="submit"
-                colorScheme="blue"
+                colorScheme={product?.status === "DRAFT" ? "green" : "blue"}
                 loading={isSubmitting || isUploading}
-                disabled={imageFiles.length === 0}
               >
-                {isUploading ? "Fazendo Upload..." : "Cadastrar Produto"}
+                {isUploading
+                  ? "Fazendo Upload..."
+                  : !product
+                    ? "Cadastrar Produto"
+                    : product.status === "DRAFT"
+                      ? "Publicar produto"
+                      : "Salvar alterações"}
               </Button>
             </HStack>
           </VStack>

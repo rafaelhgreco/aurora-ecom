@@ -12,6 +12,7 @@ import {
   deleteProductAction,
   getProductByIdAction,
   listProductsAction,
+  publishProductAction,
   updateProductAction,
 } from "@/app/actions/products";
 import type {
@@ -19,6 +20,7 @@ import type {
   Product,
   UpdateProductInput,
 } from "@/app/types/product";
+import type { PublishProductInput } from "@/core/schemas/product.schema";
 import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
 
 export function useProductCRUD() {
@@ -135,6 +137,32 @@ export function useProductCRUD() {
     [loadProducts],
   );
 
+  const publishProduct = useCallback(
+    async (data: PublishProductInput) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await publishProductAction(data);
+        if (!result.success) {
+          const errMsg = result.error || "Erro ao publicar produto";
+          setError(errMsg);
+          return { success: false, error: errMsg };
+        }
+        await loadProducts();
+        if (result.data) {
+          setSelectedProduct(result.data);
+        }
+        return { success: true, data: result.data };
+      } catch {
+        setError(ADMIN_GENERIC);
+        return { success: false, error: ADMIN_GENERIC };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [loadProducts],
+  );
+
   return {
     products,
     selectedProduct,
@@ -145,6 +173,7 @@ export function useProductCRUD() {
     createProduct,
     updateProduct,
     deleteProduct,
+    publishProduct,
     setSelectedProduct,
   };
 }

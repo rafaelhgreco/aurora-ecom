@@ -4,7 +4,7 @@ import { Box, Button, Container, Text } from "@chakra-ui/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { IoArrowBack } from "react-icons/io5";
-import { ProductEditForm } from "@/app/components/admin/product-edit-form";
+import { ProductForm } from "@/app/components/admin/product-form";
 import { LoadingState } from "@/app/components/states/loading-state";
 import { useProductCRUD } from "@/app/hooks/use-product-crud";
 
@@ -62,5 +62,5 @@ export default function AdminEditProductPage() {
     );
   }
 
-  return <ProductEditForm product={selectedProduct} />;
+  return <ProductForm product={selectedProduct} />;
 }

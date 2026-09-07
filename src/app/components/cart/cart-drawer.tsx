@@ -535,8 +535,7 @@ export function CartDrawer({
                       buttonText="Finalizar pelo WhatsApp"
                       size="lg"
                       disabled={!canCheckout}
-                      onSuccess={(total: number) => {
-                        console.log("Pedido finalizado! Total:", total);
+                      onSuccess={() => {
                         onClose();
                       }}
                     />
