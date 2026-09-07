@@ -1,19 +1,22 @@
 "use client";
 
-import { Box, Button, HStack, Input, VStack } from "@chakra-ui/react";
+import { Box, Button, HStack, Input } from "@chakra-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { IoCamera } from "react-icons/io5";
 import {
   checkBarcodeAction,
   scanBarcodeAction,
 } from "@/app/actions/stock-scan";
 import { toaster } from "@/components/ui/toaster";
+import { CameraBarcodeScanner } from "./camera-barcode-scanner";
 import { IncrementStockDialog } from "./increment-stock-dialog";
 
 export function BarcodeScanner() {
   const queryClient = useQueryClient();
   const [barcode, setBarcode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [duplicateDialog, setDuplicateDialog] = useState<{
     barcode: string;
     currentStock: number;
@@ -28,9 +31,7 @@ export function BarcodeScanner() {
   };
 
   const runScan = async (code: string, quantity?: number) => {
-    console.log("[BarcodeScanner] runScan", { code, quantity });
     const result = await scanBarcodeAction(code, quantity);
-    console.log("[BarcodeScanner] scanBarcodeAction resultado:", result);
 
     if (result.success) {
       const { product, created } = result.data;
@@ -44,10 +45,6 @@ export function BarcodeScanner() {
       });
       refreshDraftList();
     } else {
-      console.error(
-        "[BarcodeScanner] erro retornado pela action:",
-        result.error,
-      );
       toaster.create({
         title: "Erro ao escanear",
         description: result.error,
@@ -56,11 +53,7 @@ export function BarcodeScanner() {
     }
   };
 
-  const handleScan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = barcode.trim();
-    console.log("[BarcodeScanner] handleScan iniciado", { code });
-
+  const handleScanFromCode = async (code: string) => {
     if (!code) {
       toaster.create({
         title: "Código vazio",
@@ -73,7 +66,6 @@ export function BarcodeScanner() {
     setIsProcessing(true);
     try {
       const check = await checkBarcodeAction(code);
-      console.log("[BarcodeScanner] checkBarcodeAction resultado:", check);
 
       if (!check.success) {
         toaster.create({
@@ -95,7 +87,6 @@ export function BarcodeScanner() {
       await runScan(code);
       setBarcode("");
     } catch (error) {
-      console.error("[BarcodeScanner] exceção capturada:", error);
       toaster.create({
         title: "Erro",
         description:
@@ -105,6 +96,17 @@ export function BarcodeScanner() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleScanFromCode(barcode.trim());
+  };
+
+  const handleCameraDetected = (code: string) => {
+    setCameraOpen(false);
+    setBarcode(code);
+    void handleScanFromCode(code);
   };
 
   const handleConfirmIncrement = async (quantity: number) => {
@@ -141,8 +143,24 @@ export function BarcodeScanner() {
           >
             Bipar
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            colorScheme="blue"
+            disabled={isProcessing}
+            onClick={() => setCameraOpen(true)}
+          >
+            <IoCamera style={{ marginRight: 6 }} />
+            Câmera
+          </Button>
         </HStack>
       </form>
+
+      <CameraBarcodeScanner
+        open={cameraOpen}
+        onDetected={handleCameraDetected}
+        onClose={() => setCameraOpen(false)}
+      />
 
       <IncrementStockDialog
         open={!!duplicateDialog}

@@ -246,10 +246,11 @@ export const productEditFormSchema = productObjectSchema
 export type ProductEditFormInput = z.infer<typeof productEditFormSchema>;
 
 /**
- * Formulário admin: imagens tratadas no componente (URLs existentes + upload);
- * cores como texto livre (vírgulas).
+ * Formulário admin único (cadastro + edição/enriquecimento): imagens tratadas
+ * no componente por cor (`colorVariants`, upload) — `id` é opcional pois no
+ * cadastro o produto ainda não existe no Firestore.
  */
-export const productAdminEditFormSchema = productObjectSchema
+export const productFormSchema = productObjectSchema
   .omit({
     createdAt: true,
     updatedAt: true,
@@ -258,14 +259,12 @@ export const productAdminEditFormSchema = productObjectSchema
     imageUrl: true,
   })
   .extend({
-    id: z.string().min(1, "ID do produto é obrigatório"),
+    id: z.string().optional(),
     colorsText: z.string().optional(),
   })
   .superRefine(refineProductSizesConsistency);
 
-export type ProductAdminEditFormValues = z.infer<
-  typeof productAdminEditFormSchema
->;
+export type ProductFormValues = z.infer<typeof productFormSchema>;
 
 export const productFilterSchema = z.object({
   category: z.string().optional(),

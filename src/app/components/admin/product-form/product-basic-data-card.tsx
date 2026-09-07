@@ -1,30 +1,50 @@
-import { Box, Card, Heading, Input, Stack, Textarea } from "@chakra-ui/react";
+import {
+  Box,
+  Card,
+  Heading,
+  HStack,
+  Input,
+  Stack,
+  Textarea,
+} from "@chakra-ui/react";
+import type { FieldErrors, UseFormRegister } from "react-hook-form";
+import { IoDocumentTextOutline } from "react-icons/io5";
 import { Field } from "@/components/ui/field";
 import {
   SHOP_CATEGORY_IDS,
   SHOP_CATEGORY_LABELS,
 } from "@/core/catalog/shop-catalog";
+import type { ProductFormValues } from "@/core/schemas/product.schema";
 
 interface ProductBasicDataCardProps {
-  register: any;
-  errors: any;
+  register: UseFormRegister<ProductFormValues>;
+  errors: FieldErrors<ProductFormValues>;
   isEdit?: boolean;
+  descriptionValue?: string;
 }
 
 export function ProductBasicDataCard({
   register,
   errors,
   isEdit,
+  descriptionValue,
 }: ProductBasicDataCardProps) {
+  const descriptionLength = descriptionValue?.length ?? 0;
+
   return (
     <Card.Root>
       <Card.Header>
-        <Heading size="lg">Dados Básicos</Heading>
+        <HStack gap={2}>
+          <IoDocumentTextOutline />
+          <Heading size="lg">Dados Básicos</Heading>
+        </HStack>
       </Card.Header>
       <Card.Body>
         <Stack gap={4}>
           <Field
-            label="Título *"
+            label="Título"
+            required
+            helperText="3 a 100 caracteres"
             invalid={!!errors.title}
             errorText={errors.title?.message}
           >
@@ -33,6 +53,8 @@ export function ProductBasicDataCard({
 
           <Field
             label="Subtítulo"
+            optionalText="(opcional)"
+            helperText="Até 200 caracteres"
             invalid={!!errors.subtitle}
             errorText={errors.subtitle?.message}
           >
@@ -40,7 +62,9 @@ export function ProductBasicDataCard({
           </Field>
 
           <Field
-            label="Descrição *"
+            label="Descrição"
+            required
+            helperText={`${descriptionLength}/5000 caracteres (mínimo 10)`}
             invalid={!!errors.description}
             errorText={errors.description?.message}
           >
@@ -53,59 +77,59 @@ export function ProductBasicDataCard({
 
           <Field
             label="Categoria"
+            optionalText="(opcional)"
+            helperText="Nome livre, ex: Camisetas (mín. 2 caracteres se preenchido)"
             invalid={!!errors.category}
             errorText={errors.category?.message}
           >
             <Input {...register("category")} placeholder="Ex: Camisetas" />
           </Field>
 
-          {isEdit && (
-            <>
-              <Field
-                label="Seção do catálogo (loja)"
-                helperText="Define em qual página /loja/... o produto aparece."
-                invalid={!!errors.shopCategory}
-                errorText={errors.shopCategory?.message}
-              >
-                <Box
-                  as="select"
-                  borderWidth="1px"
-                  borderRadius="md"
-                  px={3}
-                  py={2}
-                  w="full"
-                  bg="white"
-                  {...register("shopCategory")}
-                >
-                  {SHOP_CATEGORY_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {SHOP_CATEGORY_LABELS[id]}
-                    </option>
-                  ))}
-                </Box>
-              </Field>
+          <Field
+            label="Seção do catálogo (loja)"
+            helperText="Define em qual página /loja/... o produto aparece."
+            invalid={!!errors.shopCategory}
+            errorText={errors.shopCategory?.message}
+          >
+            <Box
+              as="select"
+              borderWidth="1px"
+              borderRadius="md"
+              px={3}
+              py={2}
+              w="full"
+              bg="white"
+              {...register("shopCategory")}
+            >
+              {SHOP_CATEGORY_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {SHOP_CATEGORY_LABELS[id]}
+                </option>
+              ))}
+            </Box>
+          </Field>
 
-              <Field
-                label="Status"
-                helperText="DRAFT: produto ainda não enriquecido. ACTIVE: publicado na loja."
-                invalid={!!errors.status}
-                errorText={errors.status?.message}
+          {isEdit && (
+            <Field
+              label="Status"
+              helperText="Rascunho: produto ainda não enriquecido. Publicado: visível na loja."
+              invalid={!!errors.status}
+              errorText={errors.status?.message}
+            >
+              <Box
+                as="select"
+                borderWidth="1px"
+                borderRadius="md"
+                px={3}
+                py={2}
+                w="full"
+                bg="white"
+                {...register("status")}
               >
-                <Box
-                  as="select"
-                  borderWidth="1px"
-                  borderRadius="md"
-                  px={3}
-                  py={2}
-                  w="full"
-                  bg="white"
-                  {...register("status")}
-                >
-                  <option value="DRAFT">🔄 DRAFT - Em rascunho</option>
-                  <option value="ACTIVE">✅ ACTIVE - Publicado</option>
-                </Box>
-              </Field>
-            </>
+                <option value="DRAFT">Rascunho</option>
+                <option value="ACTIVE">Publicado</option>
+              </Box>
+            </Field>
           )}
         </Stack>
       </Card.Body>

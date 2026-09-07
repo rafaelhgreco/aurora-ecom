@@ -278,10 +278,6 @@ export class FirestoreProductRepository implements IProductRepository {
     barcode: string,
     draftFactory: () => Omit<ProductEntity, "id" | "createdAt" | "updatedAt">,
   ): Promise<ProductEntity> {
-    console.log(
-      "[FirestoreProductRepository] createDraftByBarcode chamado para barcode:",
-      barcode,
-    );
     const db = this.requireDb();
     const draft = draftFactory();
     const docData = this.entityToDoc({
@@ -300,7 +296,6 @@ export class FirestoreProductRepository implements IProductRepository {
       throw new InternalError("product_not_found_after_create");
     }
 
-    console.log("[FirestoreProductRepository] draft criado:", created);
     return created;
   }
 
@@ -308,12 +303,6 @@ export class FirestoreProductRepository implements IProductRepository {
     barcode: string,
     incrementBy: number,
   ): Promise<ProductEntity> {
-    console.log(
-      "[FirestoreProductRepository] incrementStockByBarcode",
-      barcode,
-      "+",
-      incrementBy,
-    );
     const db = this.requireDb();
     await db
       .collection(this.collectionName)
@@ -328,7 +317,6 @@ export class FirestoreProductRepository implements IProductRepository {
       throw new InternalError("product_not_found_after_increment");
     }
 
-    console.log("[FirestoreProductRepository] produto incrementado:", updated);
     return updated;
   }
 

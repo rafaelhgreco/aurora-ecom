@@ -9,7 +9,6 @@ export { BulkImportPreview } from "./bulk-import/bulk-import-preview";
 export { DeleteConfirmDialog } from "./delete-confirm-dialog";
 export { OrderTable } from "./order-table";
 export { ProductCard } from "./product-card";
-export { ProductEditForm } from "./product-edit-form";
 export { ProductForm } from "./product-form";
 export { ProductList } from "./product-list";
 export { ProductTable } from "./product-table";

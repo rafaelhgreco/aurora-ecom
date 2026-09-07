@@ -45,26 +45,14 @@ export async function scanBarcodeAction(
   barcode: string,
   quantity?: number,
 ): Promise<ActionResult<{ product: Product; created: boolean }>> {
-  console.log(
-    "[scanBarcodeAction] chamada recebida com barcode:",
-    barcode,
-    "quantity:",
-    quantity,
-  );
   try {
     const auth = await requireAdminSession();
 
     if ("error" in auth) {
-      console.warn("[scanBarcodeAction] sessão inválida:", auth.error);
       return { success: false, error: auth.error };
     }
 
-    const flagEnabled = isAdminStockScanEnabled();
-
-    if (!flagEnabled) {
-      console.warn(
-        "[scanBarcodeAction] feature flag FEATURE_ADMIN_STOCK_SCAN desabilitada — verifique o .env",
-      );
+    if (!isAdminStockScanEnabled()) {
       return {
         success: false,
         error: "Recurso de bipagem não disponível",
@@ -76,7 +64,6 @@ export async function scanBarcodeAction(
       barcode,
       quantity,
     } as ScanBarcodeInput);
-    console.log("[scanBarcodeAction] use case retornou:", result);
 
     return {
       success: true,
@@ -86,7 +73,6 @@ export async function scanBarcodeAction(
       },
     };
   } catch (error) {
-    console.error("[scanBarcodeAction] erro capturado:", error);
     const { message, details } = handleActionError(
       "scanBarcodeAction",
       error,
