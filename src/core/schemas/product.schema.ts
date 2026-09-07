@@ -169,7 +169,8 @@ const productObjectSchema = z.object({
     .string()
     .min(2, "Categoria deve ter no mínimo 2 caracteres")
     .max(50, "Categoria deve ter no máximo 50 caracteres")
-    .optional(),
+    .optional()
+    .or(z.literal("")),
 
   /** Seção do catálogo (Roupas vs Cabelos / Produtos Aurora) */
   shopCategory: z
@@ -189,10 +190,8 @@ const productObjectSchema = z.object({
    */
   stockBySize: stockBySizeRecordSchema.optional(),
 
-  sizes: z
-    .array(productSizeSchema)
-    .min(1, "Produto deve ter pelo menos um tamanho disponível")
-    .optional(),
+  /** Array vazio = produto sem variação de tamanho (estoque global via `stock`). */
+  sizes: z.array(productSizeSchema).optional(),
 
   colors: z.array(z.string().min(2).max(30)).optional(),
 
