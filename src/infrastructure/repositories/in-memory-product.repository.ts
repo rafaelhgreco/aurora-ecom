@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
+import { NotFoundError } from "@/shared/errors/domain-errors";
 
 const DEFAULT_SEED_PRODUCTS: Product[] = [
   {
@@ -185,19 +186,10 @@ export class InMemoryProductRepository implements IProductRepository {
     return newProduct;
   }
 
-  async createOrIncrementByBarcode(
+  async createDraftByBarcode(
     barcode: string,
     draftFactory: () => Omit<Product, "id" | "createdAt" | "updatedAt">,
-    incrementBy = 1,
-  ): Promise<{ product: Product; created: boolean }> {
-    const existing = this.products.find((p) => p.barcode === barcode);
-
-    if (existing) {
-      existing.stock += incrementBy;
-      existing.updatedAt = new Date();
-      return { product: existing, created: false };
-    }
-
+  ): Promise<Product> {
     const draft = draftFactory();
     const newProduct: Product = {
       ...draft,
@@ -208,7 +200,20 @@ export class InMemoryProductRepository implements IProductRepository {
     };
 
     this.products.push(newProduct);
-    return { product: newProduct, created: true };
+    return newProduct;
+  }
+
+  async incrementStockByBarcode(
+    barcode: string,
+    incrementBy: number,
+  ): Promise<Product> {
+    const existing = this.products.find((p) => p.barcode === barcode);
+    if (!existing) {
+      throw new NotFoundError("Produto", barcode);
+    }
+    existing.stock += incrementBy;
+    existing.updatedAt = new Date();
+    return existing;
   }
 
   async update(id: string, updates: Partial<Product>): Promise<Product> {

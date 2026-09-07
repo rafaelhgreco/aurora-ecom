@@ -33,14 +33,27 @@ export class ScanBarcodeUseCase {
     const { barcode, quantity } = validated;
 
     console.log(
-      "[ScanBarcodeUseCase] chamando repository.createOrIncrementByBarcode para barcode:",
+      "[ScanBarcodeUseCase] verificando se barcode já existe:",
       barcode,
-      "quantity:",
-      quantity,
     );
 
     try {
-      const result = await this.productRepository.createOrIncrementByBarcode(
+      const existing = await this.productRepository.findByBarcode(barcode);
+
+      if (existing) {
+        console.log(
+          "[ScanBarcodeUseCase] já existe, incrementando stock em",
+          quantity,
+        );
+        const updated = await this.productRepository.incrementStockByBarcode(
+          barcode,
+          quantity,
+        );
+        return { product: updated, created: false };
+      }
+
+      console.log("[ScanBarcodeUseCase] não existe, criando DRAFT");
+      const created = await this.productRepository.createDraftByBarcode(
         barcode,
         () => ({
           title: `Produto sem nome (${barcode})`,
@@ -49,19 +62,14 @@ export class ScanBarcodeUseCase {
           imageUrl: DRAFT_PLACEHOLDER_IMAGE_URL,
           images: [DRAFT_PLACEHOLDER_IMAGE_URL],
           barcode,
-          stock: 1,
+          stock: quantity,
           status: "DRAFT",
           isActive: true,
         }),
-        quantity,
       );
-      console.log("[ScanBarcodeUseCase] repository retornou:", result);
-      return result;
+      return { product: created, created: true };
     } catch (error) {
-      console.error(
-        "[ScanBarcodeUseCase] erro no repository.createOrIncrementByBarcode:",
-        error,
-      );
+      console.error("[ScanBarcodeUseCase] erro no repository:", error);
       throw error;
     }
   }

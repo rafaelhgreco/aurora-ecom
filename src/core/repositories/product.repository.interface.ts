@@ -13,11 +13,24 @@ export interface IProductRepository {
     product: Omit<Product, "id" | "createdAt" | "updatedAt">,
   ): Promise<Product>;
 
-  createOrIncrementByBarcode(
+  /**
+   * Cria um produto DRAFT para o barcode informado. Assume que o chamador já
+   * verificou que o barcode não existe (via findByBarcode) — usa escrita
+   * idempotente (set), não uma criação exclusiva, para evitar que um retry de
+   * rede do SDK confunda "documento já existe" com uma falha real.
+   */
+  createDraftByBarcode(
     barcode: string,
     draftFactory: () => Omit<Product, "id" | "createdAt" | "updatedAt">,
-    incrementBy?: number,
-  ): Promise<{ product: Product; created: boolean }>;
+  ): Promise<Product>;
+
+  /**
+   * Incrementa o stock de um produto já existente, localizado por barcode.
+   */
+  incrementStockByBarcode(
+    barcode: string,
+    incrementBy: number,
+  ): Promise<Product>;
 
   update(id: string, product: Partial<Product>): Promise<Product>;
 

@@ -274,93 +274,62 @@ export class FirestoreProductRepository implements IProductRepository {
     return this.docToEntity(docSnap.id, data);
   }
 
-  async createOrIncrementByBarcode(
+  async createDraftByBarcode(
     barcode: string,
     draftFactory: () => Omit<ProductEntity, "id" | "createdAt" | "updatedAt">,
-    incrementBy = 1,
-  ): Promise<{ product: ProductEntity; created: boolean }> {
+  ): Promise<ProductEntity> {
     console.log(
-      "[FirestoreProductRepository] createOrIncrementByBarcode chamado para barcode:",
+      "[FirestoreProductRepository] createDraftByBarcode chamado para barcode:",
       barcode,
-      "incrementBy:",
+    );
+    const db = this.requireDb();
+    const draft = draftFactory();
+    const docData = this.entityToDoc({
+      ...draft,
+      id: barcode,
+      barcode,
+    } as ProductEntity);
+
+    // set() é idempotente: um retry de rede do SDK reenvia o mesmo payload
+    // sem lançar erro, ao contrário de create() (que falha com ALREADY_EXISTS
+    // no retry e faz o SDK ficar tentando por até 10min antes de desistir).
+    await db.collection(this.collectionName).doc(barcode).set(docData);
+
+    const created = await this.findByBarcode(barcode);
+    if (!created) {
+      throw new InternalError("product_not_found_after_create");
+    }
+
+    console.log("[FirestoreProductRepository] draft criado:", created);
+    return created;
+  }
+
+  async incrementStockByBarcode(
+    barcode: string,
+    incrementBy: number,
+  ): Promise<ProductEntity> {
+    console.log(
+      "[FirestoreProductRepository] incrementStockByBarcode",
+      barcode,
+      "+",
       incrementBy,
     );
     const db = this.requireDb();
-    const docRef = db.collection(this.collectionName).doc(barcode);
+    await db
+      .collection(this.collectionName)
+      .doc(barcode)
+      .update({
+        stock: FieldValue.increment(incrementBy),
+        updatedAt: Timestamp.now(),
+      });
 
-    try {
-      const draft = draftFactory();
-      console.log("[FirestoreProductRepository] draft gerado:", draft);
-
-      const docData = this.entityToDoc({
-        ...draft,
-        id: barcode,
-        barcode,
-      } as ProductEntity);
-      console.log(
-        "[FirestoreProductRepository] docData a ser criado:",
-        docData,
-      );
-
-      await docRef.create(docData);
-      console.log(
-        "[FirestoreProductRepository] docRef.create() executado com sucesso para:",
-        barcode,
-      );
-
-      const created = await this.findByBarcode(barcode);
-      console.log(
-        "[FirestoreProductRepository] produto recém-criado buscado:",
-        created,
-      );
-
-      if (!created) {
-        throw new InternalError("product_not_found_after_create");
-      }
-
-      return { product: created, created: true };
-    } catch (error) {
-      console.error(
-        "[FirestoreProductRepository] erro capturado no create():",
-        error,
-      );
-      const errorCode =
-        error && typeof error === "object" && "code" in error
-          ? (error as { code: unknown }).code
-          : undefined;
-      console.log(
-        "[FirestoreProductRepository] error.code:",
-        errorCode,
-        "(6 = ALREADY_EXISTS esperado)",
-      );
-
-      if (errorCode === 6) {
-        console.log(
-          "[FirestoreProductRepository] barcode já existe, incrementando stock...",
-        );
-        await docRef.update({
-          stock: FieldValue.increment(incrementBy),
-          updatedAt: Timestamp.now(),
-        });
-
-        const updated = await this.findByBarcode(barcode);
-        console.log(
-          "[FirestoreProductRepository] produto após incremento:",
-          updated,
-        );
-        if (!updated) {
-          throw new InternalError("product_not_found_after_increment");
-        }
-
-        return { product: updated, created: false };
-      }
-
-      console.error(
-        "[FirestoreProductRepository] erro não tratado, relançando:",
-        error,
-      );
-      throw error;
+    const updated = await this.findByBarcode(barcode);
+    if (!updated) {
+      throw new InternalError("product_not_found_after_increment");
     }
+
+    console.log("[FirestoreProductRepository] produto incrementado:", updated);
+    return updated;
   }
 
   /**
