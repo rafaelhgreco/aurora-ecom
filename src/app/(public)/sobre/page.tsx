@@ -1,24 +1,23 @@
-"use client";
-import { usePathname } from "next/navigation";
-import { MemoryRouter as Router } from "react-router-dom";
-import { ProductPageHeader } from "../../components/public/product-page-header";
-import { UnderConstruction } from "../../components/public/under-construction";
-import { NextRouterSync } from "../../hooks/use-next-router-sync";
-import styles from "../../page.module.css";
+import { VStack } from "@chakra-ui/react";
+import {
+  AboutCta,
+  AboutDivider,
+  AboutHero,
+  AboutPillars,
+  AboutValuesGrid,
+} from "@/app/components/public/about";
+import { ShopPageShell } from "@/app/components/public/shop";
 
 export default function Sobre() {
-  const logoSrc = "/logo.svg";
-  const nextPathname = usePathname();
-
   return (
-    <Router initialEntries={[nextPathname]}>
-      <NextRouterSync />
-      <div className={styles.page}>
-        <main className={styles.main}>
-          <ProductPageHeader logoSrc={logoSrc} />
-          <UnderConstruction />
-        </main>
-      </div>
-    </Router>
+    <ShopPageShell containerMaxW="1100px">
+      <VStack align="stretch" gap={{ base: 16, md: 20 }} w="full">
+        <AboutHero />
+        <AboutPillars />
+        <AboutDivider />
+        <AboutValuesGrid />
+        <AboutCta />
+      </VStack>
+    </ShopPageShell>
   );
 }
