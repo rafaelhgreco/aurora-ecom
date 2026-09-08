@@ -2,26 +2,43 @@
 import {
   Box,
   Card,
+  createListCollection,
   Heading,
   HStack,
   Input,
+  Link,
+  Portal,
+  SelectContent,
+  SelectItem,
+  SelectPositioner,
+  SelectRoot,
+  SelectTrigger,
+  SelectValueText,
   Stack,
   Textarea,
 } from "@chakra-ui/react";
+import NextLink from "next/link";
+import { useMemo } from "react";
 import type { FieldErrors, UseFormRegister } from "react-hook-form";
 import { IoDocumentTextOutline } from "react-icons/io5";
+import type { Category } from "@/app/types/category";
+import type { Section } from "@/app/types/section";
 import { Field } from "@/components/ui/field";
-import {
-  SHOP_CATEGORY_IDS,
-  SHOP_CATEGORY_LABELS,
-} from "@/core/catalog/shop-catalog";
 import type { ProductFormValues } from "@/core/schemas/product.schema";
+
+const NO_CATEGORY_VALUE = "";
 
 interface ProductBasicDataCardProps {
   register: UseFormRegister<ProductFormValues>;
   errors: FieldErrors<ProductFormValues>;
   isEdit?: boolean;
   descriptionValue?: string;
+  sections: Section[];
+  shopCategoryValue?: string;
+  onShopCategoryChange: (value: string) => void;
+  categories: Category[];
+  categoryValue?: string;
+  onCategoryChange: (value: string) => void;
   onSlugTouched?: () => void;
   onSlugBlurSanitize?: (rawValue: string) => void;
 }
@@ -31,10 +48,44 @@ export function ProductBasicDataCard({
   errors,
   isEdit,
   descriptionValue,
+  sections,
+  shopCategoryValue,
+  onShopCategoryChange,
+  categories,
+  categoryValue,
+  onCategoryChange,
   onSlugTouched,
   onSlugBlurSanitize,
 }: ProductBasicDataCardProps) {
   const descriptionLength = descriptionValue?.length ?? 0;
+
+  const sectionCollection = useMemo(
+    () =>
+      createListCollection({
+        items: sections.map((s) => ({ label: s.name, value: s.id ?? "" })),
+      }),
+    [sections],
+  );
+
+  /** Subcategoria só mostra opções da seção selecionada (stacking Seção + Subcategoria). */
+  const categoriesInSection = useMemo(
+    () => categories.filter((c) => c.sectionId === shopCategoryValue),
+    [categories, shopCategoryValue],
+  );
+
+  const categoryCollection = useMemo(
+    () =>
+      createListCollection({
+        items: [
+          { label: "Nenhuma", value: NO_CATEGORY_VALUE },
+          ...categoriesInSection.map((c) => ({
+            label: c.name,
+            value: c.name,
+          })),
+        ],
+      }),
+    [categoriesInSection],
+  );
 
   return (
     <Card.Root>
@@ -97,37 +148,79 @@ export function ProductBasicDataCard({
           </Field>
 
           <Field
-            label="Categoria"
-            optionalText="(opcional)"
-            helperText="Nome livre, ex: Camisetas (mín. 2 caracteres se preenchido)"
-            invalid={!!errors.category}
-            errorText={errors.category?.message}
-          >
-            <Input {...register("category")} placeholder="Ex: Camisetas" />
-          </Field>
-
-          <Field
             label="Seção do catálogo (loja)"
-            helperText="Define em qual página /loja/... o produto aparece."
+            helperText={
+              <>
+                Define em qual página /loja/... o produto aparece. Não achou a
+                seção certa?{" "}
+                <Link asChild color="blue.500">
+                  <NextLink href="/admin-categorias" target="_blank">
+                    Cadastre aqui.
+                  </NextLink>
+                </Link>
+              </>
+            }
             invalid={!!errors.shopCategory}
             errorText={errors.shopCategory?.message}
           >
-            <Box
-              as="select"
-              borderWidth="1px"
-              borderRadius="md"
-              px={3}
-              py={2}
-              w="full"
-              bg="white"
-              {...register("shopCategory")}
+            <SelectRoot
+              collection={sectionCollection}
+              value={shopCategoryValue ? [shopCategoryValue] : []}
+              onValueChange={(details) =>
+                onShopCategoryChange(details.value[0] ?? "")
+              }
             >
-              {SHOP_CATEGORY_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {SHOP_CATEGORY_LABELS[id]}
-                </option>
-              ))}
-            </Box>
+              <SelectTrigger>
+                <SelectValueText placeholder="Selecione uma seção" />
+              </SelectTrigger>
+              <Portal>
+                <SelectPositioner>
+                  <SelectContent>
+                    {sectionCollection.items.map((item) => (
+                      <SelectItem key={item.value} item={item}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </SelectPositioner>
+              </Portal>
+            </SelectRoot>
+          </Field>
+
+          <Field
+            label="Subcategoria"
+            optionalText="(opcional)"
+            helperText={
+              shopCategoryValue
+                ? "Não achou a subcategoria certa? Cadastre aqui."
+                : "Selecione uma seção primeiro."
+            }
+            invalid={!!errors.category}
+            errorText={errors.category?.message}
+          >
+            <SelectRoot
+              collection={categoryCollection}
+              value={[categoryValue || NO_CATEGORY_VALUE]}
+              onValueChange={(details) =>
+                onCategoryChange(details.value[0] ?? NO_CATEGORY_VALUE)
+              }
+              disabled={!shopCategoryValue}
+            >
+              <SelectTrigger>
+                <SelectValueText placeholder="Selecione uma subcategoria" />
+              </SelectTrigger>
+              <Portal>
+                <SelectPositioner>
+                  <SelectContent>
+                    {categoryCollection.items.map((item) => (
+                      <SelectItem key={item.value} item={item}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </SelectPositioner>
+              </Portal>
+            </SelectRoot>
           </Field>
 
           {isEdit && (

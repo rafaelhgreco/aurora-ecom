@@ -157,14 +157,23 @@ function AdminPageContent() {
           </Button>
         </HStack>
 
-        <Button
-          size="sm"
-          colorScheme="orange"
-          onClick={() => router.push("/admin-produtos/revisao")}
-        >
-          <IoBarcode style={{ marginRight: 6 }} />
-          Bipagem de Produtos
-        </Button>
+        <HStack gap={2}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => router.push("/admin-categorias")}
+          >
+            Categorias
+          </Button>
+          <Button
+            size="sm"
+            colorScheme="orange"
+            onClick={() => router.push("/admin-produtos/revisao")}
+          >
+            <IoBarcode style={{ marginRight: 6 }} />
+            Bipagem de Produtos
+          </Button>
+        </HStack>
       </HStack>
 
       {view === "produtos" && (

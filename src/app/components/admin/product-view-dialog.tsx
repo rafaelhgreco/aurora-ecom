@@ -15,6 +15,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { useSections } from "@/app/hooks/use-sections";
 import type { Product } from "@/app/types/product";
 import { formatDateTime, formatPrice } from "@/app/utils/price-formatter";
 import {
@@ -25,10 +26,6 @@ import {
   DialogRoot,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  SHOP_CATEGORY_LABELS,
-  type ShopCategoryId,
-} from "@/core/catalog/shop-catalog";
 import { getTotalStock } from "@/shared/product-stock-helpers";
 
 export interface ProductViewDialogProps {
@@ -45,10 +42,10 @@ export function ProductViewDialog({
   /** Root deve permanecer montado ao fechar para o dialog limpar scroll-lock (Ark/Zag). */
   const isOpen = Boolean(open && product);
 
-  const shopLabel =
-    product?.shopCategory && product.shopCategory in SHOP_CATEGORY_LABELS
-      ? SHOP_CATEGORY_LABELS[product.shopCategory as ShopCategoryId]
-      : null;
+  const { sections } = useSections();
+  const shopLabel = product?.shopCategory
+    ? (sections.find((s) => s.id === product.shopCategory)?.name ?? null)
+    : null;
 
   return (
     <DialogRoot

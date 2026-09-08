@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { SHOP_CATEGORY_IDS } from "@/core/catalog/shop-catalog";
 
 export const PRODUCT_STATUSES = ["DRAFT", "ACTIVE"] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
@@ -45,21 +44,10 @@ export function inferSizePresetFromSizes(sizes: string[]): SizePresetKind {
   return "custom";
 }
 
-export const PRODUCT_CATEGORIES = [
-  "camisetas",
-  "calcas",
-  "shorts",
-  "vestidos",
-  "acessorios",
-  "calcados",
-] as const;
-export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
-
 /**
  * Validações Zod para Produto
  */
 export const productSizeSchema = z.string().min(1).max(32).trim();
-export const productCategorySchema = z.enum(PRODUCT_CATEGORIES);
 
 const stockBySizeRecordSchema = z.record(
   z.string().min(1).max(32),
@@ -183,10 +171,13 @@ const productObjectSchema = z.object({
     .optional()
     .or(z.literal("")),
 
-  /** Seção do catálogo (Roupas vs Cabelos / Produtos Aurora) */
-  shopCategory: z
-    .enum(SHOP_CATEGORY_IDS as unknown as [string, ...string[]])
-    .optional(),
+  /**
+   * Seção do catálogo (id de `sections`). String livre — seções são
+   * cadastradas dinamicamente pelo admin, não é mais um enum fixo. A
+   * importação em massa (planilha) continua escrevendo só "roupas"/"cabelos",
+   * que existem como seções seed com esses mesmos ids.
+   */
+  shopCategory: z.string().min(1).optional(),
 
   stock: z
     .number()
@@ -278,9 +269,7 @@ export type ProductFormValues = z.infer<typeof productFormSchema>;
 
 export const productFilterSchema = z.object({
   category: z.string().optional(),
-  shopCategory: z
-    .enum(SHOP_CATEGORY_IDS as unknown as [string, ...string[]])
-    .optional(),
+  shopCategory: z.string().min(1).optional(),
   minPrice: z.number().positive().optional(),
   maxPrice: z.number().positive().optional(),
   sizes: z.array(productSizeSchema).optional(),

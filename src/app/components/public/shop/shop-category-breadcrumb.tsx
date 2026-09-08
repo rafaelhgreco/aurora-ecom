@@ -3,16 +3,18 @@
  */
 
 import { Button, Flex, Text, Wrap, WrapItem } from "@chakra-ui/react";
-import type {
-  ShopCatalogRoute,
-  ShopCategoryId,
-} from "@/core/catalog/shop-catalog";
+
+export interface ShopCategoryBreadcrumbRoute {
+  slug: string;
+  shopCategory: string;
+  title: string;
+}
 
 export interface ShopCategoryBreadcrumbProps {
-  routes: readonly ShopCatalogRoute[];
+  routes: readonly ShopCategoryBreadcrumbRoute[];
   /** Categorias ativas; vazio = mostrar todos os produtos (sem filtro). */
-  selectedIds: ReadonlySet<ShopCategoryId>;
-  onToggle: (id: ShopCategoryId) => void;
+  selectedIds: ReadonlySet<string>;
+  onToggle: (id: string) => void;
   onClearAll: () => void;
 }
 
