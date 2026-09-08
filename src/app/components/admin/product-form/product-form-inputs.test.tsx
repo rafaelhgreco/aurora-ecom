@@ -25,6 +25,7 @@ import { ProductPriceStockCard } from "./product-price-stock-card";
 function createFormDefaults(): ProductFormValues {
   return {
     title: "",
+    slug: "",
     subtitle: "",
     description: "",
     price: 0,
@@ -185,6 +186,10 @@ describe("ProductForm — submissão completa (regressão do bug category/sizes)
     await user.type(
       screen.getByLabelText(/^Título/i),
       "Camiseta Basica Premium",
+    );
+    await user.type(
+      screen.getByLabelText(/^URL personalizada/i),
+      "camiseta-basica-premium",
     );
     await user.type(
       screen.getByLabelText(/^Descrição/i),

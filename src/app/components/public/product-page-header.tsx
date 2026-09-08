@@ -57,8 +57,8 @@ function usePublicHeaderNavItems(): NavItem[] {
             })),
           ],
         },
-        { label: "Arquivo", path: "/arquivo" },
         { label: "Sobre", path: "/sobre" },
+        { label: "Arquivo", path: "/arquivo" },
       ] satisfies NavItem[],
     [navigate],
   );

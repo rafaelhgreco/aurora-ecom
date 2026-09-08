@@ -22,6 +22,8 @@ interface ProductBasicDataCardProps {
   errors: FieldErrors<ProductFormValues>;
   isEdit?: boolean;
   descriptionValue?: string;
+  onSlugTouched?: () => void;
+  onSlugBlurSanitize?: (rawValue: string) => void;
 }
 
 export function ProductBasicDataCard({
@@ -29,6 +31,8 @@ export function ProductBasicDataCard({
   errors,
   isEdit,
   descriptionValue,
+  onSlugTouched,
+  onSlugBlurSanitize,
 }: ProductBasicDataCardProps) {
   const descriptionLength = descriptionValue?.length ?? 0;
 
@@ -50,6 +54,22 @@ export function ProductBasicDataCard({
             errorText={errors.title?.message}
           >
             <Input {...register("title")} placeholder="Ex: Camiseta Básica" />
+          </Field>
+
+          <Field
+            label="URL personalizada"
+            required
+            helperText="Usada em /produto/sua-url. Sugerida a partir do título, mas você pode editar."
+            invalid={!!errors.slug}
+            errorText={errors.slug?.message}
+          >
+            <Input
+              {...register("slug", {
+                onChange: () => onSlugTouched?.(),
+                onBlur: (e) => onSlugBlurSanitize?.(e.target.value),
+              })}
+              placeholder="Ex: camiseta-basica"
+            />
           </Field>
 
           <Field

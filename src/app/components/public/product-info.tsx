@@ -9,7 +9,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
-import { FiAlertTriangle, FiShoppingCart, FiXCircle } from "react-icons/fi";
+import { FiAlertTriangle, FiShoppingCart } from "react-icons/fi";
 import { calculateInstallment, formatPrice } from "@/app/utils/price-formatter";
 import { toaster } from "@/components/ui/toaster";
 import type { ProductSize } from "@/core/entities";
@@ -18,6 +18,8 @@ import { useCart } from "../../hooks/use-cart";
 import { ProductColorSelector } from "./product-color-selector";
 import { ProductQuantitySelector } from "./product-quantity-selector";
 import { ProductSizeSelector } from "./product-size-selector";
+import { ProductUnavailableNotice } from "./product-unavailable-notice";
+import { ShareProductButton } from "./share-product-button";
 import { WhatsAppProductInquiryButton } from "./whatsapp-checkout-button";
 
 /**
@@ -45,6 +47,7 @@ const PRODUCT_CTA_LAYOUT: Partial<ButtonProps> = {
 
 interface ProductInfoProps {
   productId: string;
+  slug: string;
   title: string;
   price: number;
   description: string;
@@ -64,6 +67,7 @@ interface ProductInfoProps {
 
 export const ProductInfo = ({
   productId,
+  slug,
   title,
   price,
   description,
@@ -89,6 +93,9 @@ export const ProductInfo = ({
   const effectiveStock =
     stockBySize && selectedSize ? (stockBySize[selectedSize] ?? 0) : stock;
 
+  /** Pausado pelo admin, ou totalmente sem estoque — sem opções de compra */
+  const isProductUnavailable = !isActive || stock === 0;
+
   useEffect(() => {
     if (quantity > effectiveStock) {
       setQuantity(Math.max(1, effectiveStock));
@@ -106,7 +113,7 @@ export const ProductInfo = ({
     !needsColorChoice || (selectedColor !== "" && Boolean(selectedColor));
 
   const canCheckout = useMemo(() => {
-    if (!isActive) {
+    if (isProductUnavailable) {
       return false;
     }
 
@@ -114,15 +121,19 @@ export const ProductInfo = ({
     const hasValidQuantity = quantity > 0 && quantity <= effectiveStock;
 
     return hasSizeSelected && hasValidQuantity && colorOk;
-  }, [isActive, sizes.length, selectedSize, quantity, effectiveStock, colorOk]);
+  }, [
+    isProductUnavailable,
+    sizes.length,
+    selectedSize,
+    quantity,
+    effectiveStock,
+    colorOk,
+  ]);
 
   /**
    * Mensagem de erro para o botão desabilitado
    */
   const disabledReason = useMemo(() => {
-    if (!isActive) {
-      return "Produto indisponível no momento";
-    }
     if (needsColorChoice && !selectedColor) {
       return "Selecione uma cor";
     }
@@ -137,7 +148,6 @@ export const ProductInfo = ({
     }
     return "";
   }, [
-    isActive,
     sizes.length,
     selectedSize,
     quantity,
@@ -157,7 +167,7 @@ export const ProductInfo = ({
    * Handler para adicionar ao carrinho
    */
   const handleAddToCart = () => {
-    if (!isActive) {
+    if (isProductUnavailable) {
       toaster.create({
         title: "Indisponível",
         description: "Este produto não está à venda no momento.",
@@ -219,10 +229,13 @@ export const ProductInfo = ({
 
   return (
     <VStack align="start" gap="6" w="full">
-      <Box>
-        <Heading as="h1" size="xl" fontWeight="medium" mb="2">
-          {title}
-        </Heading>
+      <Box w="full">
+        <Flex justify="space-between" align="start" gap="2">
+          <Heading as="h1" size="xl" fontWeight="medium" mb="2">
+            {title}
+          </Heading>
+          <ShareProductButton title={title} text={`Confira: ${title}`} />
+        </Flex>
         <Text fontSize="2xl" fontWeight="semibold" color="gray.900">
           {formattedPrice}
         </Text>
@@ -242,31 +255,12 @@ export const ProductInfo = ({
         </Text>
       </Box>
 
-      {!isActive && (
-        <Box
-          w="full"
-          p="4"
-          bg="orange.50"
-          borderRadius="md"
-          borderWidth="1px"
-          borderColor="orange.200"
-        >
-          <Text fontSize="sm" color="orange.900" fontWeight="semibold">
-            Indisponível para compra
-          </Text>
-          <Text fontSize="sm" color="orange.800" mt={1}>
-            Este produto está pausado na loja. Você pode ver os detalhes, mas
-            não é possível adicionar ao carrinho nem finalizar pelo WhatsApp.
-          </Text>
-        </Box>
-      )}
-
       {colorVariants.length > 0 && onColorChange && (
         <ProductColorSelector
           variants={colorVariants}
           selectedColor={selectedColor || colorVariants[0]?.color || ""}
           onColorChange={onColorChange}
-          disabled={!isActive}
+          disabled={isProductUnavailable}
         />
       )}
 
@@ -279,79 +273,66 @@ export const ProductInfo = ({
           selectedSize={selectedSize}
           onSizeChange={handleSizeChange}
           availableSizes={availableSizes}
+          disabled={isProductUnavailable}
         />
       </Box>
 
-      <Box w="full">
-        <Text fontWeight="semibold" mb="3" textTransform="uppercase">
-          Quantidade
-        </Text>
-        {isActive ? (
-          <>
-            <ProductQuantitySelector
-              quantity={quantity}
-              onQuantityChange={setQuantity}
-              max={Math.min(maxQuantity, effectiveStock)}
-            />
-
-            {/* Aviso de estoque baixo */}
-            {effectiveStock <= 5 && effectiveStock > 0 && (
-              <Text fontSize="sm" color="orange.600" mt="2">
-                Apenas {effectiveStock}{" "}
-                {effectiveStock === 1
-                  ? "unidade disponível"
-                  : "unidades disponíveis"}
-              </Text>
-            )}
-
-            {/* Aviso de sem estoque */}
-            {effectiveStock === 0 && (
-              <HStack gap="1" color="red.600" mt="2">
-                <FiXCircle size={16} />
-                <Text fontSize="sm" fontWeight="semibold">
-                  Produto fora de estoque
-                </Text>
-              </HStack>
-            )}
-          </>
-        ) : (
-          <Text fontSize="sm" color="gray.600">
-            Não é possível escolher quantidade enquanto o produto estiver
-            indisponível.
+      {!isProductUnavailable && (
+        <Box w="full">
+          <Text fontWeight="semibold" mb="3" textTransform="uppercase">
+            Quantidade
           </Text>
-        )}
-      </Box>
+          <ProductQuantitySelector
+            quantity={quantity}
+            onQuantityChange={setQuantity}
+            max={Math.min(maxQuantity, effectiveStock)}
+          />
 
-      {/* Aviso quando quantidade excede estoque */}
-      {isActive && quantity > effectiveStock && effectiveStock > 0 && (
-        <Box
-          w="full"
-          p="4"
-          bg="red.50"
-          borderRadius="md"
-          borderWidth="1px"
-          borderColor="red.200"
-        >
-          <HStack gap="1" color="red.700" mb="1">
-            <FiAlertTriangle size={16} />
-            <Text fontSize="sm" fontWeight="semibold">
-              Estoque Insuficiente
+          {/* Aviso de estoque baixo */}
+          {effectiveStock <= 5 && effectiveStock > 0 && (
+            <Text fontSize="sm" color="orange.600" mt="2">
+              Apenas {effectiveStock}{" "}
+              {effectiveStock === 1
+                ? "unidade disponível"
+                : "unidades disponíveis"}
             </Text>
-          </HStack>
-          <Text fontSize="sm" color="red.600">
-            Você selecionou {quantity} {quantity === 1 ? "unidade" : "unidades"}
-            , mas temos apenas <strong>{effectiveStock}</strong>{" "}
-            {effectiveStock === 1 ? "disponível" : "disponíveis"} em estoque.
-          </Text>
-          <Text fontSize="sm" color="red.600" mt="2">
-            Por favor, ajuste a quantidade ou entre em contato para verificar
-            disponibilidade.
-          </Text>
+          )}
         </Box>
       )}
 
+      {/* Aviso quando quantidade excede estoque */}
+      {!isProductUnavailable &&
+        quantity > effectiveStock &&
+        effectiveStock > 0 && (
+          <Box
+            w="full"
+            p="4"
+            bg="red.50"
+            borderRadius="md"
+            borderWidth="1px"
+            borderColor="red.200"
+          >
+            <HStack gap="1" color="red.700" mb="1">
+              <FiAlertTriangle size={16} />
+              <Text fontSize="sm" fontWeight="semibold">
+                Estoque Insuficiente
+              </Text>
+            </HStack>
+            <Text fontSize="sm" color="red.600">
+              Você selecionou {quantity}{" "}
+              {quantity === 1 ? "unidade" : "unidades"}, mas temos apenas{" "}
+              <strong>{effectiveStock}</strong>{" "}
+              {effectiveStock === 1 ? "disponível" : "disponíveis"} em estoque.
+            </Text>
+            <Text fontSize="sm" color="red.600" mt="2">
+              Por favor, ajuste a quantidade ou entre em contato para verificar
+              disponibilidade.
+            </Text>
+          </Box>
+        )}
+
       {/* Aviso de tamanho não selecionado */}
-      {isActive && sizes.length > 0 && !selectedSize && (
+      {!isProductUnavailable && sizes.length > 0 && !selectedSize && (
         <Box
           w="full"
           p="3"
@@ -366,86 +347,94 @@ export const ProductInfo = ({
         </Box>
       )}
 
-      <Box w="full">
-        <VStack gap={{ base: 4, sm: 3 }} w="full">
-          <Flex
-            gap={{ base: 4, sm: 3 }}
-            w="full"
-            direction={{ base: "column", sm: "row" }}
-            align="stretch"
-          >
-            <Button
-              flex="1"
-              {...PRODUCT_CTA_LAYOUT}
-              onClick={handleAddToCart}
-              disabled={!canCheckout}
-              bg="black"
-              color="white"
-              _hover={{
-                bg: "gray.800",
-                transform: "translateY(-2px)",
-                shadow: "md",
-              }}
-              _active={{ bg: "gray.900", transform: "translateY(0)" }}
+      {isProductUnavailable ? (
+        <ProductUnavailableNotice
+          productSlug={slug}
+          productTitle={title}
+          ctaLayout={PRODUCT_CTA_LAYOUT}
+        />
+      ) : (
+        <Box w="full">
+          <VStack gap={{ base: 4, sm: 3 }} w="full">
+            <Flex
+              gap={{ base: 4, sm: 3 }}
+              w="full"
+              direction={{ base: "column", sm: "row" }}
+              align="stretch"
             >
-              <Box
-                as="span"
-                flexShrink={0}
-                fontSize={{ base: "18px", sm: "20px", md: "20px" }}
-                lineHeight="1"
-                display="inline-flex"
-                alignItems="center"
-              >
-                <FiShoppingCart />
-              </Box>
-              <Box as="span">Adicionar ao Carrinho</Box>
-            </Button>
-
-            {itemCount > 0 && (
               <Button
                 flex="1"
                 {...PRODUCT_CTA_LAYOUT}
-                onClick={openCart}
-                variant="outline"
-                borderWidth="2px"
-                borderColor="gray.200"
-                color="gray.700"
+                onClick={handleAddToCart}
+                disabled={!canCheckout}
+                bg="black"
+                color="white"
                 _hover={{
-                  bg: "gray.50",
-                  borderColor: "gray.300",
-                  transform: "translateY(-2px)",
-                  shadow: "sm",
-                }}
-                _active={{ transform: "translateY(0)" }}
-              >
-                Ir até o Carrinho ({itemCount})
-              </Button>
-            )}
-          </Flex>
-          <Box w="full">
-            <WhatsAppProductInquiryButton
-              productId={productId}
-              productTitle={title}
-              buttonProps={{
-                ...PRODUCT_CTA_LAYOUT,
-                _hover: {
+                  bg: "gray.800",
                   transform: "translateY(-2px)",
                   shadow: "md",
-                  bg: "#20BD5A",
-                },
-                _active: { transform: "translateY(0)" },
-              }}
-            />
-          </Box>
-        </VStack>
+                }}
+                _active={{ bg: "gray.900", transform: "translateY(0)" }}
+              >
+                <Box
+                  as="span"
+                  flexShrink={0}
+                  fontSize={{ base: "18px", sm: "20px", md: "20px" }}
+                  lineHeight="1"
+                  display="inline-flex"
+                  alignItems="center"
+                >
+                  <FiShoppingCart />
+                </Box>
+                <Box as="span">Adicionar ao Carrinho</Box>
+              </Button>
 
-        {/* Mensagem de ajuda quando botão desabilitado */}
-        {!canCheckout && disabledReason && (
-          <Text fontSize="sm" color="gray.600" mt="2" textAlign="center">
-            {disabledReason}
-          </Text>
-        )}
-      </Box>
+              {itemCount > 0 && (
+                <Button
+                  flex="1"
+                  {...PRODUCT_CTA_LAYOUT}
+                  onClick={openCart}
+                  variant="outline"
+                  borderWidth="2px"
+                  borderColor="gray.200"
+                  color="gray.700"
+                  _hover={{
+                    bg: "gray.50",
+                    borderColor: "gray.300",
+                    transform: "translateY(-2px)",
+                    shadow: "sm",
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                >
+                  Ir até o Carrinho ({itemCount})
+                </Button>
+              )}
+            </Flex>
+            <Box w="full">
+              <WhatsAppProductInquiryButton
+                productSlug={slug}
+                productTitle={title}
+                buttonProps={{
+                  ...PRODUCT_CTA_LAYOUT,
+                  _hover: {
+                    transform: "translateY(-2px)",
+                    shadow: "md",
+                    bg: "#20BD5A",
+                  },
+                  _active: { transform: "translateY(0)" },
+                }}
+              />
+            </Box>
+          </VStack>
+
+          {/* Mensagem de ajuda quando botão desabilitado */}
+          {!canCheckout && disabledReason && (
+            <Text fontSize="sm" color="gray.600" mt="2" textAlign="center">
+              {disabledReason}
+            </Text>
+          )}
+        </Box>
+      )}
     </VStack>
   );
 };

@@ -38,6 +38,7 @@ export class FirestoreProductRepository implements IProductRepository {
     return new ProductEntity({
       id,
       barcode: data.barcode as string | undefined,
+      slug: data.slug as string | undefined,
       title: data.title as string,
       subtitle: data.subtitle as string | undefined,
       description: data.description as string,
@@ -72,6 +73,7 @@ export class FirestoreProductRepository implements IProductRepository {
   private entityToDoc(entity: ProductEntity): Record<string, unknown> {
     const doc: Record<string, unknown> = {
       barcode: entity.barcode,
+      slug: entity.slug,
       title: entity.title,
       subtitle: entity.subtitle,
       description: entity.description,
@@ -200,6 +202,28 @@ export class FirestoreProductRepository implements IProductRepository {
     return this.docToEntity(docSnap.id, data);
   }
 
+  async findBySlug(slug: string): Promise<ProductEntity | null> {
+    const db = this.requireDb();
+    const snap = await db
+      .collection(this.collectionName)
+      .where("slug", "==", slug)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      return null;
+    }
+
+    const doc = snap.docs[0];
+    const data = doc.data() as Record<string, unknown>;
+
+    if (data.deletedAt) {
+      return null;
+    }
+
+    return this.docToEntity(doc.id, data);
+  }
+
   async create(product: ProductEntity): Promise<ProductEntity> {
     const db = this.requireDb();
     const docData = this.entityToDoc(product);
@@ -222,6 +246,7 @@ export class FirestoreProductRepository implements IProductRepository {
       updatedAt: Timestamp.now(),
     };
 
+    if (product.slug !== undefined) updateData.slug = product.slug;
     if (product.title !== undefined) updateData.title = product.title;
     if (product.subtitle !== undefined) updateData.subtitle = product.subtitle;
     if (product.description !== undefined)

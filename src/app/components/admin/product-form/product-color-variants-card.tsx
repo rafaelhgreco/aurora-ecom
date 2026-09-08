@@ -12,6 +12,7 @@ import {
   IconButton,
   Image,
   Input,
+  Stack,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -94,8 +95,14 @@ export function ProductColorVariantsCard({
               borderRadius="md"
               borderColor="gray.200"
             >
-              <HStack justify="space-between" mb={3} flexWrap="wrap">
-                <Box maxW={{ base: "full", md: "280px" }} flex={1}>
+              <Flex
+                direction={{ base: "column", sm: "row" }}
+                justify="space-between"
+                align={{ base: "stretch", sm: "flex-end" }}
+                gap={3}
+                mb={4}
+              >
+                <Box flex={1}>
                   <Text fontWeight="medium" mb={1} fontSize="sm">
                     Nome da cor
                   </Text>
@@ -103,22 +110,25 @@ export function ProductColorVariantsCard({
                     value={row.color}
                     onChange={(e) => setRowColor(rowIndex, e.target.value)}
                     placeholder="Ex.: Branco, Preto"
+                    size="md"
                   />
                 </Box>
                 {colorRows.length > 1 && (
                   <Button
                     type="button"
-                    size="sm"
+                    size="md"
                     variant="outline"
                     colorScheme="red"
+                    width={{ base: "full", sm: "auto" }}
+                    flexShrink={0}
                     onClick={() => removeColorRow(rowIndex)}
                   >
                     Remover cor
                   </Button>
                 )}
-              </HStack>
+              </Flex>
 
-              <HStack gap={2}>
+              <Stack direction={{ base: "column", sm: "row" }} gap={2}>
                 <Input
                   type="file"
                   accept="image/*"
@@ -129,10 +139,11 @@ export function ProductColorVariantsCard({
                 />
                 <label
                   htmlFor={`${colorFileInputId}-color-upload-${row.id}`}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, display: "block" }}
                 >
                   <Button
                     as="span"
+                    size="md"
                     colorScheme="blue"
                     variant="outline"
                     width="full"
@@ -143,17 +154,23 @@ export function ProductColorVariantsCard({
                     }
                     type="button"
                   >
-                    <IoCloudUpload style={{ marginRight: 8 }} />
-                    Adicionar fotos (
-                    {row.existingUrls.length + row.files.length}/
-                    {MAX_IMAGES_PER_COLOR})
+                    <HStack gap={2} justify="center">
+                      <IoCloudUpload />
+                      <Text>
+                        Adicionar fotos (
+                        {row.existingUrls.length + row.files.length}/
+                        {MAX_IMAGES_PER_COLOR})
+                      </Text>
+                    </HStack>
                   </Button>
                 </label>
 
                 <Button
+                  size="md"
                   colorScheme="green"
                   variant="outline"
                   flex={1}
+                  width="full"
                   disabled={
                     row.existingUrls.length + row.files.length >=
                       MAX_IMAGES_PER_COLOR || isUploading
@@ -161,10 +178,12 @@ export function ProductColorVariantsCard({
                   type="button"
                   onClick={() => setCameraCaptureRowIndex(rowIndex)}
                 >
-                  <IoCamera style={{ marginRight: 8 }} />
-                  Tirar Foto
+                  <HStack gap={2} justify="center">
+                    <IoCamera />
+                    <Text>Tirar foto</Text>
+                  </HStack>
                 </Button>
-              </HStack>
+              </Stack>
 
               {(row.existingUrls.length > 0 || row.previews.length > 0) && (
                 <Grid

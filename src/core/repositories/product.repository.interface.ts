@@ -7,6 +7,8 @@ export interface IProductRepository {
 
   findById(id: string): Promise<Product | null>;
 
+  findBySlug(slug: string): Promise<Product | null>;
+
   findByBarcode(barcode: string): Promise<Product | null>;
 
   create(
