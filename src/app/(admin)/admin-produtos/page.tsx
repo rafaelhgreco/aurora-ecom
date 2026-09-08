@@ -115,6 +115,7 @@ function AdminPageContent() {
         duration: 3000,
       });
       setDeleteProductData(null);
+      refetch();
     } else {
       toaster.create({
         title: "Erro",

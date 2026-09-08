@@ -21,7 +21,7 @@ import {
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { IoArrowBack } from "react-icons/io5";
 import type { ActionResult } from "@/app/actions/products";
@@ -50,6 +50,7 @@ import {
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
 import { buildVariantStockBySize } from "@/shared/admin-product-stock";
 import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
+import { slugify } from "@/shared/slugify";
 import { ProductBasicDataCard } from "./product-form/product-basic-data-card";
 import { ProductColorVariantsCard } from "./product-form/product-color-variants-card";
 import { ProductPriceStockCard } from "./product-form/product-price-stock-card";
@@ -65,6 +66,7 @@ const EMPTY_SIZES: ProductSize[] = [];
 function createFormDefaults(): ProductFormValues {
   return {
     title: "",
+    slug: "",
     subtitle: "",
     description: "",
     price: 0,
@@ -94,6 +96,7 @@ function productToFormDefaults(product: Product): ProductFormValues {
   return {
     id: product.id || "",
     title: product.title,
+    slug: product.slug ?? "",
     subtitle: product.subtitle ?? "",
     description: product.description,
     price: product.price,
@@ -188,6 +191,7 @@ export function ProductForm({ product }: ProductFormProps) {
     handleSubmit,
     formState: { errors },
     setValue,
+    setError,
     watch,
     reset,
   } = useForm<ProductFormValues>({
@@ -222,11 +226,22 @@ export function ProductForm({ product }: ProductFormProps) {
     }
   }, [selectedSizes.length, setValue]);
 
+  const slugTouchedRef = useRef(false);
+
   useEffect(() => {
     reset(defaults);
     resetRows(buildColorRowsFromProduct(product));
     setSizePreset(inferSizePresetFromSizes(product?.sizes ?? []));
+    slugTouchedRef.current = false;
   }, [product, defaults, reset, resetRows]);
+
+  const titleValue = watch("title");
+
+  /** Sugere o slug a partir do título só no cadastro (nunca sobrescreve em edição/enriquecimento) e só antes do admin editar o campo manualmente. */
+  useEffect(() => {
+    if (isEdit || slugTouchedRef.current) return;
+    setValue("slug", slugify(titleValue || ""), { shouldValidate: false });
+  }, [titleValue, isEdit, setValue]);
 
   const presetOptions =
     sizePreset === "clothing"
@@ -335,6 +350,7 @@ export function ProductForm({ product }: ProductFormProps) {
       if (!product) {
         const createPayload: CreateProductInput = {
           title: data.title,
+          slug: data.slug || undefined,
           subtitle: data.subtitle || undefined,
           description: data.description,
           price: data.price,
@@ -354,6 +370,7 @@ export function ProductForm({ product }: ProductFormProps) {
         const publishInput: PublishProductInput = {
           id: data.id as string,
           title: data.title,
+          slug: data.slug || undefined,
           price: data.price,
           category: data.category || "",
         };
@@ -362,6 +379,7 @@ export function ProductForm({ product }: ProductFormProps) {
         const payload: UpdateProductInput = {
           id: data.id as string,
           title: data.title,
+          slug: data.slug || undefined,
           subtitle: data.subtitle || undefined,
           description: data.description,
           price: data.price,
@@ -404,6 +422,10 @@ export function ProductForm({ product }: ProductFormProps) {
         router.push("/admin-produtos");
         router.refresh();
       } else {
+        const slugError = result.details?.find((d) => d.field === "slug");
+        if (slugError) {
+          setError("slug", { message: slugError.message });
+        }
         setSubmitStatus({
           type: "error",
           message:
@@ -494,6 +516,12 @@ export function ProductForm({ product }: ProductFormProps) {
               errors={errors}
               isEdit={isEdit}
               descriptionValue={watch("description")}
+              onSlugTouched={() => {
+                slugTouchedRef.current = true;
+              }}
+              onSlugBlurSanitize={(rawValue) =>
+                setValue("slug", slugify(rawValue), { shouldValidate: true })
+              }
             />
 
             <ProductPriceStockCard

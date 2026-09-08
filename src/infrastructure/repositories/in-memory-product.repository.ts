@@ -168,6 +168,10 @@ export class InMemoryProductRepository implements IProductRepository {
     return this.products.find((p) => p.id === id) || null;
   }
 
+  async findBySlug(slug: string): Promise<Product | null> {
+    return this.products.find((p) => p.slug === slug) || null;
+  }
+
   async findByBarcode(barcode: string): Promise<Product | null> {
     return this.products.find((p) => p.barcode === barcode) || null;
   }

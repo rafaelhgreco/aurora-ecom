@@ -47,6 +47,7 @@ export class PublishProductUseCase {
     return this.updateUseCase.execute({
       id: validated.id,
       title: validated.title,
+      ...(validated.slug !== undefined ? { slug: validated.slug } : {}),
       price: validated.price,
       category: validated.category,
       status: "ACTIVE",

@@ -129,6 +129,17 @@ const productObjectSchema = z.object({
     .trim()
     .optional(),
 
+  /** URL amigável do produto (`/produto/{slug}`). Gerada a partir do título, editável. */
+  slug: z
+    .string()
+    .min(1, "URL não pode ficar vazia")
+    .max(150, "URL deve ter no máximo 150 caracteres")
+    .regex(
+      /^[a-z0-9]+(-[a-z0-9]+)*$/,
+      "Use apenas letras minúsculas, números e hífens",
+    )
+    .optional(),
+
   title: z
     .string({ message: "Título é obrigatório" })
     .min(3, "Título deve ter no mínimo 3 caracteres")
@@ -290,6 +301,7 @@ export type ScanBarcodeInput = z.input<typeof scanBarcodeSchema>;
 export const publishProductSchema = z.object({
   id: z.string().min(1, "ID do produto é obrigatório"),
   title: productObjectSchema.shape.title,
+  slug: productObjectSchema.shape.slug,
   price: productObjectSchema.shape.price,
   category: z.string().min(2, "Categoria é obrigatória").max(50),
 });

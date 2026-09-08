@@ -5,6 +5,7 @@ interface ProductSizeSelectorProps {
   selectedSize: string | null;
   onSizeChange: (size: string) => void;
   availableSizes?: string[];
+  disabled?: boolean;
 }
 
 export const ProductSizeSelector = ({
@@ -12,11 +13,13 @@ export const ProductSizeSelector = ({
   selectedSize,
   onSizeChange,
   availableSizes,
+  disabled = false,
 }: ProductSizeSelectorProps) => {
   return (
     <Flex gap="2" flexWrap="wrap">
       {sizes.map((size) => {
-        const isAvailable = !availableSizes || availableSizes.includes(size);
+        const isAvailable =
+          !disabled && (!availableSizes || availableSizes.includes(size));
         const isSelected = selectedSize === size;
 
         return (

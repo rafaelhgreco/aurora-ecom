@@ -23,6 +23,7 @@ const SHOP_WHATSAPP =
 function buildProductInquiryMessage(
   productTitle: string,
   productPageUrl: string,
+  unavailable: boolean,
 ) {
   return [
     "Olá! Gostaria de mais informações sobre o produto:",
@@ -30,6 +31,12 @@ function buildProductInquiryMessage(
     `*${productTitle}*`,
     "",
     `Link: ${productPageUrl}`,
+    ...(unavailable
+      ? [
+          "",
+          "Vi que esse produto está indisponível/sem estoque no momento e gostaria de saber mais.",
+        ]
+      : []),
   ].join("\n");
 }
 
@@ -130,8 +137,10 @@ export function WhatsAppCheckoutButton({
 // --- Página de produto: pedir mais informações + link do produto ---
 
 export interface WhatsAppProductInquiryButtonProps {
-  productId: string;
+  productSlug: string;
   productTitle: string;
+  /** true quando o produto está pausado/sem estoque — ajusta a mensagem pré-preenchida */
+  unavailable?: boolean;
   /** Estilo alinhado aos outros CTAs (ex.: PRODUCT_CTA_LAYOUT) */
   buttonProps?: WhatsAppButtonStyleProps;
 }
@@ -141,14 +150,19 @@ export interface WhatsAppProductInquiryButtonProps {
  * Visual nas cores oficiais do WhatsApp.
  */
 export function WhatsAppProductInquiryButton({
-  productId,
+  productSlug,
   productTitle,
+  unavailable = false,
   buttonProps,
 }: WhatsAppProductInquiryButtonProps) {
   const openInquiry = () => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const productPageUrl = `${origin}/produto/${encodeURIComponent(productId)}`;
-    const text = buildProductInquiryMessage(productTitle, productPageUrl);
+    const productPageUrl = `${origin}/produto/${encodeURIComponent(productSlug)}`;
+    const text = buildProductInquiryMessage(
+      productTitle,
+      productPageUrl,
+      unavailable,
+    );
     const waUrl = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(text)}`;
     window.open(waUrl, "_blank", "noopener,noreferrer");
   };

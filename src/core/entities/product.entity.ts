@@ -16,6 +16,7 @@ import {
 export class ProductEntity implements Product {
   id?: string;
   barcode?: string;
+  slug?: string;
   title: string;
   subtitle?: string;
   description: string;
@@ -38,6 +39,7 @@ export class ProductEntity implements Product {
   constructor(data: Product & { deletedAt?: Date | null }) {
     this.id = data.id;
     this.barcode = data.barcode;
+    this.slug = data.slug;
     this.title = data.title;
     this.subtitle = data.subtitle;
     this.description = data.description;
@@ -214,6 +216,7 @@ export class ProductEntity implements Product {
     return {
       id: this.id,
       barcode: this.barcode,
+      slug: this.slug,
       title: this.title,
       subtitle: this.subtitle,
       description: this.description,

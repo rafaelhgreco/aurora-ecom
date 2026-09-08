@@ -1,14 +1,13 @@
 "use client";
 import { Box, Button, Container, Flex, Grid } from "@chakra-ui/react";
 import { usePathname, useRouter } from "next/navigation";
-import { use, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IoArrowBack } from "react-icons/io5";
 import { MemoryRouter as Router } from "react-router-dom";
-import { getProductByIdAction } from "@/app/actions/products";
 import { ProductImageGallery } from "@/app/components/public/product-image-gallery";
 import { ProductInfo } from "@/app/components/public/product-info";
 import { ProductPageHeader } from "@/app/components/public/product-page-header";
-import { ErrorState, LoadingState } from "@/app/components/states";
+import { ErrorState } from "@/app/components/states";
 import { NextRouterSync } from "@/app/hooks/use-next-router-sync";
 import type { Product } from "@/core/schemas/product.schema";
 import {
@@ -24,12 +23,12 @@ import {
 
 function ProductDetailView({
   product,
-  productIdParam,
+  slugParam,
   logoSrc,
   nextPathname,
 }: {
   product: Product;
-  productIdParam: string;
+  slugParam: string;
   logoSrc: string;
   nextPathname: string;
 }) {
@@ -65,7 +64,8 @@ function ProductDetailView({
     const colorForStock = selectedColor || fallbackColor;
 
     return {
-      id: product.id || productIdParam,
+      id: product.id || slugParam,
+      slug: product.slug || slugParam,
       title: product.title,
       price: product.price,
       description: product.description,
@@ -79,7 +79,7 @@ function ProductDetailView({
         getVariantStockBySizeForColor(product, colorForStock) ??
         product.stockBySize,
     };
-  }, [product, productIdParam, productImages, selectedColor, colorVariants]);
+  }, [product, slugParam, productImages, selectedColor, colorVariants]);
 
   return (
     <Router initialEntries={[nextPathname]}>
@@ -120,6 +120,7 @@ function ProductDetailView({
               <Box w="full">
                 <ProductInfo
                   productId={productData.id}
+                  slug={productData.slug}
                   title={productData.title}
                   price={productData.price}
                   description={productData.description}
@@ -142,49 +143,22 @@ function ProductDetailView({
   );
 }
 
-export default function ProdutoPage({
-  params,
+export function ProductDetailClient({
+  product,
+  slugParam,
 }: {
-  params: Promise<{ id: string }>;
+  /** Já resolvido no servidor (`resolveProductRoute`) — `null` quando não encontrado. */
+  product: Product | null;
+  slugParam: string;
 }) {
-  const { id } = use(params);
   const logoSrc = "/logo.svg";
   const nextPathname = usePathname();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function loadProduct() {
-      try {
-        setLoading(true);
-        const result = await getProductByIdAction(id);
-
-        if (result.success) {
-          setProduct(result.data);
-        } else {
-          setError(result.error);
-        }
-      } catch {
-        setError("Não foi possível carregar o produto. Tente novamente.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadProduct();
-  }, [id]);
-
-  if (loading) {
-    return <LoadingState />;
-  }
-
-  if (error || !product || product.status !== "ACTIVE") {
+  if (!product) {
     return (
       <ErrorState
         title="Produto não encontrado"
-        message={error || "Não foi possível encontrar este produto."}
+        message="Não foi possível encontrar este produto."
         backUrl="/"
         backText="Voltar para Home"
         onRetry={() => window.location.reload()}
@@ -195,7 +169,7 @@ export default function ProdutoPage({
   return (
     <ProductDetailView
       product={product}
-      productIdParam={id}
+      slugParam={slugParam}
       logoSrc={logoSrc}
       nextPathname={nextPathname}
     />
