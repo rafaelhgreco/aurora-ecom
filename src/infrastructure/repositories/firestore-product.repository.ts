@@ -1,5 +1,4 @@
 import { FieldValue, type Query, Timestamp } from "firebase-admin/firestore";
-import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import { ProductEntity } from "@/core/entities/product.entity";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
@@ -46,7 +45,7 @@ export class FirestoreProductRepository implements IProductRepository {
       imageUrl: data.imageUrl as string,
       images: (data.images as string[]) || [],
       category: data.category as string | undefined,
-      shopCategory: data.shopCategory as ShopCategoryId | undefined,
+      shopCategory: data.shopCategory as string | undefined,
       stock: data.stock as number,
       stockBySize: data.stockBySize as
         | Partial<Record<"PP" | "P" | "M" | "G" | "GG" | "XG", number>>
@@ -122,10 +121,6 @@ export class FirestoreProductRepository implements IProductRepository {
       .collection(this.collectionName)
       .where("deletedAt", "==", null);
 
-    if (filters?.category) {
-      q = q.where("category", "==", filters.category);
-    }
-
     if (filters?.isActive !== undefined) {
       q = q.where("isActive", "==", filters.isActive);
     }
@@ -142,9 +137,11 @@ export class FirestoreProductRepository implements IProductRepository {
       q = q.where("price", "<=", filters.maxPrice);
     }
 
-    // Because we filter client-side for search, sizes, shopCategory, we might have an issue
-    // applying offset and limit here directly on the query.
+    // Because we filter client-side for search, sizes, shopCategory, category,
+    // we might have an issue applying offset and limit here directly on the query.
     // Let's fetch the relevant docs, then filter, then paginate.
+    // `category` is filtered client-side (not via `.where`) to avoid requiring
+    // a composite Firestore index for deletedAt+category+status+orderBy(createdAt).
 
     q = q.orderBy("createdAt", "desc");
 
@@ -172,6 +169,10 @@ export class FirestoreProductRepository implements IProductRepository {
     if (filters?.shopCategory) {
       const target = filters.shopCategory;
       results = results.filter((p) => (p.shopCategory ?? "roupas") === target);
+    }
+
+    if (filters?.category) {
+      results = results.filter((p) => p.category === filters.category);
     }
 
     const totalCount = results.length;

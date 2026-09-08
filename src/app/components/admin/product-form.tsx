@@ -30,10 +30,11 @@ import {
   publishProductAction,
   updateProductAction,
 } from "@/app/actions/products";
+import { useCategories } from "@/app/hooks/use-categories";
+import { useSections } from "@/app/hooks/use-sections";
 import type { Product } from "@/app/types/product";
 import { Alert } from "@/components/ui/alert";
 import { toaster } from "@/components/ui/toaster";
-import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import {
   type CreateProductInput,
   inferSizePresetFromSizes,
@@ -72,7 +73,7 @@ function createFormDefaults(): ProductFormValues {
     price: 0,
     stock: 0,
     category: "",
-    shopCategory: "roupas" as ShopCategoryId,
+    shopCategory: "roupas",
     sizes: [],
     isActive: true,
     status: "ACTIVE",
@@ -103,7 +104,7 @@ function productToFormDefaults(product: Product): ProductFormValues {
     stock: product.stock,
     stockBySize,
     category: product.category ?? "",
-    shopCategory: (product.shopCategory ?? "roupas") as ShopCategoryId,
+    shopCategory: product.shopCategory ?? "roupas",
     sizes,
     isActive: product.isActive ?? true,
     status: product.status ?? "ACTIVE",
@@ -199,6 +200,26 @@ export function ProductForm({ product }: ProductFormProps) {
     resolver: zodResolver(productFormSchema) as any,
     defaultValues: defaults,
   });
+
+  const { sections } = useSections();
+  const { categories } = useCategories();
+
+  const shopCategoryValue = watch("shopCategory");
+  const categoryValue = watch("category");
+
+  /** Troca de seção (ação explícita do usuário): limpa a subcategoria se ela
+   *  não pertencer mais à nova seção (stacking Seção + Subcategoria). */
+  const handleShopCategoryChange = (nextSectionId: string) => {
+    setValue("shopCategory", nextSectionId, { shouldValidate: true });
+    const currentCategory = watch("category");
+    if (!currentCategory) return;
+    const belongsToNewSection = categories.some(
+      (c) => c.name === currentCategory && c.sectionId === nextSectionId,
+    );
+    if (!belongsToNewSection) {
+      setValue("category", "");
+    }
+  };
 
   const rawSizes = watch("sizes");
   /** `?? EMPTY_SIZES` evita `|| []` (novo array a cada render → loop no hook abaixo). */
@@ -516,6 +537,14 @@ export function ProductForm({ product }: ProductFormProps) {
               errors={errors}
               isEdit={isEdit}
               descriptionValue={watch("description")}
+              sections={sections}
+              shopCategoryValue={shopCategoryValue}
+              onShopCategoryChange={handleShopCategoryChange}
+              categories={categories}
+              categoryValue={categoryValue}
+              onCategoryChange={(value) =>
+                setValue("category", value, { shouldValidate: true })
+              }
               onSlugTouched={() => {
                 slugTouchedRef.current = true;
               }}

@@ -4,7 +4,7 @@ import { Box, Flex, Image } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DrawerNav, type NavItem, NavMenu } from "storybook-react";
-import { SHOP_CATALOG_ROUTES } from "@/core/catalog/shop-catalog";
+import { useSections } from "@/app/hooks/use-sections";
 import { useCart } from "../../hooks/use-cart";
 import { CartDrawer } from "../cart/cart-drawer";
 import { CartIcon } from "../cart/cart-icon";
@@ -37,6 +37,7 @@ function HeaderLogoLink({ logoSrc }: { logoSrc: string }) {
 
 function usePublicHeaderNavItems(): NavItem[] {
   const navigate = useNavigate();
+  const { sections } = useSections();
 
   return useMemo(
     () =>
@@ -50,17 +51,17 @@ function usePublicHeaderNavItems(): NavItem[] {
               label: "Shop",
               onClick: () => navigate("/loja"),
             },
-            ...SHOP_CATALOG_ROUTES.map((route) => ({
-              id: `shop-${route.slug}`,
-              label: route.title,
-              onClick: () => navigate(`/loja/${route.slug}`),
+            ...sections.map((section) => ({
+              id: `shop-${section.slug}`,
+              label: section.name,
+              onClick: () => navigate(`/loja/${section.slug}`),
             })),
           ],
         },
         { label: "Sobre", path: "/sobre" },
         { label: "Arquivo", path: "/arquivo" },
       ] satisfies NavItem[],
-    [navigate],
+    [navigate, sections],
   );
 }
 

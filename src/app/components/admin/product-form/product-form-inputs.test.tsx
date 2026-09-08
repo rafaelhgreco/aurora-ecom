@@ -50,6 +50,7 @@ function TestHarness({
     handleSubmit,
     formState: { errors },
     watch,
+    setValue,
   } = useForm<ProductFormValues>({
     // biome-ignore lint/suspicious/noExplicitAny: mesma decisão do componente real
     resolver: zodResolver(productFormSchema) as any,
@@ -63,6 +64,12 @@ function TestHarness({
           register={register}
           errors={errors}
           descriptionValue={watch("description")}
+          sections={[]}
+          shopCategoryValue={watch("shopCategory")}
+          onShopCategoryChange={(value) => setValue("shopCategory", value)}
+          categories={[]}
+          categoryValue={watch("category")}
+          onCategoryChange={(value) => setValue("category", value)}
         />
         <ProductPriceStockCard register={register} errors={errors} />
         <button type="submit">Salvar</button>

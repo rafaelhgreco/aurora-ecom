@@ -1,4 +1,3 @@
-import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import type {
   Product,
   ProductColorVariant,
@@ -24,7 +23,7 @@ export class ProductEntity implements Product {
   imageUrl: string;
   images: string[];
   category?: string;
-  shopCategory?: ShopCategoryId;
+  shopCategory?: string;
   stock: number;
   stockBySize?: Record<string, number>;
   sizes?: ProductSize[];
@@ -47,7 +46,7 @@ export class ProductEntity implements Product {
     this.imageUrl = data.imageUrl;
     this.images = data.images || [];
     this.category = data.category;
-    this.shopCategory = data.shopCategory as ShopCategoryId | undefined;
+    this.shopCategory = data.shopCategory;
     this.stock = data.stock || 0;
     this.stockBySize = data.stockBySize;
     this.sizes = data.sizes;
