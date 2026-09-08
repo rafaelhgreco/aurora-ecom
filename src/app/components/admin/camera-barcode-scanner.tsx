@@ -5,7 +5,7 @@ import {
   BrowserMultiFormatReader,
   type IScannerControls,
 } from "@zxing/browser";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DialogBody,
   DialogCloseTrigger,
@@ -28,42 +28,39 @@ export function CameraBarcodeScanner({
   onDetected,
   onClose,
 }: CameraBarcodeScannerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // Estado (não ref) para o elemento de vídeo: o DialogContent é portalled e
+  // monta seu conteúdo num commit separado, então um useRef comum podia
+  // ficar null quando o efeito (amarrado só a `open`) disparava. Com
+  // callback ref + state, o efeito só roda quando o <video> já existe no DOM.
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const detectedRef = useRef(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: onClose/onDetected são recriados a cada render do componente pai; incluí-los reiniciaria a câmera sem necessidade.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !videoEl) return;
 
     detectedRef.current = false;
     const reader = new BrowserMultiFormatReader();
     let cancelled = false;
 
     reader
-      .decodeFromVideoDevice(
-        undefined,
-        videoRef.current ?? undefined,
-        (result, error) => {
-          if (cancelled || detectedRef.current) return;
+      .decodeFromVideoDevice(undefined, videoEl, (result, error) => {
+        if (cancelled || detectedRef.current) return;
 
-          if (result) {
-            detectedRef.current = true;
-            controlsRef.current?.stop();
-            onDetected(result.getText());
-            return;
-          }
+        if (result) {
+          detectedRef.current = true;
+          controlsRef.current?.stop();
+          onDetected(result.getText());
+          return;
+        }
 
-          // NotFoundException é disparada a cada frame sem código detectado —
-          // não é um erro real, só "ainda não achou nada nesse frame".
-          if (error && error.name !== "NotFoundException") {
-            console.error(
-              "[CameraBarcodeScanner] erro de decodificação:",
-              error,
-            );
-          }
-        },
-      )
+        // NotFoundException é disparada a cada frame sem código detectado —
+        // não é um erro real, só "ainda não achou nada nesse frame".
+        if (error && error.name !== "NotFoundException") {
+          console.error("[CameraBarcodeScanner] erro de decodificação:", error);
+        }
+      })
       .then((controls) => {
         if (cancelled) {
           controls.stop();
@@ -87,7 +84,7 @@ export function CameraBarcodeScanner({
       controlsRef.current?.stop();
       controlsRef.current = null;
     };
-  }, [open]);
+  }, [open, videoEl]);
 
   return (
     <DialogRoot
@@ -112,7 +109,7 @@ export function CameraBarcodeScanner({
               bg="black"
             >
               <video
-                ref={videoRef}
+                ref={setVideoEl}
                 style={{ width: "100%", display: "block" }}
                 muted
                 playsInline
