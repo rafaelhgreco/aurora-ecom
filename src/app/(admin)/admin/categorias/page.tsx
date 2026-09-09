@@ -10,17 +10,21 @@
 "use client";
 
 import {
+  Box,
   Button,
   Card,
   Container,
   Heading,
   HStack,
+  IconButton,
+  Menu,
+  Portal,
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { IoAdd, IoArrowBack, IoPencil, IoTrash } from "react-icons/io5";
+import { IoAdd, IoEllipsisVertical, IoPencil, IoTrash } from "react-icons/io5";
+import { CategoryCard } from "@/app/components/admin/category-card";
 import { CategoryFormDialog } from "@/app/components/admin/category-form-dialog";
 import { CategoryTable } from "@/app/components/admin/category-table";
 import { DeleteCategoryConfirmDialog } from "@/app/components/admin/delete-category-confirm-dialog";
@@ -34,7 +38,6 @@ import type { Section } from "@/app/types/section";
 import { toaster } from "@/components/ui/toaster";
 
 export default function AdminCategoriesPage() {
-  const router = useRouter();
   const {
     sections,
     isLoading: sectionsLoading,
@@ -213,17 +216,7 @@ export default function AdminCategoriesPage() {
   return (
     <Container maxW="container.lg" py={8}>
       <HStack justify="space-between" mb={6} flexWrap="wrap" gap={4}>
-        <HStack gap={3}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/admin-produtos")}
-          >
-            <IoArrowBack style={{ marginRight: 8 }} />
-            Voltar
-          </Button>
-          <Heading size="lg">Categorias</Heading>
-        </HStack>
+        <Heading size="lg">Categorias</Heading>
 
         <Button size="sm" colorScheme="blue" onClick={handleAddSection}>
           <IoAdd style={{ marginRight: 6 }} />
@@ -260,27 +253,74 @@ export default function AdminCategoriesPage() {
                       <IoAdd style={{ marginRight: 4 }} />
                       Nova Subcategoria
                     </Button>
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      colorScheme="orange"
-                      onClick={() => handleEditSection(section)}
-                    >
-                      <IoPencil />
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      colorScheme="red"
-                      onClick={() => setDeletingSection(section)}
-                    >
-                      <IoTrash />
-                    </Button>
+
+                    <HStack gap={2} display={{ base: "none", md: "flex" }}>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        colorScheme="orange"
+                        onClick={() => handleEditSection(section)}
+                      >
+                        <IoPencil />
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        colorScheme="red"
+                        onClick={() => setDeletingSection(section)}
+                      >
+                        <IoTrash />
+                      </Button>
+                    </HStack>
+
+                    <Box display={{ base: "block", md: "none" }}>
+                      <Menu.Root>
+                        <Menu.Trigger asChild>
+                          <IconButton
+                            aria-label="Ações da seção"
+                            size="sm"
+                            variant="ghost"
+                            minW="44px"
+                            minH="44px"
+                          >
+                            <IoEllipsisVertical />
+                          </IconButton>
+                        </Menu.Trigger>
+                        <Portal>
+                          <Menu.Positioner>
+                            <Menu.Content>
+                              <Menu.Item
+                                value="edit"
+                                onClick={() => handleEditSection(section)}
+                              >
+                                <IoPencil />
+                                Editar seção
+                              </Menu.Item>
+                              <Menu.Item
+                                value="delete"
+                                color="red.600"
+                                onClick={() => setDeletingSection(section)}
+                              >
+                                <IoTrash />
+                                Excluir seção
+                              </Menu.Item>
+                            </Menu.Content>
+                          </Menu.Positioner>
+                        </Portal>
+                      </Menu.Root>
+                    </Box>
                   </HStack>
                 </HStack>
               </Card.Header>
               <Card.Body>
                 <CategoryTable
+                  categories={categories.filter(
+                    (c) => c.sectionId === section.id,
+                  )}
+                  onEdit={handleEditCategory}
+                  onDelete={setDeletingCategory}
+                />
+                <CategoryCard
                   categories={categories.filter(
                     (c) => c.sectionId === section.id,
                   )}

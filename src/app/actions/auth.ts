@@ -92,7 +92,7 @@ export async function loginAction(
     return { error: GENERIC_LOGIN_ERROR };
   }
 
-  redirect("/admin-produtos");
+  redirect("/admin");
 }
 
 export async function logoutAction() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, HStack, Table, Text, VStack } from "@chakra-ui/react";
+import { Button, Card, HStack, Table, Text, VStack } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { IoPencil } from "react-icons/io5";
 import type { Product } from "@/core/schemas/product.schema";
@@ -9,11 +9,21 @@ interface DraftProductTableProps {
   products: Product[];
 }
 
+function formatCreatedAt(createdAt: Product["createdAt"]) {
+  return createdAt
+    ? new Date(createdAt).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "—";
+}
+
 export function DraftProductTable({ products }: DraftProductTableProps) {
   const router = useRouter();
 
   const handleEnrich = (id: string) => {
-    router.push(`/admin-produtos/editar/${id}`);
+    router.push(`/admin/editar/${id}`);
   };
 
   if (products.length === 0) {
@@ -26,7 +36,12 @@ export function DraftProductTable({ products }: DraftProductTableProps) {
 
   return (
     <VStack align="stretch" gap={4} w="full">
-      <Table.Root size="sm" striped variant="outline">
+      <Table.Root
+        size="sm"
+        striped
+        variant="outline"
+        display={{ base: "none", md: "table" }}
+      >
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>Código de Barras</Table.ColumnHeader>
@@ -47,13 +62,7 @@ export function DraftProductTable({ products }: DraftProductTableProps) {
                 {product.stock}
               </Table.Cell>
               <Table.Cell fontSize="sm" color="gray.600">
-                {product.createdAt
-                  ? new Date(product.createdAt).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })
-                  : "—"}
+                {formatCreatedAt(product.createdAt)}
               </Table.Cell>
               <Table.Cell>
                 <HStack justify="center" gap={2}>
@@ -71,6 +80,36 @@ export function DraftProductTable({ products }: DraftProductTableProps) {
           ))}
         </Table.Body>
       </Table.Root>
+
+      <VStack align="stretch" gap={3} display={{ base: "flex", md: "none" }}>
+        {products.map((product) => (
+          <Card.Root key={product.id} variant="outline">
+            <Card.Body>
+              <VStack align="stretch" gap={2}>
+                <Text fontFamily="monospace" fontWeight="medium">
+                  {product.barcode || "—"}
+                </Text>
+                <HStack justify="space-between">
+                  <Text fontSize="sm" color="gray.600">
+                    Estoque: <strong>{product.stock}</strong>
+                  </Text>
+                  <Text fontSize="sm" color="gray.500">
+                    {formatCreatedAt(product.createdAt)}
+                  </Text>
+                </HStack>
+                <Button
+                  w="full"
+                  variant="outline"
+                  onClick={() => handleEnrich(product.id || "")}
+                >
+                  <IoPencil style={{ marginRight: 4 }} />
+                  Enriquecer
+                </Button>
+              </VStack>
+            </Card.Body>
+          </Card.Root>
+        ))}
+      </VStack>
     </VStack>
   );
 }

@@ -141,6 +141,8 @@ export function ProductSizesCard({
                       aria-label={`Remover ${s}`}
                       size="2xs"
                       variant="ghost"
+                      minW="44px"
+                      minH="44px"
                       onClick={() => handleRemoveCustomSize(s)}
                     >
                       <IoClose />

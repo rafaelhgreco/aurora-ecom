@@ -16,6 +16,7 @@ import {
   Heading,
   HStack,
   Input,
+  Stack,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -23,7 +24,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { IoArrowBack } from "react-icons/io5";
 import type { ActionResult } from "@/app/actions/products";
 import {
   createProductAction,
@@ -440,7 +440,7 @@ export function ProductForm({ product }: ProductFormProps) {
           type: "success",
           duration: 4000,
         });
-        router.push("/admin-produtos");
+        router.push("/admin");
         router.refresh();
       } else {
         const slugError = result.details?.find((d) => d.field === "slug");
@@ -471,17 +471,6 @@ export function ProductForm({ product }: ProductFormProps) {
   return (
     <Container maxW="container.lg" py={8}>
       <VStack gap={6} align="stretch">
-        <HStack justify="space-between" flexWrap="wrap" gap={4}>
-          <Button
-            variant="ghost"
-            onClick={() => router.push("/admin-produtos")}
-            size="sm"
-          >
-            <IoArrowBack style={{ marginRight: 8 }} />
-            Voltar
-          </Button>
-        </HStack>
-
         <Box>
           <HStack gap={3} mb={2}>
             <Heading size="2xl">
@@ -572,11 +561,16 @@ export function ProductForm({ product }: ProductFormProps) {
               errors={errors}
             />
 
-            <HStack justify="flex-end" gap={4}>
+            <Stack
+              direction={{ base: "column", sm: "row" }}
+              justify="flex-end"
+              gap={4}
+            >
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push("/admin-produtos")}
+                onClick={() => router.push("/admin")}
+                w={{ base: "full", sm: "auto" }}
               >
                 Cancelar
               </Button>
@@ -584,6 +578,7 @@ export function ProductForm({ product }: ProductFormProps) {
                 type="submit"
                 colorScheme={product?.status === "DRAFT" ? "green" : "blue"}
                 loading={isSubmitting || isUploading}
+                w={{ base: "full", sm: "auto" }}
               >
                 {isUploading
                   ? "Fazendo Upload..."
@@ -593,7 +588,7 @@ export function ProductForm({ product }: ProductFormProps) {
                       ? "Publicar produto"
                       : "Salvar alterações"}
               </Button>
-            </HStack>
+            </Stack>
           </VStack>
         </form>
       </VStack>

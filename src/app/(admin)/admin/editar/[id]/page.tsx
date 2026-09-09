@@ -33,7 +33,7 @@ export default function AdminEditProductPage() {
     return (
       <Container maxW="container.lg" py={8}>
         <Text>Produto não encontrado.</Text>
-        <Button mt={4} onClick={() => router.push("/admin-produtos")}>
+        <Button mt={4} onClick={() => router.push("/admin")}>
           Voltar
         </Button>
       </Container>
@@ -54,7 +54,7 @@ export default function AdminEditProductPage() {
         <Text color="red.600">
           {error || "Não foi possível carregar o produto."}
         </Text>
-        <Button mt={4} onClick={() => router.push("/admin-produtos")}>
+        <Button mt={4} onClick={() => router.push("/admin")}>
           <IoArrowBack style={{ marginRight: 8 }} />
           Voltar à lista
         </Button>

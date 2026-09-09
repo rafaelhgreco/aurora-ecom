@@ -14,7 +14,7 @@ export const publicRoutes = [
 export const authRoutes = ["/login", "/cadastro", "/recuperar-senha"] as const;
 
 /** Após login com sessão válida em rota de auth */
-export const DEFAULT_LOGIN_REDIRECT = "/admin-produtos";
+export const DEFAULT_LOGIN_REDIRECT = "/admin";
 
 export const ACCESS_DENIED_REDIRECT = "/not-found";
 
@@ -24,15 +24,7 @@ type RouteConfig = {
 };
 
 export const privateRoutes: Record<string, RouteConfig> = {
-  "/admin-produtos/importacao": {
-    roles: ["admin"],
-    redirect: "/not-found",
-  },
-  "/admin-produtos": {
-    roles: ["admin"],
-    redirect: "/not-found",
-  },
-  "/admin-pedidos": {
+  "/admin": {
     roles: ["admin"],
     redirect: "/not-found",
   },
