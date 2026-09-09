@@ -95,6 +95,7 @@ export function SectionFormDialog({
     <DialogRoot
       id="admin-section-form"
       open={open}
+      size={{ base: "full", md: "md" }}
       onOpenChange={(e: DialogOpenChangeDetails) => {
         if (!e.open) onCancel();
       }}

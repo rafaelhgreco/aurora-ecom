@@ -1,9 +1,8 @@
 "use client";
 
 import { Box, Button, Container, HStack, Text, VStack } from "@chakra-ui/react";
-import { useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
-import { IoArrowBack, IoChevronBack, IoChevronForward } from "react-icons/io5";
+import { IoChevronBack, IoChevronForward } from "react-icons/io5";
 import { BarcodeScanner } from "@/app/components/admin/barcode-scanner";
 import { DraftProductTable } from "@/app/components/admin/draft-product-table";
 import { EmptyState } from "@/app/components/states/empty-state";
@@ -19,7 +18,6 @@ export default function RevisaoProdutosPage() {
 }
 
 function RevisaoContent() {
-  const router = useRouter();
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -31,16 +29,6 @@ function RevisaoContent() {
   return (
     <Container maxW="container.lg" py={8}>
       <VStack align="stretch" gap={6}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/admin-produtos")}
-          alignSelf="flex-start"
-        >
-          <IoArrowBack style={{ marginRight: 6 }} />
-          Voltar
-        </Button>
-
         <BarcodeScanner />
 
         {error ? (

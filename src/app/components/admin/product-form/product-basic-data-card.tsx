@@ -154,7 +154,7 @@ export function ProductBasicDataCard({
                 Define em qual página /loja/... o produto aparece. Não achou a
                 seção certa?{" "}
                 <Link asChild color="blue.500">
-                  <NextLink href="/admin-categorias" target="_blank">
+                  <NextLink href="/admin/categorias" target="_blank">
                     Cadastre aqui.
                   </NextLink>
                 </Link>

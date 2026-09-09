@@ -30,7 +30,11 @@ export function CategoryTable({
   }
 
   return (
-    <Table.Root variant="outline" size="md">
+    <Table.Root
+      variant="outline"
+      size="md"
+      display={{ base: "none", md: "table" }}
+    >
       <Table.Header>
         <Table.Row>
           <Table.ColumnHeader>Nome</Table.ColumnHeader>

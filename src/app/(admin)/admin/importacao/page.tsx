@@ -18,7 +18,6 @@ import {
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import {
-  IoArrowBack,
   IoCloudDownload,
   IoCloudUpload,
   IoDocumentText,
@@ -141,21 +140,12 @@ export default function BulkImportPage() {
 
   return (
     <Container maxW="container.xl" py={8}>
-      <HStack justify="space-between" mb={6} flexWrap="wrap" gap={3}>
-        <Box>
-          <Heading size="2xl">Importação em Massa</Heading>
-          <Text color="gray.600" mt={2}>
-            Cadastre vários produtos via planilha Excel (.xlsx)
-          </Text>
-        </Box>
-        <Button
-          variant="outline"
-          onClick={() => router.push("/admin-produtos")}
-        >
-          <IoArrowBack />
-          Voltar
-        </Button>
-      </HStack>
+      <Box mb={6}>
+        <Heading size="2xl">Importação em Massa</Heading>
+        <Text color="gray.600" mt={2}>
+          Cadastre vários produtos via planilha Excel (.xlsx)
+        </Text>
+      </Box>
 
       {error && (
         <Alert status="error" title="Erro" mb={4}>
@@ -318,7 +308,7 @@ export default function BulkImportPage() {
                 </Button>
               )}
               <HStack>
-                <Button onClick={() => router.push("/admin-produtos")}>
+                <Button onClick={() => router.push("/admin")}>
                   Ver produtos
                 </Button>
                 <Button variant="outline" onClick={reset}>

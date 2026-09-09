@@ -89,6 +89,7 @@ export function CategoryFormDialog({
     <DialogRoot
       id="admin-category-form"
       open={open}
+      size={{ base: "full", md: "md" }}
       onOpenChange={(e: DialogOpenChangeDetails) => {
         if (!e.open) onCancel();
       }}

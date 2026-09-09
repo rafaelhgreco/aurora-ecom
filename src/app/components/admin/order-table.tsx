@@ -33,22 +33,17 @@ import {
 } from "@/app/actions/orders";
 import { formatDateTime, formatPrice } from "@/app/utils/price-formatter";
 import { toaster } from "@/components/ui/toaster";
-import type { OrderStatus, OrderWithStock } from "@/core/schemas/order.schema";
+import type { OrderStatus } from "@/core/schemas/order.schema";
 import { EmptyState } from "../states/empty-state";
 import { LoadingState } from "../states/loading-state";
 import { DeclineFinishedOrderDialog } from "./decline-finished-order-dialog";
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  PENDENTE: "Pendente",
-  DECLINADA: "Declinada",
-  FINALIZADA: "Finalizada",
-};
-
-const STATUS_COLORS: Record<OrderStatus, "yellow" | "red" | "green"> = {
-  PENDENTE: "yellow",
-  DECLINADA: "red",
-  FINALIZADA: "green",
-};
+import { OrderCard } from "./order-card";
+import {
+  hasStockIssue,
+  itemsPreview,
+  STATUS_COLORS,
+  STATUS_LABELS,
+} from "./order-utils";
 
 type FilterStatus = OrderStatus | "TODOS";
 
@@ -132,20 +127,6 @@ export function OrderTable() {
     }
   };
 
-  const itemsPreview = (order: OrderWithStock) =>
-    order.items
-      .map((i) => {
-        const variant =
-          i.variants?.size || i.variants?.color
-            ? ` (${[i.variants.size, i.variants.color].filter(Boolean).join(", ")})`
-            : "";
-        return `${i.quantity}x ${i.title}${variant}`;
-      })
-      .join(", ");
-
-  const hasStockIssue = (order: OrderWithStock) =>
-    order.items.some((i) => !i.sufficient);
-
   if (isLoading) {
     return <LoadingState minHeight="200px" fullPage={false} />;
   }
@@ -195,7 +176,13 @@ export function OrderTable() {
         </Button>
       </HStack>
 
-      <Box borderWidth="1px" borderRadius="md" overflowX="auto" bg="white">
+      <Box
+        borderWidth="1px"
+        borderRadius="md"
+        overflowX="auto"
+        bg="white"
+        display={{ base: "none", md: "block" }}
+      >
         <Table.Root size="sm" variant="outline">
           <Table.Header>
             <Table.Row>
@@ -388,6 +375,18 @@ export function OrderTable() {
           </Table.Body>
         </Table.Root>
       </Box>
+
+      <VStack align="stretch" gap={3} display={{ base: "flex", md: "none" }}>
+        {orders.map((order) => (
+          <OrderCard
+            key={order.id}
+            order={order}
+            updatingId={updatingId}
+            onStatusChange={handleStatusChange}
+            onDeclineClick={setDeclineConfirmOrderId}
+          />
+        ))}
+      </VStack>
 
       {totalPages > 1 && (
         <HStack justify="center" mt={6} gap={4}>

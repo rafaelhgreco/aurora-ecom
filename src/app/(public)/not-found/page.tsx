@@ -15,7 +15,7 @@ export default function AcessoNegadoPage() {
 
         <div className="space-y-3">
           <Link
-            href="/admin-produtos"
+            href="/admin"
             className="block w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
           >
             Voltar ao Dashboard
