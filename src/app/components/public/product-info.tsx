@@ -50,6 +50,8 @@ interface ProductInfoProps {
   slug: string;
   title: string;
   price: number;
+  /** Preço de tabela, quando há promoção ativa (exibido riscado ao lado de `price`). */
+  originalPrice?: number | null;
   description: string;
   sizes: string[];
   availableSizes?: string[];
@@ -70,6 +72,7 @@ export const ProductInfo = ({
   slug,
   title,
   price,
+  originalPrice,
   description,
   sizes,
   availableSizes,
@@ -236,9 +239,16 @@ export const ProductInfo = ({
           </Heading>
           <ShareProductButton title={title} text={`Confira: ${title}`} />
         </Flex>
-        <Text fontSize="2xl" fontWeight="semibold" color="gray.900">
-          {formattedPrice}
-        </Text>
+        <HStack align="baseline" gap="2">
+          {originalPrice != null && (
+            <Text fontSize="lg" color="gray.400" textDecoration="line-through">
+              {formatPrice(originalPrice)}
+            </Text>
+          )}
+          <Text fontSize="2xl" fontWeight="semibold" color="gray.900">
+            {formattedPrice}
+          </Text>
+        </HStack>
         <Text fontSize="sm" color="gray.600">
           ou em até 6x de {formattedInstallment}
         </Text>

@@ -78,7 +78,7 @@ export class CartItemEntity {
    * Para calcular com preço, use calculateSubtotal(product)
    */
   calculateSubtotal(product: ProductEntity): number {
-    return roundCurrency(product.price * this.quantity);
+    return roundCurrency(product.getDisplayPrice() * this.quantity);
   }
 
   /**

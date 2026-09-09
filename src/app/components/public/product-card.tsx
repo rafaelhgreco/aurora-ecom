@@ -29,7 +29,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const imageUrl = product.imageUrl;
   const title = product.title;
   const subtitle = product.subtitle;
-  const price = product.price;
+  const price = product.effectivePrice ?? product.price;
+  const originalPrice = product.originalPrice;
   const isActive = product.isActive !== false;
 
   const colorVariants = useMemo(
@@ -294,9 +295,16 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             {subtitle}
           </Text>
         )}
-        <Text fontWeight="semibold" fontSize="sm" color="gray.900" mt="1">
-          {formatted_price_value}
-        </Text>
+        <Flex align="baseline" gap="2" mt="1">
+          {originalPrice != null && (
+            <Text fontSize="xs" color="gray.400" textDecoration="line-through">
+              {formatPrice(originalPrice)}
+            </Text>
+          )}
+          <Text fontWeight="semibold" fontSize="sm" color="gray.900">
+            {formatted_price_value}
+          </Text>
+        </Flex>
 
         {hasColorVariants && (
           <Box mt="2" onClick={(e) => e.stopPropagation()}>

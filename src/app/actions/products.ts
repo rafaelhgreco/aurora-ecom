@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  isAdminPromotionsEnabled,
   isAdminSoftDeactivateEnabled,
   isAdminStockToolsEnabled,
 } from "@/app/config/feature-flags";
@@ -20,11 +21,14 @@ import { ListProductsUseCase } from "@/core/use-cases/list-products.use-case";
 import { PublishProductUseCase } from "@/core/use-cases/publish-product.use-case";
 import { UpdateProductUseCase } from "@/core/use-cases/update-product.use-case";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
+import { FirestorePromotionRepository } from "@/infrastructure/repositories/firestore-promotion.repository";
 import type { ActionResult } from "@/shared/action-result";
 import { handleActionError } from "@/shared/errors/action-error";
+import { decorateProductsWithPricing } from "@/shared/product-pricing";
 import { serializeProductForClient } from "@/shared/serialize-product";
 
 const productRepository = new FirestoreProductRepository();
+const promotionRepository = new FirestorePromotionRepository();
 
 export async function listProductsAction(
   filter?: ProductFilter,
@@ -36,10 +40,15 @@ export async function listProductsAction(
     const serializedProducts = products.map((p) =>
       serializeProductForClient(p),
     );
+    const pricedProducts = await decorateProductsWithPricing(
+      serializedProducts,
+      promotionRepository,
+      isAdminPromotionsEnabled(),
+    );
 
     return {
       success: true,
-      data: { data: serializedProducts, totalCount },
+      data: { data: pricedProducts, totalCount },
     };
   } catch (error) {
     const { message } = handleActionError(
@@ -58,9 +67,15 @@ export async function getProductByIdAction(
     const useCase = new GetProductByIdUseCase(productRepository);
     const product = await useCase.execute(id);
 
+    const [pricedProduct] = await decorateProductsWithPricing(
+      [serializeProductForClient(product)],
+      promotionRepository,
+      isAdminPromotionsEnabled(),
+    );
+
     return {
       success: true,
-      data: serializeProductForClient(product),
+      data: pricedProduct,
     };
   } catch (error) {
     const { message } = handleActionError(
