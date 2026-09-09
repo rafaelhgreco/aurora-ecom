@@ -6,10 +6,9 @@
 export type {
   CreateProductInput,
   SerializedProduct,
+  SerializedProduct as Product,
   UpdateProductInput,
 } from "@/core/schemas/product.schema";
-
-export type { SerializedProduct as Product } from "@/core/schemas/product.schema";
 
 /** Modo de visualização da lista no admin */
 export type ViewMode = "grid" | "list" | "table";

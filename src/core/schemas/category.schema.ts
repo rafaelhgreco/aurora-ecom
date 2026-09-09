@@ -22,9 +22,10 @@ export const categoryObjectSchema = z.object({
 
 export const categorySchema = categoryObjectSchema;
 
+/** Formato devolvido pelas Server Actions ao cliente: datas em string ISO. */
 export const serializedCategorySchema = categoryObjectSchema.extend({
-  createdAt: z.union([z.date(), z.string()]).optional(),
-  updatedAt: z.union([z.date(), z.string()]).optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export const createCategorySchema = categoryObjectSchema.omit({

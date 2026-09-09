@@ -1,5 +1,5 @@
 import { cache } from "react";
-import type { Product } from "@/core/schemas/product.schema";
+import type { SerializedProduct } from "@/core/schemas/product.schema";
 import { GetProductByIdUseCase } from "@/core/use-cases/get-product-by-id.use-case";
 import { GetProductBySlugUseCase } from "@/core/use-cases/get-product-by-slug.use-case";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
@@ -8,7 +8,7 @@ import { serializeProductForClient } from "@/shared/serialize-product";
 const productRepository = new FirestoreProductRepository();
 
 export type ResolvedProduct =
-  | { kind: "found"; product: Product }
+  | { kind: "found"; product: SerializedProduct }
   | { kind: "redirect"; canonicalSlug: string }
   | { kind: "not-found" };
 

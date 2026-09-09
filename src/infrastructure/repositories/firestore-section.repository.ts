@@ -3,6 +3,7 @@ import type { ISectionRepository } from "@/core/repositories/section.repository.
 import type { Section } from "@/core/schemas/section.schema";
 import { getAdminDb } from "@/infrastructure/lib/firebase-admin";
 import { InternalError } from "@/shared/errors/internal-error";
+import { timestampToDate } from "@/shared/timestamp";
 
 /**
  * Firestore (Admin SDK) — mesmo transporte usado pelos demais repositórios do admin.
@@ -21,20 +22,13 @@ export class FirestoreSectionRepository implements ISectionRepository {
   }
 
   private docToSection(id: string, data: Record<string, unknown>): Section {
-    const toDate = (timestamp: unknown): Date => {
-      if (timestamp && typeof timestamp === "object" && "toDate" in timestamp) {
-        return (timestamp as { toDate: () => Date }).toDate();
-      }
-      return new Date();
-    };
-
     return {
       id,
       name: data.name as string,
       slug: data.slug as string,
       description: (data.description as string) || undefined,
-      createdAt: toDate(data.createdAt),
-      updatedAt: toDate(data.updatedAt),
+      createdAt: timestampToDate(data.createdAt),
+      updatedAt: timestampToDate(data.updatedAt),
     };
   }
 

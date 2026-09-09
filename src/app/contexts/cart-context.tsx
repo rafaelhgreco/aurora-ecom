@@ -44,6 +44,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           return CartEntity.fromJSON(JSON.parse(stored));
         }
       } catch (error) {
+        // biome-ignore lint/suspicious/noConsole: sem serviço de log no cliente; falha aqui é silenciosa para o usuário (cai para carrinho vazio)
         console.error("Erro ao carregar carrinho:", error);
       }
     }
@@ -58,6 +59,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart.toJSON()));
       } catch (error) {
+        // biome-ignore lint/suspicious/noConsole: sem serviço de log no cliente; falha aqui é silenciosa para o usuário
         console.error("Erro ao salvar carrinho:", error);
       }
     }

@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
 import { NotFoundError } from "@/shared/errors/domain-errors";

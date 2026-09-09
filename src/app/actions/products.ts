@@ -7,9 +7,9 @@ import {
 import { requireAdminSession } from "@/app/services/require-admin-session";
 import type {
   CreateProductInput,
-  Product,
   ProductFilter,
   PublishProductInput,
+  SerializedProduct,
   UpdateProductInput,
 } from "@/core/schemas/product.schema";
 import { BulkUpdateProductCategoryUseCase } from "@/core/use-cases/bulk-update-product-category.use-case";
@@ -26,17 +26,15 @@ import { serializeProductForClient } from "@/shared/serialize-product";
 
 const productRepository = new FirestoreProductRepository();
 
-export type { ActionResult };
-
 export async function listProductsAction(
   filter?: ProductFilter,
-): Promise<ActionResult<{ data: Product[]; totalCount: number }>> {
+): Promise<ActionResult<{ data: SerializedProduct[]; totalCount: number }>> {
   try {
     const useCase = new ListProductsUseCase(productRepository);
     const { data: products, totalCount } = await useCase.execute(filter);
 
     const serializedProducts = products.map((p) =>
-      serializeProductForClient(p as Product),
+      serializeProductForClient(p),
     );
 
     return {
@@ -55,14 +53,14 @@ export async function listProductsAction(
 
 export async function getProductByIdAction(
   id: string,
-): Promise<ActionResult<Product>> {
+): Promise<ActionResult<SerializedProduct>> {
   try {
     const useCase = new GetProductByIdUseCase(productRepository);
     const product = await useCase.execute(id);
 
     return {
       success: true,
-      data: serializeProductForClient(product as Product),
+      data: serializeProductForClient(product),
     };
   } catch (error) {
     const { message } = handleActionError(
@@ -76,7 +74,7 @@ export async function getProductByIdAction(
 
 export async function createProductAction(
   input: CreateProductInput,
-): Promise<ActionResult<Product>> {
+): Promise<ActionResult<SerializedProduct>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -86,7 +84,7 @@ export async function createProductAction(
 
     return {
       success: true,
-      data: serializeProductForClient(product as Product),
+      data: serializeProductForClient(product),
     };
   } catch (error) {
     const { message, details } = handleActionError(
@@ -100,7 +98,7 @@ export async function createProductAction(
 
 export async function updateProductAction(
   input: UpdateProductInput,
-): Promise<ActionResult<Product>> {
+): Promise<ActionResult<SerializedProduct>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -124,7 +122,7 @@ export async function updateProductAction(
 
     return {
       success: true,
-      data: serializeProductForClient(product as Product),
+      data: serializeProductForClient(product),
     };
   } catch (error) {
     const { message, details } = handleActionError(
@@ -188,7 +186,7 @@ export async function deleteProductAction(
 export async function adjustProductStockAction(
   id: string,
   delta: number,
-): Promise<ActionResult<Product>> {
+): Promise<ActionResult<SerializedProduct>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -216,7 +214,7 @@ export async function adjustProductStockAction(
     });
     return {
       success: true,
-      data: serializeProductForClient(product as Product),
+      data: serializeProductForClient(product),
     };
   } catch (error) {
     const { message, details } = handleActionError(
@@ -234,7 +232,7 @@ export async function adjustProductStockAction(
 export async function setProductActiveFlagAction(
   id: string,
   isActive: boolean,
-): Promise<ActionResult<Product>> {
+): Promise<ActionResult<SerializedProduct>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -265,7 +263,7 @@ export async function setProductActiveFlagAction(
       });
       return {
         success: true,
-        data: serializeProductForClient(product as Product),
+        data: serializeProductForClient(product),
       };
     }
 
@@ -275,7 +273,7 @@ export async function setProductActiveFlagAction(
     });
     return {
       success: true,
-      data: serializeProductForClient(product as Product),
+      data: serializeProductForClient(product),
     };
   } catch (error) {
     const { message, details } = handleActionError(
@@ -289,16 +287,17 @@ export async function setProductActiveFlagAction(
 
 export async function publishProductAction(
   input: PublishProductInput,
-): Promise<ActionResult<Product>> {
-  try {
-    await requireAdminSession();
+): Promise<ActionResult<SerializedProduct>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
 
+  try {
     const useCase = new PublishProductUseCase(productRepository);
     const product = await useCase.execute(input);
 
     return {
       success: true,
-      data: serializeProductForClient(product as Product),
+      data: serializeProductForClient(product),
     };
   } catch (error) {
     const { message, details } = handleActionError(

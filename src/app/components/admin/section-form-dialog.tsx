@@ -64,8 +64,7 @@ export function SectionFormDialog({
     setValue,
     reset,
   } = useForm<SectionFormValues>({
-    // biome-ignore lint/suspicious/noExplicitAny: zodResolver type compatibility
-    resolver: zodResolver(createSectionSchema) as any,
+    resolver: zodResolver(createSectionSchema),
     defaultValues: {
       name: section?.name ?? "",
       slug: section?.slug ?? "",

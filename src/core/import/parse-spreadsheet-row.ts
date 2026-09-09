@@ -153,12 +153,6 @@ export function canonicalizeColumnKey(key: string): BulkImportColumn | string {
   return COLUMN_KEY_LOOKUP.get(normalized) ?? normalized;
 }
 
-/** @deprecated use canonicalizeColumnKey */
-export function normalizeHeaderKey(key: string): string {
-  const c = canonicalizeColumnKey(key);
-  return typeof c === "string" ? c : c;
-}
-
 export function isHeaderRow(values: unknown[]): boolean {
   const first = parseExcelString(values[0]).toLowerCase();
   return first === "sku_base" || first === "sku";

@@ -2,7 +2,10 @@
 
 import { isAdminStockScanEnabled } from "@/app/config/feature-flags";
 import { requireAdminSession } from "@/app/services/require-admin-session";
-import type { Product, ScanBarcodeInput } from "@/core/schemas/product.schema";
+import type {
+  ScanBarcodeInput,
+  SerializedProduct,
+} from "@/core/schemas/product.schema";
 import { ScanBarcodeUseCase } from "@/core/use-cases/scan-barcode.use-case";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
 import type { ActionResult } from "@/shared/action-result";
@@ -13,7 +16,9 @@ const productRepository = new FirestoreProductRepository();
 
 export async function checkBarcodeAction(
   barcode: string,
-): Promise<ActionResult<{ exists: boolean; product: Product | null }>> {
+): Promise<
+  ActionResult<{ exists: boolean; product: SerializedProduct | null }>
+> {
   try {
     const auth = await requireAdminSession();
     if ("error" in auth) return { success: false, error: auth.error };
@@ -44,7 +49,7 @@ export async function checkBarcodeAction(
 export async function scanBarcodeAction(
   barcode: string,
   quantity?: number,
-): Promise<ActionResult<{ product: Product; created: boolean }>> {
+): Promise<ActionResult<{ product: SerializedProduct; created: boolean }>> {
   try {
     const auth = await requireAdminSession();
 

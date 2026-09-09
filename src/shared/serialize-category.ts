@@ -1,13 +1,11 @@
-import type { Category } from "@/core/schemas/category.schema";
+import type {
+  Category,
+  SerializedCategory,
+} from "@/core/schemas/category.schema";
+import { serializeTimestamps } from "@/shared/serialize-timestamps";
 
-export function serializeCategoryForClient(c: Category): Category {
-  return {
-    ...c,
-    createdAt: c.createdAt
-      ? new Date(c.createdAt as Date | string).toISOString()
-      : undefined,
-    updatedAt: c.updatedAt
-      ? new Date(c.updatedAt as Date | string).toISOString()
-      : undefined,
-  } as Category;
+export function serializeCategoryForClient(
+  category: Category,
+): SerializedCategory {
+  return serializeTimestamps(category);
 }

@@ -56,11 +56,26 @@ export async function uploadFile(
     xhr.addEventListener("load", () => {
       if (xhr.status === 200) {
         try {
-          const response = JSON.parse(xhr.responseText);
+          const response: unknown = JSON.parse(xhr.responseText);
+          if (
+            !response ||
+            typeof response !== "object" ||
+            typeof (response as Record<string, unknown>).secure_url !==
+              "string" ||
+            typeof (response as Record<string, unknown>).public_id !== "string"
+          ) {
+            reject(new Error(UPLOAD_GENERIC));
+            return;
+          }
+          const parsed = response as {
+            secure_url: string;
+            original_filename?: string;
+            public_id: string;
+          };
           resolve({
-            url: response.secure_url,
-            fileName: response.original_filename,
-            publicId: response.public_id,
+            url: parsed.secure_url,
+            fileName: parsed.original_filename ?? "",
+            publicId: parsed.public_id,
           });
         } catch {
           reject(new Error(UPLOAD_GENERIC));
@@ -104,26 +119,4 @@ export async function uploadMultipleFiles(
   );
 
   return Promise.all(uploadPromises);
-}
-
-/**
- * Deleta uma imagem do Cloudinary
- */
-export async function deleteFile(publicId: string): Promise<void> {
-  try {
-    const response = await fetch("/api/cloudinary/delete", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ publicId }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Erro ao deletar arquivo");
-    }
-  } catch (error) {
-    console.error("Erro ao deletar arquivo do Cloudinary:", error);
-    throw new Error("Erro ao deletar arquivo");
-  }
 }

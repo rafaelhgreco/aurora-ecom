@@ -3,13 +3,13 @@
 import { Button, Card, HStack, Table, Text, VStack } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { IoPencil } from "react-icons/io5";
-import type { Product } from "@/core/schemas/product.schema";
+import type { SerializedProduct } from "@/core/schemas/product.schema";
 
 interface DraftProductTableProps {
-  products: Product[];
+  products: SerializedProduct[];
 }
 
-function formatCreatedAt(createdAt: Product["createdAt"]) {
+function formatCreatedAt(createdAt: SerializedProduct["createdAt"]) {
   return createdAt
     ? new Date(createdAt).toLocaleDateString("pt-BR", {
         day: "2-digit",

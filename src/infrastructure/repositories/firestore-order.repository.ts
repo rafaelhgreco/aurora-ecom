@@ -6,15 +6,9 @@ import type {
 } from "@/core/schemas/order.schema";
 import { getAdminDb } from "@/infrastructure/lib/firebase-admin";
 import { InternalError } from "@/shared/errors/internal-error";
+import { timestampToDate } from "@/shared/timestamp";
 
 const COLLECTION = "orders";
-
-function toDate(val: unknown): Date {
-  if (val && typeof val === "object" && "toDate" in val) {
-    return (val as { toDate: () => Date }).toDate();
-  }
-  return new Date();
-}
 
 export async function createOrder(
   items: OrderItem[],
@@ -79,8 +73,8 @@ export async function listOrders(options?: {
       items: (d.items as OrderItem[]) || [],
       total: (d.total as number) || 0,
       status: (d.status as OrderStatus) || "PENDENTE",
-      createdAt: toDate(d.createdAt),
-      updatedAt: toDate(d.updatedAt),
+      createdAt: timestampToDate(d.createdAt),
+      updatedAt: timestampToDate(d.updatedAt),
     };
   });
 
@@ -102,8 +96,8 @@ export async function getOrderById(id: string): Promise<Order | null> {
     items: (d.items as OrderItem[]) || [],
     total: (d.total as number) || 0,
     status: (d.status as OrderStatus) || "PENDENTE",
-    createdAt: toDate(d.createdAt),
-    updatedAt: toDate(d.updatedAt),
+    createdAt: timestampToDate(d.createdAt),
+    updatedAt: timestampToDate(d.updatedAt),
   };
 }
 

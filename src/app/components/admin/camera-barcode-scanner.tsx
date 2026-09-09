@@ -58,6 +58,7 @@ export function CameraBarcodeScanner({
         // NotFoundException é disparada a cada frame sem código detectado —
         // não é um erro real, só "ainda não achou nada nesse frame".
         if (error && error.name !== "NotFoundException") {
+          // biome-ignore lint/suspicious/noConsole: erro de decodificação por frame não tem UI própria (scanner só segue tentando); sem serviço de log no cliente
           console.error("[CameraBarcodeScanner] erro de decodificação:", error);
         }
       })
@@ -70,7 +71,6 @@ export function CameraBarcodeScanner({
       })
       .catch((error) => {
         if (cancelled) return;
-        console.error("[CameraBarcodeScanner] erro ao acessar câmera:", error);
         toaster.create({
           title: "Erro na câmera",
           description: getCameraErrorMessage(error),

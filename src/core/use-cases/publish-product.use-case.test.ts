@@ -1,18 +1,10 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Product } from "@/core/schemas/product.schema";
 import { InMemoryProductRepository } from "@/infrastructure/repositories/in-memory-product.repository";
 import { NotFoundError, ValidationError } from "@/shared/errors/domain-errors";
 import { PublishProductUseCase } from "./publish-product.use-case";
 
 describe("PublishProductUseCase", () => {
-  let repository: InMemoryProductRepository;
-  let useCase: PublishProductUseCase;
-
-  beforeEach(() => {
-    repository = new InMemoryProductRepository([]);
-    useCase = new PublishProductUseCase(repository);
-  });
-
   describe("Cenário: Aprovar e publicar um produto DRAFT", () => {
     it("atualiza título/preço/categoria e muda status para ACTIVE", async () => {
       const draft: Product = {

@@ -151,7 +151,6 @@ export default function LojaPage() {
       setSelectedIds(new Set());
       setPage(1);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     loading,
     error,

@@ -5,7 +5,6 @@
 
 export type {
   CreateSectionInput,
+  SerializedSection as Section,
   UpdateSectionInput,
 } from "@/core/schemas/section.schema";
-
-export type { SerializedSection as Section } from "@/core/schemas/section.schema";

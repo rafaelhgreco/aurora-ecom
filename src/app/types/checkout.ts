@@ -1,74 +1,51 @@
 /**
- * Helper functions para WhatsApp Checkout
- * Implementações dos helpers declarados em checkout.d.ts
+ * Types para WhatsApp Checkout — reutiliza entidades do core para evitar duplicação.
  */
-
-import type { CartItemVariants, ProductEntity } from "@/core/entities";
-import { CartItemEntity } from "@/core/entities";
-import type {
-  CartItem,
-  CartItemJSON,
-  EnrichedCartItem,
-  WhatsAppCheckoutResult,
-} from "./checkout.d";
-
-export type {
-  CartItemJSON,
-  EnrichedCartItem,
-  WhatsAppCheckoutResult,
-  CartItem,
-};
 
 /**
- * Helper para converter CartItemEntity em formato JSON
+ * Formato JSON de um item do carrinho para checkout.
+ * Usado na comunicação com o servidor (WhatsApp checkout).
  */
-export function cartItemEntityToJSON(entity: CartItemEntity): CartItemJSON {
-  return entity.toJSON();
-}
-
-/**
- * Helper para converter CartItemJSON em CartItemEntity
- */
-export function cartItemJSONToEntity(plain: CartItemJSON): CartItemEntity {
-  return CartItemEntity.fromJSON(
-    plain as {
-      productId: string;
-      quantity: number;
-      variants?: CartItemVariants;
-    },
-  );
-}
-
-/**
- * @deprecated Use cartItemJSONToEntity
- */
-export function plainToCartItemEntity(plain: CartItemJSON): CartItemEntity {
-  return CartItemEntity.fromJSON(
-    plain as {
-      productId: string;
-      quantity: number;
-      variants?: CartItemVariants;
-    },
-  );
-}
-
-/**
- * Helper para enriquecer CartItemEntity com dados do produto
- */
-export function enrichCartItem(
-  item: CartItemEntity,
-  product: ProductEntity,
-): EnrichedCartItem {
-  return {
-    ...item.toJSON(),
-    product: {
-      id: product.id || "",
-      title: product.title,
-      price: product.price,
-      imageUrl: product.imageUrl,
-      isActive: product.isActive,
-      stock: product.stock,
-    },
-    subtotal: item.calculateSubtotal(product),
+export interface CartItemJSON {
+  productId: string;
+  quantity: number;
+  variants?: {
+    size?: string;
+    color?: string;
   };
+}
+
+/**
+ * Resultado do checkout no WhatsApp
+ */
+export interface WhatsAppCheckoutResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+  total?: number;
+  /** ID do pedido criado no Firestore (para gestão no admin) */
+  orderId?: string;
+}
+
+/**
+ * Item enriquecido com dados do produto (servidor) — não confundir com o
+ * `EnrichedCartItem` de `hooks/use-cart.ts`, que é o formato client-side
+ * (baseado em `CartItemEntity`/`ProductEntity`, com estado de loading/erro).
+ */
+export interface EnrichedCheckoutItem {
+  productId: string;
+  quantity: number;
+  variants?: {
+    size?: string;
+    color?: string;
+  };
+  product: {
+    id: string;
+    title: string;
+    price: number;
+    imageUrl?: string;
+    isActive: boolean;
+    stock: number;
+  };
+  subtotal: number;
 }

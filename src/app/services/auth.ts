@@ -1,6 +1,6 @@
 import type { RequestCookie } from "next/dist/compiled/@edge-runtime/cookies";
 import { verifyAdminToken } from "@/app/lib/jwt";
-import type { UserRole } from "@/types/auth";
+import type { UserRole } from "@/app/types/auth";
 
 export async function getSession(
   token: RequestCookie | undefined,

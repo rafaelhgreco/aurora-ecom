@@ -5,8 +5,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { signAdminToken } from "@/app/lib/jwt";
 import { getAdminFromFirestore } from "@/infrastructure/repositories/firestore-admin.repository";
-
 import { LOGIN_GENERIC } from "@/shared/errors/client-error-messages";
+import { logServerError } from "@/shared/errors/log-server-error";
 
 const GENERIC_LOGIN_ERROR = LOGIN_GENERIC;
 
@@ -40,10 +40,17 @@ export type LoginActionResult = { error: string } | undefined;
 export async function loginAction(
   formData: FormData,
 ): Promise<LoginActionResult> {
-  const emailRaw = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const emailEntry = formData.get("email");
+  const passwordEntry = formData.get("password");
 
-  if (!emailRaw?.trim() || !password) {
+  if (typeof emailEntry !== "string" || typeof passwordEntry !== "string") {
+    return { error: GENERIC_LOGIN_ERROR };
+  }
+
+  const emailRaw = emailEntry;
+  const password = passwordEntry;
+
+  if (!emailRaw.trim() || !password) {
     return { error: GENERIC_LOGIN_ERROR };
   }
 
@@ -88,7 +95,7 @@ export async function loginAction(
       path: "/",
     });
   } catch (error) {
-    console.error("Erro ao fazer login:", error);
+    logServerError("loginAction", error);
     return { error: GENERIC_LOGIN_ERROR };
   }
 
@@ -100,7 +107,7 @@ export async function logoutAction() {
     const cookieStore = await cookies();
     cookieStore.delete("auth_token");
   } catch (error) {
-    console.error("Erro ao fazer logout:", error);
+    logServerError("logoutAction", error);
   }
 
   redirect("/login");

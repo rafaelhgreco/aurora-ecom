@@ -3,6 +3,10 @@ import type { ICategoryRepository } from "@/core/repositories/category.repositor
 import type { Category } from "@/core/schemas/category.schema";
 import { getAdminDb } from "@/infrastructure/lib/firebase-admin";
 import { InternalError } from "@/shared/errors/internal-error";
+import { timestampToDate } from "@/shared/timestamp";
+
+/** Seção seed padrão — categoria legada sem `sectionId` no Firestore conta como esta. */
+const LEGACY_DEFAULT_SECTION_ID = "roupas";
 
 /**
  * Firestore (Admin SDK) — mesmo transporte usado pelos demais repositórios do admin.
@@ -19,20 +23,12 @@ export class FirestoreCategoryRepository implements ICategoryRepository {
   }
 
   private docToCategory(id: string, data: Record<string, unknown>): Category {
-    const toDate = (timestamp: unknown): Date => {
-      if (timestamp && typeof timestamp === "object" && "toDate" in timestamp) {
-        return (timestamp as { toDate: () => Date }).toDate();
-      }
-      return new Date();
-    };
-
     return {
       id,
-      // Fallback defensivo para documentos legados sem `sectionId`.
-      sectionId: (data.sectionId as string) || "roupas",
+      sectionId: (data.sectionId as string) || LEGACY_DEFAULT_SECTION_ID,
       name: data.name as string,
-      createdAt: toDate(data.createdAt),
-      updatedAt: toDate(data.updatedAt),
+      createdAt: timestampToDate(data.createdAt),
+      updatedAt: timestampToDate(data.updatedAt),
     };
   }
 

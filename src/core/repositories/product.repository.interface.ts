@@ -49,5 +49,14 @@ export interface IProductRepository {
 
   delete(id: string): Promise<void>;
 
+  /**
+   * Soft delete opcional: implementações que suportam recuperação (ex.:
+   * Firestore, via `deletedAt`) devem implementar os três; quando ausentes,
+   * o use-case cai para `delete()` (exclusão definitiva).
+   */
+  softDelete?(id: string): Promise<void>;
+  restore?(id: string): Promise<void>;
+  findDeleted?(): Promise<Product[]>;
+
   exists(id: string): Promise<boolean>;
 }
