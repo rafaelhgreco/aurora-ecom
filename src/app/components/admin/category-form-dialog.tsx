@@ -144,8 +144,9 @@ export function CategoryFormDialog({
               </Field>
               {isEdit && (
                 <Text fontSize="sm" color="gray.500">
-                  Renomear ou trocar a seção não atualiza produtos já
-                  cadastrados com os valores anteriores.
+                  Renomear atualiza automaticamente os produtos já vinculados a
+                  esta subcategoria. Trocar a seção não move os produtos —
+                  revise o campo "Seção do catálogo" deles se for o caso.
                 </Text>
               )}
             </VStack>
