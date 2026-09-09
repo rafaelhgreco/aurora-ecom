@@ -1,5 +1,5 @@
-import { ZodError } from "zod";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
+import { parseOrThrow } from "@/core/schemas/parse-or-throw";
 import {
   type Product,
   type PublishProductInput,
@@ -16,22 +16,11 @@ export class PublishProductUseCase {
   }
 
   async execute(input: PublishProductInput): Promise<Product> {
-    let validated: PublishProductInput;
-
-    try {
-      validated = publishProductSchema.parse(input);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new ValidationError(
-          "Dados de publicação inválidos",
-          error.issues.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-          })),
-        );
-      }
-      throw error;
-    }
+    const validated = parseOrThrow(
+      publishProductSchema,
+      input,
+      "Dados de publicação inválidos",
+    );
 
     const current = await this.productRepository.findById(validated.id);
     if (!current) {

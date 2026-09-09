@@ -14,7 +14,7 @@ import type { FieldErrors } from "react-hook-form";
 import { IoClose, IoResizeOutline } from "react-icons/io5";
 import { Checkbox } from "@/components/ui/checkbox";
 import type {
-  ProductFormValues,
+  ProductFormInput,
   SizePresetKind,
 } from "@/core/schemas/product.schema";
 
@@ -28,7 +28,7 @@ interface ProductSizesCardProps {
   setCustomSizeDraft: (draft: string) => void;
   handleAddCustomSize: () => void;
   handleRemoveCustomSize: (size: string) => void;
-  errors?: FieldErrors<ProductFormValues>;
+  errors?: FieldErrors<ProductFormInput>;
 }
 
 export function ProductSizesCard({

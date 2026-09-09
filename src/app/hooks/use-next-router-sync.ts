@@ -1,6 +1,6 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { MemoryRouter as Router, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 export function NextRouterSync() {
   const location = useLocation();

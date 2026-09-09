@@ -1,5 +1,5 @@
-import { ZodError } from "zod";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
+import { parseOrThrow } from "@/core/schemas/parse-or-throw";
 import {
   type CreateProductInput,
   createProductSchema,
@@ -14,35 +14,21 @@ export class CreateProductUseCase {
   constructor(private readonly productRepository: IProductRepository) {}
 
   async execute(input: CreateProductInput): Promise<Product> {
-    try {
-      const validatedData = createProductSchema.parse(
-        normalizeCreateProductInput(input),
-      );
+    const validatedData = parseOrThrow(
+      createProductSchema,
+      normalizeCreateProductInput(input),
+      "Dados de produto inválidos",
+    );
 
-      const slug = await this.resolveSlug(
-        validatedData.slug,
-        validatedData.title,
-      );
+    const slug = await this.resolveSlug(
+      validatedData.slug,
+      validatedData.title,
+    );
 
-      const product = await this.productRepository.create({
-        ...validatedData,
-        slug,
-      });
-
-      return product;
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new ValidationError(
-          "Dados de produto inválidos",
-          error.issues.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-          })),
-        );
-      }
-
-      throw error;
-    }
+    return this.productRepository.create({
+      ...validatedData,
+      slug,
+    });
   }
 
   /**

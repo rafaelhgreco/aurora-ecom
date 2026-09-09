@@ -2,8 +2,8 @@
 
 import { requireAdminSession } from "@/app/services/require-admin-session";
 import type {
-  Category,
   CreateCategoryInput,
+  SerializedCategory,
   UpdateCategoryInput,
 } from "@/core/schemas/category.schema";
 import { CreateCategoryUseCase } from "@/core/use-cases/create-category.use-case";
@@ -21,10 +21,8 @@ const categoryRepository = new FirestoreCategoryRepository();
 const productRepository = new FirestoreProductRepository();
 const sectionRepository = new FirestoreSectionRepository();
 
-export type { ActionResult };
-
 export async function listCategoriesAction(): Promise<
-  ActionResult<Category[]>
+  ActionResult<SerializedCategory[]>
 > {
   try {
     const useCase = new ListCategoriesUseCase(categoryRepository);
@@ -46,7 +44,7 @@ export async function listCategoriesAction(): Promise<
 
 export async function createCategoryAction(
   input: CreateCategoryInput,
-): Promise<ActionResult<Category>> {
+): Promise<ActionResult<SerializedCategory>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -73,7 +71,7 @@ export async function createCategoryAction(
 
 export async function updateCategoryAction(
   input: UpdateCategoryInput,
-): Promise<ActionResult<Category>> {
+): Promise<ActionResult<SerializedCategory>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 

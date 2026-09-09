@@ -37,9 +37,10 @@ export const sectionObjectSchema = z.object({
 
 export const sectionSchema = sectionObjectSchema;
 
+/** Formato devolvido pelas Server Actions ao cliente: datas em string ISO. */
 export const serializedSectionSchema = sectionObjectSchema.extend({
-  createdAt: z.union([z.date(), z.string()]).optional(),
-  updatedAt: z.union([z.date(), z.string()]).optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export const createSectionSchema = sectionObjectSchema.omit({

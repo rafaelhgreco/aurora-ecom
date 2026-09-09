@@ -5,7 +5,6 @@
 
 export type {
   CreateCategoryInput,
+  SerializedCategory as Category,
   UpdateCategoryInput,
 } from "@/core/schemas/category.schema";
-
-export type { SerializedCategory as Category } from "@/core/schemas/category.schema";

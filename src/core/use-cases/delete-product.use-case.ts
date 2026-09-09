@@ -13,9 +13,8 @@ export class DeleteProductUseCase {
       throw new Error("Produto não encontrado");
     }
 
-    if ("softDelete" in this.productRepository) {
-      // biome-ignore lint/suspicious/noExplicitAny: repository type compatibility
-      await (this.productRepository as any).softDelete(id);
+    if (this.productRepository.softDelete) {
+      await this.productRepository.softDelete(id);
     } else {
       await this.productRepository.delete(id);
     }

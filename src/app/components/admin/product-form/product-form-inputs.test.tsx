@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Provider } from "@/app/components/ui";
 import {
+  type ProductFormInput,
   type ProductFormValues,
   productFormSchema,
 } from "@/core/schemas/product.schema";
@@ -51,9 +52,8 @@ function TestHarness({
     formState: { errors },
     watch,
     setValue,
-  } = useForm<ProductFormValues>({
-    // biome-ignore lint/suspicious/noExplicitAny: mesma decisão do componente real
-    resolver: zodResolver(productFormSchema) as any,
+  } = useForm<ProductFormInput, unknown, ProductFormValues>({
+    resolver: zodResolver(productFormSchema),
     defaultValues: createFormDefaults(),
   });
 

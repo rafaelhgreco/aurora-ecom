@@ -1,4 +1,5 @@
 "use client";
+"use no memo";
 
 /**
  * Formulário único de produto — cadastro, edição e enriquecimento (DRAFT → ACTIVE).
@@ -24,7 +25,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import type { ActionResult } from "@/app/actions/products";
 import {
   createProductAction,
   publishProductAction,
@@ -41,6 +41,7 @@ import {
   PRODUCT_SIZES_CLOTHING,
   PRODUCT_SIZES_VOLUME,
   type ProductColorVariant,
+  type ProductFormInput,
   type ProductFormValues,
   type ProductSize,
   type PublishProductInput,
@@ -49,6 +50,7 @@ import {
   type UpdateProductInput,
 } from "@/core/schemas/product.schema";
 import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
+import type { ActionResult } from "@/shared/action-result";
 import { buildVariantStockBySize } from "@/shared/admin-product-stock";
 import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
 import { slugify } from "@/shared/slugify";
@@ -195,9 +197,8 @@ export function ProductForm({ product }: ProductFormProps) {
     setError,
     watch,
     reset,
-  } = useForm<ProductFormValues>({
-    // biome-ignore lint/suspicious/noExplicitAny: zodResolver type compatibility
-    resolver: zodResolver(productFormSchema) as any,
+  } = useForm<ProductFormInput, unknown, ProductFormValues>({
+    resolver: zodResolver(productFormSchema),
     defaultValues: defaults,
   });
 

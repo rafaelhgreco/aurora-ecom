@@ -1,43 +1,47 @@
 import ExcelJS from "exceljs";
-import { BULK_IMPORT_COLUMNS } from "@/core/schemas/bulk-import.schema";
+import {
+  BULK_IMPORT_COLUMNS,
+  type BulkImportColumn,
+} from "@/core/schemas/bulk-import.schema";
 
 /** Um único produto (CAM-001) com 2 cores — referência de formatação */
-const EXAMPLE_ROWS = [
-  {
-    sku_base: "CAM-001",
-    title: "Camiseta Básica",
-    subtitle: "Algodão premium",
-    description: "Camiseta básica de algodão, confortável para o dia a dia.",
-    price: 89.9,
-    category: "Roupas",
-    shopCategory: "roupas",
-    cor: "Branco",
-    imagens_cor: "products/camiseta-branco-1|products/camiseta-branco-2",
-    stock_P: 5,
-    stock_M: 10,
-    stock_G: 8,
-    estoque_custom: "",
-    isActive: "sim",
-    imageUrl_principal: "",
-  },
-  {
-    sku_base: "CAM-001",
-    title: "Camiseta Básica",
-    subtitle: "Algodão premium",
-    description: "Camiseta básica de algodão, confortável para o dia a dia.",
-    price: 89.9,
-    category: "Roupas",
-    shopCategory: "roupas",
-    cor: "Preto",
-    imagens_cor: "products/camiseta-preto-1",
-    stock_P: 3,
-    stock_M: 7,
-    stock_G: 4,
-    estoque_custom: "",
-    isActive: "sim",
-    imageUrl_principal: "",
-  },
-];
+const EXAMPLE_ROWS: Array<Partial<Record<BulkImportColumn, string | number>>> =
+  [
+    {
+      sku_base: "CAM-001",
+      title: "Camiseta Básica",
+      subtitle: "Algodão premium",
+      description: "Camiseta básica de algodão, confortável para o dia a dia.",
+      price: 89.9,
+      category: "Roupas",
+      shopCategory: "roupas",
+      cor: "Branco",
+      imagens_cor: "products/camiseta-branco-1|products/camiseta-branco-2",
+      stock_P: 5,
+      stock_M: 10,
+      stock_G: 8,
+      estoque_custom: "",
+      isActive: "sim",
+      imageUrl_principal: "",
+    },
+    {
+      sku_base: "CAM-001",
+      title: "Camiseta Básica",
+      subtitle: "Algodão premium",
+      description: "Camiseta básica de algodão, confortável para o dia a dia.",
+      price: 89.9,
+      category: "Roupas",
+      shopCategory: "roupas",
+      cor: "Preto",
+      imagens_cor: "products/camiseta-preto-1",
+      stock_P: 3,
+      stock_M: 7,
+      stock_G: 4,
+      estoque_custom: "",
+      isActive: "sim",
+      imageUrl_principal: "",
+    },
+  ];
 
 const INSTRUCTIONS = [
   ["CADASTRO DE PRODUTOS EM MASSA — AURORA E-COMMERCE"],
@@ -90,11 +94,7 @@ export async function generateBulkImportTemplateBuffer(): Promise<Buffer> {
   }
 
   for (const example of EXAMPLE_ROWS) {
-    const record = example as unknown as Record<
-      string,
-      string | number | undefined
-    >;
-    const row = BULK_IMPORT_COLUMNS.map((col) => record[col] ?? "");
+    const row = BULK_IMPORT_COLUMNS.map((col) => example[col] ?? "");
     products.addRow(row);
   }
 

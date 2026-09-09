@@ -10,14 +10,11 @@ import { generateBulkImportTemplateBuffer } from "@/infrastructure/import/genera
 import { parseXlsxBuffer } from "@/infrastructure/import/parse-xlsx-buffer";
 import { saveImportJob } from "@/infrastructure/repositories/firestore-import-job.repository";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
+import type { ActionResult } from "@/shared/action-result";
 import { handleActionError } from "@/shared/errors/action-error";
 
 const productRepository = new FirestoreProductRepository();
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-
-export type BulkImportActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string };
 
 export type BulkImportValidatePayload = {
   products: BulkImportPreviewProduct[];
@@ -29,7 +26,7 @@ export type BulkImportValidatePayload = {
 };
 
 export async function generateBulkImportTemplateAction(): Promise<
-  BulkImportActionResult<{ base64: string; fileName: string }>
+  ActionResult<{ base64: string; fileName: string }>
 > {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
@@ -55,7 +52,7 @@ export async function generateBulkImportTemplateAction(): Promise<
 
 export async function parseAndValidateBulkImportAction(
   formData: FormData,
-): Promise<BulkImportActionResult<BulkImportValidatePayload>> {
+): Promise<ActionResult<BulkImportValidatePayload>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -122,7 +119,7 @@ export type BulkImportChunkResult = {
 
 export async function executeBulkImportChunkAction(
   items: Array<{ sku_base: string; input: CreateProductInput }>,
-): Promise<BulkImportActionResult<BulkImportChunkResult>> {
+): Promise<ActionResult<BulkImportChunkResult>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -152,7 +149,7 @@ export async function finalizeBulkImportJobAction(payload: {
   success: number;
   failed: number;
   errors: Array<{ sku_base: string; error: string }>;
-}): Promise<BulkImportActionResult<{ jobId: string | null }>> {
+}): Promise<ActionResult<{ jobId: string | null }>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 

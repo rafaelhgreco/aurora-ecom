@@ -3,7 +3,7 @@
 import { requireAdminSession } from "@/app/services/require-admin-session";
 import type {
   CreateSectionInput,
-  Section,
+  SerializedSection,
   UpdateSectionInput,
 } from "@/core/schemas/section.schema";
 import { CreateSectionUseCase } from "@/core/use-cases/create-section.use-case";
@@ -21,9 +21,9 @@ const sectionRepository = new FirestoreSectionRepository();
 const categoryRepository = new FirestoreCategoryRepository();
 const productRepository = new FirestoreProductRepository();
 
-export type { ActionResult };
-
-export async function listSectionsAction(): Promise<ActionResult<Section[]>> {
+export async function listSectionsAction(): Promise<
+  ActionResult<SerializedSection[]>
+> {
   try {
     const useCase = new ListSectionsUseCase(sectionRepository);
     const sections = await useCase.execute();
@@ -44,7 +44,7 @@ export async function listSectionsAction(): Promise<ActionResult<Section[]>> {
 
 export async function createSectionAction(
   input: CreateSectionInput,
-): Promise<ActionResult<Section>> {
+): Promise<ActionResult<SerializedSection>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -68,7 +68,7 @@ export async function createSectionAction(
 
 export async function updateSectionAction(
   input: UpdateSectionInput,
-): Promise<ActionResult<Section>> {
+): Promise<ActionResult<SerializedSection>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 

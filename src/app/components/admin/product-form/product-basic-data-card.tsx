@@ -24,13 +24,13 @@ import { IoDocumentTextOutline } from "react-icons/io5";
 import type { Category } from "@/app/types/category";
 import type { Section } from "@/app/types/section";
 import { Field } from "@/components/ui/field";
-import type { ProductFormValues } from "@/core/schemas/product.schema";
+import type { ProductFormInput } from "@/core/schemas/product.schema";
 
 const NO_CATEGORY_VALUE = "";
 
 interface ProductBasicDataCardProps {
-  register: UseFormRegister<ProductFormValues>;
-  errors: FieldErrors<ProductFormValues>;
+  register: UseFormRegister<ProductFormInput>;
+  errors: FieldErrors<ProductFormInput>;
   isEdit?: boolean;
   descriptionValue?: string;
   sections: Section[];

@@ -9,7 +9,7 @@ import { ProductInfo } from "@/app/components/public/product-info";
 import { ProductPageHeader } from "@/app/components/public/product-page-header";
 import { ErrorState } from "@/app/components/states";
 import { NextRouterSync } from "@/app/hooks/use-next-router-sync";
-import type { Product } from "@/core/schemas/product.schema";
+import type { SerializedProduct as Product } from "@/core/schemas/product.schema";
 import {
   getEffectiveColorVariants,
   getImagesForColor,

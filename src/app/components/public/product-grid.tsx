@@ -1,10 +1,10 @@
 import { Box, Button, HStack, SimpleGrid, Text } from "@chakra-ui/react";
 import { IoChevronBack, IoChevronForward } from "react-icons/io5";
-import type { Product } from "@/core/schemas/product.schema";
+import type { SerializedProduct } from "@/core/schemas/product.schema";
 import { ProductCard } from "./product-card";
 
 interface ProductGridProps {
-  products: Product[];
+  products: SerializedProduct[];
   /**
    * Dentro de layout que já tem Container/padding (ex.: página de categoria).
    * Remove margem superior e padding horizontal extras.

@@ -1,5 +1,5 @@
-import { ZodError } from "zod";
 import type { IProductRepository } from "@/core/repositories/product.repository.interface";
+import { parseOrThrow } from "@/core/schemas/parse-or-throw";
 import {
   type Product,
   type UpdateProductInput,
@@ -13,37 +13,23 @@ export class UpdateProductUseCase {
   constructor(private readonly productRepository: IProductRepository) {}
 
   async execute(input: UpdateProductInput): Promise<Product> {
-    try {
-      const validatedData = updateProductSchema.parse(
-        normalizeUpdateProductInput(input),
-      );
+    const validatedData = parseOrThrow(
+      updateProductSchema,
+      normalizeUpdateProductInput(input),
+      "Dados de atualização inválidos",
+    );
 
-      const exists = await this.productRepository.exists(validatedData.id);
-      if (!exists) {
-        throw new NotFoundError("Produto", validatedData.id);
-      }
-
-      if (validatedData.slug !== undefined) {
-        await this.validateSlugUniqueness(validatedData.slug, validatedData.id);
-      }
-
-      const { id, ...updates } = validatedData;
-      const product = await this.productRepository.update(id, updates);
-
-      return product;
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new ValidationError(
-          "Dados de atualização inválidos",
-          error.issues.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-          })),
-        );
-      }
-
-      throw error;
+    const exists = await this.productRepository.exists(validatedData.id);
+    if (!exists) {
+      throw new NotFoundError("Produto", validatedData.id);
     }
+
+    if (validatedData.slug !== undefined) {
+      await this.validateSlugUniqueness(validatedData.slug, validatedData.id);
+    }
+
+    const { id, ...updates } = validatedData;
+    return this.productRepository.update(id, updates);
   }
 
   private async validateSlugUniqueness(

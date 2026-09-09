@@ -9,7 +9,7 @@
 
 import type {
   CartItemJSON,
-  EnrichedCartItem,
+  EnrichedCheckoutItem,
   WhatsAppCheckoutResult,
 } from "@/app/types/checkout";
 import { formatPrice } from "@/app/utils/price-formatter";
@@ -36,12 +36,12 @@ const SHOP_WHATSAPP_NUMBER =
  */
 async function enrichCartItems(
   items: CartItemJSON[],
-): Promise<EnrichedCartItem[]> {
+): Promise<EnrichedCheckoutItem[]> {
   const repository = new FirestoreProductRepository();
   const productCache = new Map<string, ProductEntity>();
   const requestedQuantityByVariant = aggregateQuantitiesByVariant(items);
 
-  const enriched: EnrichedCartItem[] = [];
+  const enriched: EnrichedCheckoutItem[] = [];
 
   for (const item of items) {
     let product = productCache.get(item.productId);
@@ -67,7 +67,10 @@ async function enrichCartItems(
 /**
  * Monta a mensagem do pedido formatada
  */
-function buildOrderMessage(items: EnrichedCartItem[], total: number): string {
+function buildOrderMessage(
+  items: EnrichedCheckoutItem[],
+  total: number,
+): string {
   const lines: string[] = [];
 
   lines.push("*NOVO PEDIDO*");

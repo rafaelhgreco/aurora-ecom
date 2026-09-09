@@ -11,7 +11,6 @@ import type { ProductFilter } from "@/core/schemas/product.schema";
 import { PUBLIC_GENERIC } from "@/shared/errors/client-error-messages";
 
 export function useProducts(filter?: ProductFilter) {
-  const page = filter?.page || 1;
   const limitCount = filter?.limitCount || 20;
 
   const {

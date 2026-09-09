@@ -4,6 +4,15 @@ import type { IProductRepository } from "@/core/repositories/product.repository.
 import type { Product, ProductFilter } from "@/core/schemas/product.schema";
 import { getAdminDb } from "@/infrastructure/lib/firebase-admin";
 import { InternalError } from "@/shared/errors/internal-error";
+import { timestampToDate } from "@/shared/timestamp";
+
+/** Forma mínima aceita para gravar um documento — não exige uma instância de
+ *  `ProductEntity`, apenas os campos que `entityToDoc` de fato lê. */
+type ProductDocInput = Omit<Product, "id" | "createdAt" | "updatedAt"> & {
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+};
 
 /**
  * Firestore (Admin SDK + REST) — mesmo transporte que pedidos e auth admin.
@@ -27,13 +36,6 @@ export class FirestoreProductRepository implements IProductRepository {
     id: string,
     data: Record<string, unknown>,
   ): ProductEntity {
-    const toDate = (timestamp: unknown): Date => {
-      if (timestamp && typeof timestamp === "object" && "toDate" in timestamp) {
-        return (timestamp as { toDate: () => Date }).toDate();
-      }
-      return new Date();
-    };
-
     return new ProductEntity({
       id,
       barcode: data.barcode as string | undefined,
@@ -47,29 +49,24 @@ export class FirestoreProductRepository implements IProductRepository {
       category: data.category as string | undefined,
       shopCategory: data.shopCategory as string | undefined,
       stock: data.stock as number,
-      stockBySize: data.stockBySize as
-        | Partial<Record<"PP" | "P" | "M" | "G" | "GG" | "XG", number>>
-        | undefined,
-      sizes: data.sizes as
-        | Array<"PP" | "P" | "M" | "G" | "GG" | "XG">
-        | undefined,
+      stockBySize: data.stockBySize as Record<string, number> | undefined,
+      sizes: data.sizes as string[] | undefined,
       colors: data.colors as string[] | undefined,
       colorVariants: data.colorVariants as Product["colorVariants"],
       isActive: (data.isActive as boolean) ?? true,
       status: (data.status as "DRAFT" | "ACTIVE") ?? "ACTIVE",
-      createdAt: toDate(data.createdAt),
-      updatedAt: toDate(data.updatedAt),
-      deletedAt: data.deletedAt ? toDate(data.deletedAt) : null,
+      createdAt: timestampToDate(data.createdAt),
+      updatedAt: timestampToDate(data.updatedAt),
+      deletedAt: data.deletedAt ? timestampToDate(data.deletedAt) : null,
     });
   }
 
   /**
-   * Converte ProductEntity para documento Firestore
-   * Firestore não aceita `undefined` como valor de campo — campos opcionais
-   * ausentes (ex.: subtitle, category em produtos DRAFT recém-bipados) são
-   * removidos em vez de enviados como undefined.
+   * Converte para documento Firestore. Firestore não aceita `undefined` como
+   * valor de campo — campos opcionais ausentes (ex.: subtitle, category em
+   * produtos DRAFT recém-bipados) são removidos em vez de enviados como undefined.
    */
-  private entityToDoc(entity: ProductEntity): Record<string, unknown> {
+  private entityToDoc(entity: ProductDocInput): Record<string, unknown> {
     const doc: Record<string, unknown> = {
       barcode: entity.barcode,
       slug: entity.slug,
@@ -225,7 +222,9 @@ export class FirestoreProductRepository implements IProductRepository {
     return this.docToEntity(doc.id, data);
   }
 
-  async create(product: ProductEntity): Promise<ProductEntity> {
+  async create(
+    product: Omit<Product, "id" | "createdAt" | "updatedAt">,
+  ): Promise<ProductEntity> {
     const db = this.requireDb();
     const docData = this.entityToDoc(product);
     const docRef = await db.collection(this.collectionName).add(docData);
@@ -236,10 +235,7 @@ export class FirestoreProductRepository implements IProductRepository {
     });
   }
 
-  async update(
-    id: string,
-    product: Partial<ProductEntity>,
-  ): Promise<ProductEntity> {
+  async update(id: string, product: Partial<Product>): Promise<ProductEntity> {
     const db = this.requireDb();
     const docRef = db.collection(this.collectionName).doc(id);
 
@@ -336,15 +332,11 @@ export class FirestoreProductRepository implements IProductRepository {
 
   async createDraftByBarcode(
     barcode: string,
-    draftFactory: () => Omit<ProductEntity, "id" | "createdAt" | "updatedAt">,
+    draftFactory: () => Omit<Product, "id" | "createdAt" | "updatedAt">,
   ): Promise<ProductEntity> {
     const db = this.requireDb();
     const draft = draftFactory();
-    const docData = this.entityToDoc({
-      ...draft,
-      id: barcode,
-      barcode,
-    } as ProductEntity);
+    const docData = this.entityToDoc({ ...draft, barcode });
 
     // set() é idempotente: um retry de rede do SDK reenvia o mesmo payload
     // sem lançar erro, ao contrário de create() (que falha com ALREADY_EXISTS

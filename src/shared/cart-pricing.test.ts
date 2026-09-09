@@ -3,6 +3,7 @@ import { ProductEntity } from "@/core/entities";
 import type { Product } from "@/core/schemas/product.schema";
 import {
   aggregateQuantitiesByVariant,
+  type CartLineInput,
   cartLineVariantKey,
   priceCartLine,
   sumCartLines,
@@ -32,9 +33,10 @@ describe("validateCartLinesShape", () => {
   });
 
   it("rejeita productId ausente ou não-string", () => {
-    // biome-ignore lint/suspicious/noExplicitAny: forçando payload malformado vindo de um client não confiável
-    const bad: any = [{ productId: 123, quantity: 1 }];
-    expect(validateCartLinesShape(bad).valid).toBe(false);
+    // Payload malformado vindo de um client não confiável (productId numérico
+    // em vez de string) — `unknown` expressa isso melhor que `any`.
+    const bad: unknown = [{ productId: 123, quantity: 1 }];
+    expect(validateCartLinesShape(bad as CartLineInput[]).valid).toBe(false);
   });
 
   it("rejeita quantidade zero ou negativa", () => {

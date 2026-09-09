@@ -66,8 +66,7 @@ export function CategoryFormDialog({
     formState: { errors },
     reset,
   } = useForm<CategoryFormValues>({
-    // biome-ignore lint/suspicious/noExplicitAny: zodResolver type compatibility
-    resolver: zodResolver(createCategorySchema) as any,
+    resolver: zodResolver(createCategorySchema),
     defaultValues: {
       sectionId:
         category?.sectionId ?? defaultSectionId ?? sections[0]?.id ?? "",

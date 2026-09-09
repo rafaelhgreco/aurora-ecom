@@ -1,23 +1,25 @@
 /**
  * Helpers para `shopCategory` do produto (alinha drawer, breadcrumb e filtros).
  * Seções são cadastradas dinamicamente (coleção `sections`), não mais um enum fixo.
+ *
+ * Genéricos sobre o formato de data (`Product` com `Date` ou `SerializedProduct`
+ * com string ISO) — estas funções só leem `title`/`shopCategory`.
  */
-
-import type { Product } from "@/core/schemas/product.schema";
-import type { Section } from "@/core/schemas/section.schema";
 
 /** Seção seed padrão — produtos sem `shopCategory` no Firestore contam como esta seção. */
 const DEFAULT_SECTION_ID = "roupas";
 
-export function getEffectiveShopCategory(product: Product): string {
+export function getEffectiveShopCategory(product: {
+  shopCategory?: string;
+}): string {
   return product.shopCategory || DEFAULT_SECTION_ID;
 }
 
 export type SortDirection = "asc" | "desc";
 
-export function sortProductsByTitlePt(
-  a: Product,
-  b: Product,
+export function sortProductsByTitlePt<T extends { title: string }>(
+  a: T,
+  b: T,
   direction: SortDirection = "asc",
 ): number {
   const cmp = a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" });
@@ -25,29 +27,31 @@ export function sortProductsByTitlePt(
 }
 
 /** Lista única ordenada alfabeticamente (ex.: página de uma seção). */
-export function sortProductsAlphabetically(
-  products: Product[],
+export function sortProductsAlphabetically<T extends { title: string }>(
+  products: T[],
   direction: SortDirection = "asc",
-): Product[] {
+): T[] {
   return [...products].sort((a, b) => sortProductsByTitlePt(a, b, direction));
 }
 
-export type ShopSectionGroup = {
+export type ShopSectionGroup<T> = {
   shopCategory: string;
   sectionTitle: string;
-  products: Product[];
+  products: T[];
 };
 
 /**
  * Agrupa por seção da loja (dinâmicas, na ordem recebida em `sections`);
  * dentro de cada seção, ordena pelo título (pt-BR).
  */
-export function groupProductsByShopSectionSorted(
-  products: Product[],
-  sections: Section[],
+export function groupProductsByShopSectionSorted<
+  T extends { title: string; shopCategory?: string },
+>(
+  products: T[],
+  sections: Array<{ id?: string; name: string }>,
   direction: SortDirection = "asc",
-): ShopSectionGroup[] {
-  const buckets = new Map<string, Product[]>();
+): ShopSectionGroup<T>[] {
+  const buckets = new Map<string, T[]>();
   for (const section of sections) {
     if (section.id) buckets.set(section.id, []);
   }
@@ -57,7 +61,7 @@ export function groupProductsByShopSectionSorted(
     buckets.get(cat)?.push(p);
   }
 
-  const out: ShopSectionGroup[] = [];
+  const out: ShopSectionGroup<T>[] = [];
   for (const section of sections) {
     if (!section.id) continue;
     const raw = buckets.get(section.id) ?? [];

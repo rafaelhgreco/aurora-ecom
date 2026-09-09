@@ -11,11 +11,11 @@ import {
 import type { FieldErrors, UseFormRegister } from "react-hook-form";
 import { IoPricetagOutline } from "react-icons/io5";
 import { Field } from "@/components/ui/field";
-import type { ProductFormValues } from "@/core/schemas/product.schema";
+import type { ProductFormInput } from "@/core/schemas/product.schema";
 
 interface ProductPriceStockCardProps {
-  register: UseFormRegister<ProductFormValues>;
-  errors: FieldErrors<ProductFormValues>;
+  register: UseFormRegister<ProductFormInput>;
+  errors: FieldErrors<ProductFormInput>;
   selectedSizesLength?: number;
 }
 

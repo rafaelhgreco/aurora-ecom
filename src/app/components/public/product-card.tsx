@@ -4,7 +4,7 @@ import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/app/utils/price-formatter";
-import type { Product } from "@/core/schemas/product.schema";
+import type { SerializedProduct as Product } from "@/core/schemas/product.schema";
 import {
   getEffectiveColorVariants,
   getImagesForColor,

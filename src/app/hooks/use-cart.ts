@@ -41,32 +41,32 @@ export function useCart() {
 
     setLoading(true);
 
-    const enriched: EnrichedCartItem[] = [];
+    const enriched = await Promise.all(
+      items.map(async (item): Promise<EnrichedCartItem> => {
+        let product = productsMapRef.current.get(item.productId);
 
-    for (const item of items) {
-      let product = productsMapRef.current.get(item.productId);
-
-      // Se não tem o produto em cache, busca do Firestore
-      if (!product) {
-        try {
-          const result = await getProductByIdAction(item.productId);
-          if (result.success && result.data) {
-            product = new ProductEntity(result.data);
-            productsMapRef.current.set(item.productId, product);
+        // Se não tem o produto em cache, busca do Firestore
+        if (!product) {
+          try {
+            const result = await getProductByIdAction(item.productId);
+            if (result.success && result.data) {
+              product = new ProductEntity(result.data);
+              productsMapRef.current.set(item.productId, product);
+            }
+          } catch {
+            // Falha reportada ao usuário via `error` do item enriquecido abaixo.
           }
-        } catch (error) {
-          console.error(`Erro ao carregar produto ${item.productId}:`, error);
         }
-      }
 
-      enriched.push({
-        item,
-        product: product || null,
-        subtotal: product ? item.calculateSubtotal(product) : 0,
-        loading: false,
-        error: !product ? "Produto não encontrado" : undefined,
-      });
-    }
+        return {
+          item,
+          product: product || null,
+          subtotal: product ? item.calculateSubtotal(product) : 0,
+          loading: false,
+          error: !product ? "Produto não encontrado" : undefined,
+        };
+      }),
+    );
 
     setEnrichedItems(enriched);
     setLoading(false);

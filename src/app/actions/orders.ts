@@ -15,6 +15,7 @@ import {
   listOrders,
   updateOrderStatus as repoUpdateStatus,
 } from "@/infrastructure/repositories/firestore-order.repository";
+import type { ActionResult } from "@/shared/action-result";
 import { handleActionError } from "@/shared/errors/action-error";
 import { InternalError } from "@/shared/errors/internal-error";
 import {
@@ -24,15 +25,11 @@ import {
   hasVariantLevelStock,
 } from "@/shared/product-stock-helpers";
 
-export type OrderActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string };
-
 export async function listOrdersAction(options?: {
   limitCount?: number;
   page?: number;
   status?: OrderStatus;
-}): Promise<OrderActionResult<{ data: Order[]; totalCount: number }>> {
+}): Promise<ActionResult<{ data: Order[]; totalCount: number }>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -53,7 +50,7 @@ export async function listOrdersWithStockAction(options?: {
   limitCount?: number;
   page?: number;
   status?: OrderStatus;
-}): Promise<OrderActionResult<{ data: OrderWithStock[]; totalCount: number }>> {
+}): Promise<ActionResult<{ data: OrderWithStock[]; totalCount: number }>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -145,7 +142,7 @@ export async function listOrdersWithStockAction(options?: {
 
 export async function getOrderByIdAction(
   id: string,
-): Promise<OrderActionResult<Order | null>> {
+): Promise<ActionResult<Order | null>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 
@@ -167,7 +164,7 @@ export async function getOrderByIdAction(
 export async function updateOrderStatusAction(
   orderId: string,
   newStatus: OrderStatus,
-): Promise<OrderActionResult<Order>> {
+): Promise<ActionResult<Order>> {
   const auth = await requireAdminSession();
   if ("error" in auth) return { success: false, error: auth.error };
 

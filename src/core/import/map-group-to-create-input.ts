@@ -1,4 +1,3 @@
-import type { ShopCategoryId } from "@/core/catalog/shop-catalog";
 import type { BulkImportProductGroup } from "@/core/schemas/bulk-import.schema";
 import {
   type CreateProductInput,
@@ -53,7 +52,7 @@ export function mapGroupToCreateInput(
     description: first.description,
     price: first.price,
     category: first.category,
-    shopCategory: (first.shopCategory ?? "roupas") as ShopCategoryId,
+    shopCategory: first.shopCategory ?? "roupas",
     sizes,
     colorVariants,
     isActive: first.isActive,

@@ -216,10 +216,11 @@ export const productSchema = productObjectSchema.superRefine(
   refineProductSizesConsistency,
 );
 
+/** Formato devolvido pelas Server Actions ao cliente: datas em string ISO. */
 export const serializedProductSchema = productObjectSchema
   .extend({
-    createdAt: z.union([z.date(), z.string()]).optional(),
-    updatedAt: z.union([z.date(), z.string()]).optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
   })
   .superRefine(refineProductSizesConsistency);
 
@@ -268,6 +269,8 @@ export const productFormSchema = productObjectSchema
   })
   .superRefine(refineProductSizesConsistency);
 
+/** Tipo de entrada (pré-parse): campos com `.default()` (stock, isActive, status) são opcionais. */
+export type ProductFormInput = z.input<typeof productFormSchema>;
 export type ProductFormValues = z.infer<typeof productFormSchema>;
 
 export const productFilterSchema = z.object({

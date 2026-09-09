@@ -55,7 +55,6 @@ export function CameraPhotoCapture({
       })
       .catch((error) => {
         if (cancelled) return;
-        console.error("[CameraPhotoCapture] erro ao acessar câmera:", error);
         toaster.create({
           title: "Câmera não disponível",
           description: getCameraErrorMessage(error),

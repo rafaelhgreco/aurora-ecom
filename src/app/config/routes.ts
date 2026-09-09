@@ -1,4 +1,4 @@
-import type { UserRole } from "@/types/auth";
+import type { UserRole } from "@/app/types/auth";
 
 export const publicRoutes = [
   "/",

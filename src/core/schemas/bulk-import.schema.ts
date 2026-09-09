@@ -37,9 +37,7 @@ export const bulkImportRowSchema = z.object({
     .finite()
     .multipleOf(0.01),
   category: z.string().min(2).max(50).trim().optional(),
-  shopCategory: z
-    .enum(SHOP_CATEGORY_IDS as unknown as [string, ...string[]])
-    .optional(),
+  shopCategory: z.enum(SHOP_CATEGORY_IDS).optional(),
   cor: z.string().min(1, "cor é obrigatória").max(40).trim(),
   imagens_cor: z
     .array(z.string().url())

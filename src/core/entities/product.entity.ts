@@ -12,6 +12,17 @@ import {
   hasVariantLevelStock,
 } from "@/shared/product-stock-helpers";
 
+/**
+ * Aceita tanto `Product` (datas como `Date`, vindo dos repositórios) quanto
+ * `SerializedProduct` (datas em string ISO, vindo de uma Server Action) — o
+ * construtor normaliza para `Date` real; ver `createdAt`/`updatedAt` abaixo.
+ */
+type ProductEntityInput = Omit<Product, "createdAt" | "updatedAt"> & {
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  deletedAt?: Date | string | null;
+};
+
 export class ProductEntity implements Product {
   id?: string;
   barcode?: string;
@@ -35,7 +46,7 @@ export class ProductEntity implements Product {
   updatedAt?: Date;
   deletedAt?: Date | null;
 
-  constructor(data: Product & { deletedAt?: Date | null }) {
+  constructor(data: ProductEntityInput) {
     this.id = data.id;
     this.barcode = data.barcode;
     this.slug = data.slug;
@@ -54,9 +65,9 @@ export class ProductEntity implements Product {
     this.colorVariants = data.colorVariants;
     this.isActive = data.isActive ?? true;
     this.status = data.status ?? "ACTIVE";
-    this.createdAt = data.createdAt || new Date();
-    this.updatedAt = data.updatedAt || new Date();
-    this.deletedAt = data.deletedAt || null;
+    this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
+    this.updatedAt = data.updatedAt ? new Date(data.updatedAt) : new Date();
+    this.deletedAt = data.deletedAt ? new Date(data.deletedAt) : null;
   }
 
   getTotalStock(): number {

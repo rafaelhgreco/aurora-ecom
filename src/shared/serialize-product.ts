@@ -1,13 +1,6 @@
-import type { Product } from "@/core/schemas/product.schema";
+import type { Product, SerializedProduct } from "@/core/schemas/product.schema";
+import { serializeTimestamps } from "@/shared/serialize-timestamps";
 
-export function serializeProductForClient(p: Product): Product {
-  return {
-    ...p,
-    createdAt: p.createdAt
-      ? new Date(p.createdAt as Date | string).toISOString()
-      : undefined,
-    updatedAt: p.updatedAt
-      ? new Date(p.updatedAt as Date | string).toISOString()
-      : undefined,
-  } as Product;
+export function serializeProductForClient(product: Product): SerializedProduct {
+  return serializeTimestamps(product);
 }
