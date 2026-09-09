@@ -38,7 +38,7 @@ export function BarcodeScanner() {
       toaster.create({
         title: created ? "Produto criado" : "Estoque atualizado",
         description: created
-          ? `Produto DRAFT criado (código: ${code})`
+          ? `Produto criado como rascunho (código: ${code})`
           : `Estoque atualizado para ${product.stock}`,
         type: "success",
         duration: 3000,

@@ -436,7 +436,7 @@ export function ProductForm({ product }: ProductFormProps) {
             ? "O produto foi cadastrado com sucesso."
             : product.status === "DRAFT"
               ? "O produto foi publicado e está visível na loja."
-              : "As alterações foram salvas no Firestore.",
+              : "As alterações foram salvas com sucesso.",
           type: "success",
           duration: 4000,
         });
