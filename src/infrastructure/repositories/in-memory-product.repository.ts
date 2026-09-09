@@ -111,6 +111,10 @@ export class InMemoryProductRepository implements IProductRepository {
         filtered = filtered.filter((p) => p.category === filter.category);
       }
 
+      if (filter.promotionId) {
+        filtered = filtered.filter((p) => p.promotionId === filter.promotionId);
+      }
+
       if (filter.minPrice !== undefined) {
         filtered = filtered.filter((p) => p.price >= (filter.minPrice ?? 0));
       }
@@ -253,6 +257,31 @@ export class InMemoryProductRepository implements IProductRepository {
       this.products[index] = {
         ...this.products[index],
         category,
+        updatedAt: new Date(),
+      };
+      updatedCount += 1;
+    }
+
+    return { updatedCount, failedIds };
+  }
+
+  async bulkUpdatePromotion(
+    productIds: string[],
+    promotionId: string | null,
+  ): Promise<{ updatedCount: number; failedIds: string[] }> {
+    let updatedCount = 0;
+    const failedIds: string[] = [];
+
+    for (const id of productIds) {
+      const index = this.products.findIndex((p) => p.id === id);
+      if (index === -1) {
+        failedIds.push(id);
+        continue;
+      }
+      this.products[index] = {
+        ...this.products[index],
+        promotionId,
+        promotionOverridePrice: null,
         updatedAt: new Date(),
       };
       updatedCount += 1;

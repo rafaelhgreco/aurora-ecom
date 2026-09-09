@@ -47,6 +47,11 @@ export class FirestoreProductRepository implements IProductRepository {
       imageUrl: data.imageUrl as string,
       images: (data.images as string[]) || [],
       category: data.category as string | undefined,
+      promotionId: data.promotionId as string | null | undefined,
+      promotionOverridePrice: data.promotionOverridePrice as
+        | number
+        | null
+        | undefined,
       shopCategory: data.shopCategory as string | undefined,
       stock: data.stock as number,
       stockBySize: data.stockBySize as Record<string, number> | undefined,
@@ -77,6 +82,8 @@ export class FirestoreProductRepository implements IProductRepository {
       imageUrl: entity.imageUrl,
       images: entity.images,
       category: entity.category,
+      promotionId: entity.promotionId,
+      promotionOverridePrice: entity.promotionOverridePrice,
       shopCategory: entity.shopCategory,
       stock: entity.stock,
       stockBySize: entity.stockBySize,
@@ -172,6 +179,10 @@ export class FirestoreProductRepository implements IProductRepository {
       results = results.filter((p) => p.category === filters.category);
     }
 
+    if (filters?.promotionId) {
+      results = results.filter((p) => p.promotionId === filters.promotionId);
+    }
+
     const totalCount = results.length;
 
     const limitCount = filters?.limitCount ?? 20;
@@ -252,6 +263,10 @@ export class FirestoreProductRepository implements IProductRepository {
     if (product.imageUrl !== undefined) updateData.imageUrl = product.imageUrl;
     if (product.images !== undefined) updateData.images = product.images;
     if (product.category !== undefined) updateData.category = product.category;
+    if (product.promotionId !== undefined)
+      updateData.promotionId = product.promotionId;
+    if (product.promotionOverridePrice !== undefined)
+      updateData.promotionOverridePrice = product.promotionOverridePrice;
     if (product.stock !== undefined) updateData.stock = product.stock;
     if (product.stockBySize !== undefined)
       updateData.stockBySize = product.stockBySize;
@@ -294,6 +309,43 @@ export class FirestoreProductRepository implements IProductRepository {
       for (const id of chunk) {
         batch.update(collection.doc(id), {
           category,
+          updatedAt: Timestamp.now(),
+        });
+      }
+      try {
+        await batch.commit();
+        updatedCount += chunk.length;
+      } catch {
+        failedIds.push(...chunk);
+      }
+    }
+
+    return { updatedCount, failedIds };
+  }
+
+  /**
+   * Associa (ou remove, com `promotionId: null`) uma promoção em lote.
+   * Sempre zera `promotionOverridePrice` junto — evita que um valor base de
+   * uma promoção anterior vaze silenciosamente para a nova associação.
+   */
+  async bulkUpdatePromotion(
+    productIds: string[],
+    promotionId: string | null,
+  ): Promise<{ updatedCount: number; failedIds: string[] }> {
+    const db = this.requireDb();
+    const collection = db.collection(this.collectionName);
+
+    const chunkSize = 100;
+    let updatedCount = 0;
+    const failedIds: string[] = [];
+
+    for (let i = 0; i < productIds.length; i += chunkSize) {
+      const chunk = productIds.slice(i, i + chunkSize);
+      const batch = db.batch();
+      for (const id of chunk) {
+        batch.update(collection.doc(id), {
+          promotionId,
+          promotionOverridePrice: null,
           updatedAt: Timestamp.now(),
         });
       }

@@ -7,6 +7,7 @@
  * Salva o pedido na coleção orders do Firestore e retorna o link.
  */
 
+import { isAdminPromotionsEnabled } from "@/app/config/feature-flags";
 import type {
   CartItemJSON,
   EnrichedCheckoutItem,
@@ -15,8 +16,10 @@ import type {
 import { formatPrice } from "@/app/utils/price-formatter";
 import type { ProductEntity } from "@/core/entities";
 import type { OrderItem } from "@/core/schemas/order.schema";
+import type { Promotion } from "@/core/schemas/promotion.schema";
 import { createOrder } from "@/infrastructure/repositories/firestore-order.repository";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
+import { FirestorePromotionRepository } from "@/infrastructure/repositories/firestore-promotion.repository";
 import {
   aggregateQuantitiesByVariant,
   cartLineVariantKey,
@@ -25,6 +28,7 @@ import {
   validateCartLinesShape,
 } from "@/shared/cart-pricing";
 import { handleActionError } from "@/shared/errors/action-error";
+import { computeEffectivePrice } from "@/shared/product-pricing";
 
 // Número do WhatsApp da loja (formato internacional sem sinais: 55DDDNUMERO)
 const SHOP_WHATSAPP_NUMBER =
@@ -41,24 +45,52 @@ async function enrichCartItems(
   const productCache = new Map<string, ProductEntity>();
   const requestedQuantityByVariant = aggregateQuantitiesByVariant(items);
 
-  const enriched: EnrichedCheckoutItem[] = [];
-
   for (const item of items) {
-    let product = productCache.get(item.productId);
+    if (productCache.has(item.productId)) continue;
 
+    const found = await repository.findById(item.productId);
+    if (!found) {
+      throw new Error(`Produto ${item.productId} não encontrado`);
+    }
+    productCache.set(item.productId, found);
+  }
+
+  // Preço e estoque nunca vêm do cliente — a promoção também é resolvida
+  // aqui, no servidor, a partir do produto já buscado. Uma única leitura de
+  // todas as promoções para o checkout inteiro (não uma por item).
+  const featureEnabled = isAdminPromotionsEnabled();
+  const promotionIds = new Set(
+    [...productCache.values()]
+      .map((p) => p.promotionId)
+      .filter((id): id is string => !!id),
+  );
+  const promotionsById: Map<string, Promotion> =
+    featureEnabled && promotionIds.size > 0
+      ? new Map(
+          (await new FirestorePromotionRepository().findAll()).map(
+            (promo): [string, Promotion] => [promo.id as string, promo],
+          ),
+        )
+      : new Map();
+
+  const enriched: EnrichedCheckoutItem[] = [];
+  for (const item of items) {
+    const product = productCache.get(item.productId);
     if (!product) {
-      const found = await repository.findById(item.productId);
-      if (!found) {
-        throw new Error(`Produto ${item.productId} não encontrado`);
-      }
-      product = found;
-      productCache.set(item.productId, product);
+      throw new Error(`Produto ${item.productId} não encontrado`);
     }
 
     const totalRequestedForVariant =
       requestedQuantityByVariant.get(cartLineVariantKey(item)) ?? item.quantity;
 
-    enriched.push(priceCartLine(item, product, totalRequestedForVariant));
+    const promotion = product.promotionId
+      ? (promotionsById.get(product.promotionId) ?? null)
+      : null;
+    const pricing = computeEffectivePrice(product, promotion, featureEnabled);
+
+    enriched.push(
+      priceCartLine(item, product, totalRequestedForVariant, pricing.price),
+    );
   }
 
   return enriched;

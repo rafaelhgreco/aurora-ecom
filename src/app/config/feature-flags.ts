@@ -20,8 +20,17 @@ export function isAdminStockScanEnabled(): boolean {
   return truthy(process.env.FEATURE_ADMIN_STOCK_SCAN);
 }
 
+/**
+ * Módulo de Promoções (admin) + aplicação do desconto na loja/checkout —
+ * kill switch único para a feature inteira, não só para a UI de gestão.
+ */
+export function isAdminPromotionsEnabled(): boolean {
+  return truthy(process.env.FEATURE_ADMIN_PROMOTIONS);
+}
+
 /** Espelho para o cliente (mostrar botões). Deve acompanhar FEATURE_* no deploy. */
 export const adminFeatureFlagsClient = {
   stockTools: truthy(process.env.NEXT_PUBLIC_FEATURE_ADMIN_STOCK_TOOLS),
   softDeactivate: truthy(process.env.NEXT_PUBLIC_FEATURE_ADMIN_SOFT_DEACTIVATE),
+  promotions: truthy(process.env.NEXT_PUBLIC_FEATURE_ADMIN_PROMOTIONS),
 } as const;

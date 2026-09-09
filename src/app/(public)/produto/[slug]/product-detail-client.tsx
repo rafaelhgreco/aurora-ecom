@@ -67,7 +67,8 @@ function ProductDetailView({
       id: product.id || slugParam,
       slug: product.slug || slugParam,
       title: product.title,
-      price: product.price,
+      price: product.effectivePrice ?? product.price,
+      originalPrice: product.originalPrice,
       description: product.description,
       sizes: product.sizes || [],
       availableSizes: getAvailableSizes(product, colorForStock || undefined),
@@ -123,6 +124,7 @@ function ProductDetailView({
                   slug={productData.slug}
                   title={productData.title}
                   price={productData.price}
+                  originalPrice={productData.originalPrice}
                   description={productData.description}
                   sizes={productData.sizes}
                   availableSizes={productData.availableSizes}

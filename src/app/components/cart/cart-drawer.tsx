@@ -264,9 +264,20 @@ export function CartDrawer({
                                     {product?.title || "Carregando..."}
                                   </Text>
                                   {product && (
-                                    <Text fontSize="sm" color="gray.600" mt="1">
-                                      {formatPrice(product.price)}
-                                    </Text>
+                                    <Flex align="baseline" gap="2" mt="1">
+                                      {product.originalPrice != null && (
+                                        <Text
+                                          fontSize="xs"
+                                          color="gray.400"
+                                          textDecoration="line-through"
+                                        >
+                                          {formatPrice(product.originalPrice)}
+                                        </Text>
+                                      )}
+                                      <Text fontSize="sm" color="gray.600">
+                                        {formatPrice(product.getDisplayPrice())}
+                                      </Text>
+                                    </Flex>
                                   )}
                                 </Box>
 

@@ -1,11 +1,26 @@
 import { cache } from "react";
+import { isAdminPromotionsEnabled } from "@/app/config/feature-flags";
 import type { SerializedProduct } from "@/core/schemas/product.schema";
 import { GetProductByIdUseCase } from "@/core/use-cases/get-product-by-id.use-case";
 import { GetProductBySlugUseCase } from "@/core/use-cases/get-product-by-slug.use-case";
 import { FirestoreProductRepository } from "@/infrastructure/repositories/firestore-product.repository";
+import { FirestorePromotionRepository } from "@/infrastructure/repositories/firestore-promotion.repository";
+import { decorateProductsWithPricing } from "@/shared/product-pricing";
 import { serializeProductForClient } from "@/shared/serialize-product";
 
 const productRepository = new FirestoreProductRepository();
+const promotionRepository = new FirestorePromotionRepository();
+
+async function serializeWithPricing(
+  product: Parameters<typeof serializeProductForClient>[0],
+): Promise<SerializedProduct> {
+  const [priced] = await decorateProductsWithPricing(
+    [serializeProductForClient(product)],
+    promotionRepository,
+    isAdminPromotionsEnabled(),
+  );
+  return priced;
+}
 
 export type ResolvedProduct =
   | { kind: "found"; product: SerializedProduct }
@@ -24,7 +39,7 @@ export const resolveProductRoute = cache(
     const bySlugUseCase = new GetProductBySlugUseCase(productRepository);
     const bySlug = await bySlugUseCase.execute(param).catch(() => null);
     if (bySlug && bySlug.status === "ACTIVE") {
-      return { kind: "found", product: serializeProductForClient(bySlug) };
+      return { kind: "found", product: await serializeWithPricing(bySlug) };
     }
 
     const byIdUseCase = new GetProductByIdUseCase(productRepository);
@@ -33,7 +48,7 @@ export const resolveProductRoute = cache(
       if (byId.slug) {
         return { kind: "redirect", canonicalSlug: byId.slug };
       }
-      return { kind: "found", product: serializeProductForClient(byId) };
+      return { kind: "found", product: await serializeWithPricing(byId) };
     }
 
     return { kind: "not-found" };

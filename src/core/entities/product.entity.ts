@@ -21,6 +21,12 @@ type ProductEntityInput = Omit<Product, "createdAt" | "updatedAt"> & {
   createdAt?: Date | string;
   updatedAt?: Date | string;
   deletedAt?: Date | string | null;
+  /**
+   * Decoração de leitura calculada por request (ver `decorateProductsWithPricing`)
+   * — nunca persistida no Firestore, por isso não faz parte de `Product`.
+   */
+  effectivePrice?: number;
+  originalPrice?: number | null;
 };
 
 export class ProductEntity implements Product {
@@ -34,6 +40,8 @@ export class ProductEntity implements Product {
   imageUrl: string;
   images: string[];
   category?: string;
+  promotionId?: string | null;
+  promotionOverridePrice?: number | null;
   shopCategory?: string;
   stock: number;
   stockBySize?: Record<string, number>;
@@ -45,6 +53,8 @@ export class ProductEntity implements Product {
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
+  effectivePrice?: number;
+  originalPrice?: number | null;
 
   constructor(data: ProductEntityInput) {
     this.id = data.id;
@@ -57,6 +67,8 @@ export class ProductEntity implements Product {
     this.imageUrl = data.imageUrl;
     this.images = data.images || [];
     this.category = data.category;
+    this.promotionId = data.promotionId;
+    this.promotionOverridePrice = data.promotionOverridePrice;
     this.shopCategory = data.shopCategory;
     this.stock = data.stock || 0;
     this.stockBySize = data.stockBySize;
@@ -68,6 +80,8 @@ export class ProductEntity implements Product {
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
     this.updatedAt = data.updatedAt ? new Date(data.updatedAt) : new Date();
     this.deletedAt = data.deletedAt ? new Date(data.deletedAt) : null;
+    this.effectivePrice = data.effectivePrice;
+    this.originalPrice = data.originalPrice;
   }
 
   getTotalStock(): number {
@@ -199,11 +213,9 @@ export class ProductEntity implements Product {
     this.stock += quantity;
   }
 
-  getPriceWithDiscount(discountPercentage: number): number {
-    if (discountPercentage < 0 || discountPercentage > 100) {
-      throw new Error("Desconto deve estar entre 0 e 100");
-    }
-    return this.price * (1 - discountPercentage / 100);
+  /** Preço a cobrar/exibir: efetivo (com promoção) quando resolvido, senão o de tabela. */
+  getDisplayPrice(): number {
+    return this.effectivePrice ?? this.price;
   }
 
   activate(): void {
@@ -234,6 +246,8 @@ export class ProductEntity implements Product {
       imageUrl: this.imageUrl,
       images: this.images,
       category: this.category,
+      promotionId: this.promotionId,
+      promotionOverridePrice: this.promotionOverridePrice,
       shopCategory: this.shopCategory,
       stock: this.stock,
       stockBySize: this.stockBySize,

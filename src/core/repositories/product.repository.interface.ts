@@ -47,6 +47,16 @@ export interface IProductRepository {
     category: string,
   ): Promise<{ updatedCount: number; failedIds: string[] }>;
 
+  /**
+   * Atualiza `promotionId` em lote (associar a uma promoção, ou remover
+   * enviando `null`). Sempre zera `promotionOverridePrice` junto — evita que
+   * um valor base de uma promoção anterior vaze silenciosamente para outra.
+   */
+  bulkUpdatePromotion(
+    productIds: string[],
+    promotionId: string | null,
+  ): Promise<{ updatedCount: number; failedIds: string[] }>;
+
   delete(id: string): Promise<void>;
 
   /**

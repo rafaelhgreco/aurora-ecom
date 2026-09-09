@@ -114,6 +114,15 @@ export const productCategoryValueSchema = z
   .optional()
   .or(z.literal(""));
 
+/** Valor base opcional (override) para o cálculo do desconto de uma promoção. */
+export const productPromotionOverridePriceSchema = z
+  .number()
+  .positive()
+  .finite()
+  .multipleOf(0.01)
+  .nullable()
+  .optional();
+
 const productObjectSchema = z.object({
   /** IDs do Firestore não são UUID; aceita qualquer string não vazia */
   id: z.string().min(1, "ID inválido").optional(),
@@ -174,6 +183,15 @@ const productObjectSchema = z.object({
 
   category: productCategoryValueSchema,
 
+  /** Promoção associada (id de `promotions`), ou `null` quando removida explicitamente. */
+  promotionId: z.string().min(1).nullable().optional(),
+
+  /**
+   * Valor base opcional para o cálculo do desconto da promoção, no lugar do
+   * `price` de tabela. Só faz sentido quando `promotionId` está definido.
+   */
+  promotionOverridePrice: productPromotionOverridePriceSchema,
+
   /**
    * Seção do catálogo (id de `sections`). String livre — seções são
    * cadastradas dinamicamente pelo admin, não é mais um enum fixo. A
@@ -221,6 +239,14 @@ export const serializedProductSchema = productObjectSchema
   .extend({
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
+    /**
+     * Preço decorado com a promoção ativa (se houver) — nunca persistido no
+     * Firestore, calculado por request em `decorateProductsWithPricing`.
+     * Ausente = sem desconto aplicável; use `effectivePrice ?? price`.
+     */
+    effectivePrice: z.number().optional(),
+    /** Valor a ser exibido riscado; `null`/ausente quando não há desconto. */
+    originalPrice: z.number().nullable().optional(),
   })
   .superRefine(refineProductSizesConsistency);
 
@@ -275,6 +301,7 @@ export type ProductFormValues = z.infer<typeof productFormSchema>;
 
 export const productFilterSchema = z.object({
   category: z.string().optional(),
+  promotionId: z.string().optional(),
   shopCategory: z.string().min(1).optional(),
   minPrice: z.number().positive().optional(),
   maxPrice: z.number().positive().optional(),

@@ -11,7 +11,14 @@ import { Box, HStack, Text } from "@chakra-ui/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { IconType } from "react-icons";
-import { IoAddCircle, IoAlbums, IoPricetags, IoReceipt } from "react-icons/io5";
+import {
+  IoAddCircle,
+  IoAlbums,
+  IoFlash,
+  IoPricetags,
+  IoReceipt,
+} from "react-icons/io5";
+import { adminFeatureFlagsClient } from "@/app/config/feature-flags";
 
 interface AdminNavItem {
   label: string;
@@ -33,6 +40,9 @@ const NAV_ITEMS: AdminNavItem[] = [
     ],
   },
   { label: "Categorias", href: "/admin/categorias", icon: IoAlbums },
+  ...(adminFeatureFlagsClient.promotions
+    ? [{ label: "Promoções", href: "/admin/promocoes", icon: IoFlash }]
+    : []),
   { label: "Pedidos", href: "/admin/pedidos", icon: IoReceipt },
   { label: "Novo", href: "/admin/novo", icon: IoAddCircle },
 ];

@@ -103,11 +103,17 @@ export function validateCartLinesShape(items: CartLineInput[]): {
  * todo o carrinho (não só desta linha — ver `aggregateQuantitiesByVariant`).
  *
  * Lança erro se o produto estiver inativo ou sem estoque suficiente.
+ *
+ * @param unitPriceOverride Preço unitário a cobrar no lugar de `product.price`
+ *   (preço efetivo já resolvido com a promoção, se houver — ver
+ *   `computeEffectivePrice`). Quem chama decide se a promoção se aplica; esta
+ *   função só usa o número que recebe.
  */
 export function priceCartLine(
   item: CartLineInput,
   product: PriceableProduct,
   totalRequestedForVariant: number,
+  unitPriceOverride?: number,
 ): PricedCartLine {
   if (!product.isActive) {
     throw new Error(`Produto "${product.title}" não está disponível`);
@@ -129,6 +135,8 @@ export function priceCartLine(
     );
   }
 
+  const unitPrice = unitPriceOverride ?? product.price;
+
   return {
     productId: item.productId,
     quantity: item.quantity,
@@ -136,12 +144,12 @@ export function priceCartLine(
     product: {
       id: product.id || "",
       title: product.title,
-      price: product.price,
+      price: unitPrice,
       imageUrl: product.imageUrl,
       isActive: product.isActive,
       stock: product.stock,
     },
-    subtotal: roundCurrency(product.price * item.quantity),
+    subtotal: roundCurrency(unitPrice * item.quantity),
   };
 }
 
