@@ -12,6 +12,7 @@ import type {
   PublishProductInput,
   UpdateProductInput,
 } from "@/core/schemas/product.schema";
+import { BulkUpdateProductCategoryUseCase } from "@/core/use-cases/bulk-update-product-category.use-case";
 import { CreateProductUseCase } from "@/core/use-cases/create-product.use-case";
 import { DeleteProductUseCase } from "@/core/use-cases/delete-product.use-case";
 import { GetProductByIdUseCase } from "@/core/use-cases/get-product-by-id.use-case";
@@ -128,6 +129,28 @@ export async function updateProductAction(
   } catch (error) {
     const { message, details } = handleActionError(
       "updateProductAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message, ...(details && { details }) };
+  }
+}
+
+export async function bulkUpdateProductsCategoryAction(input: {
+  productIds: string[];
+  category: string;
+}): Promise<ActionResult<{ updatedCount: number; failedIds: string[] }>> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
+  try {
+    const useCase = new BulkUpdateProductCategoryUseCase(productRepository);
+    const result = await useCase.execute(input);
+
+    return { success: true, data: result };
+  } catch (error) {
+    const { message, details } = handleActionError(
+      "bulkUpdateProductsCategoryAction",
       error,
       "admin",
     );

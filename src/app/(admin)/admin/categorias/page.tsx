@@ -23,6 +23,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { IoAdd, IoEllipsisVertical, IoPencil, IoTrash } from "react-icons/io5";
 import { CategoryCard } from "@/app/components/admin/category-card";
@@ -39,6 +40,7 @@ import type { Section } from "@/app/types/section";
 import { toaster } from "@/components/ui/toaster";
 
 export default function AdminCategoriesPage() {
+  const router = useRouter();
   const {
     sections,
     isLoading: sectionsLoading,
@@ -141,6 +143,10 @@ export default function AdminCategoriesPage() {
         duration: 5000,
       });
     }
+  };
+
+  const handleManageProducts = (category: Category) => {
+    router.push(`/admin/categorias/${category.id}/produtos`);
   };
 
   const handleAddCategory = (sectionId: string) => {
@@ -331,11 +337,13 @@ export default function AdminCategoriesPage() {
                         categories={sectionCategories}
                         onEdit={handleEditCategory}
                         onDelete={setDeletingCategory}
+                        onManageProducts={handleManageProducts}
                       />
                       <CategoryCard
                         categories={sectionCategories}
                         onEdit={handleEditCategory}
                         onDelete={setDeletingCategory}
+                        onManageProducts={handleManageProducts}
                       />
                     </>
                   );

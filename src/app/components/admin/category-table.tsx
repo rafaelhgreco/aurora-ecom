@@ -7,19 +7,21 @@
 "use client";
 
 import { HStack, IconButton, Table, Text } from "@chakra-ui/react";
-import { IoPencil, IoTrash } from "react-icons/io5";
+import { IoListOutline, IoPencil, IoTrash } from "react-icons/io5";
 import type { Category } from "@/app/types/category";
 
 interface CategoryTableProps {
   categories: Category[];
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
+  onManageProducts: (category: Category) => void;
 }
 
 export function CategoryTable({
   categories,
   onEdit,
   onDelete,
+  onManageProducts,
 }: CategoryTableProps) {
   if (categories.length === 0) {
     return (
@@ -57,6 +59,16 @@ export function CategoryTable({
             </Table.Cell>
             <Table.Cell>
               <HStack justify="center" gap={2}>
+                <IconButton
+                  type="button"
+                  aria-label="Gerenciar produtos"
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="blue"
+                  onClick={() => onManageProducts(category)}
+                >
+                  <IoListOutline />
+                </IconButton>
                 <IconButton
                   type="button"
                   aria-label="Editar categoria"
