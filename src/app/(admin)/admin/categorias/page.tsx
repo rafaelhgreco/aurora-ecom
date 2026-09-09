@@ -19,6 +19,7 @@ import {
   IconButton,
   Menu,
   Portal,
+  Spinner,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -313,20 +314,32 @@ export default function AdminCategoriesPage() {
                 </HStack>
               </Card.Header>
               <Card.Body>
-                <CategoryTable
-                  categories={categories.filter(
+                {(() => {
+                  const sectionCategories = categories.filter(
                     (c) => c.sectionId === section.id,
-                  )}
-                  onEdit={handleEditCategory}
-                  onDelete={setDeletingCategory}
-                />
-                <CategoryCard
-                  categories={categories.filter(
-                    (c) => c.sectionId === section.id,
-                  )}
-                  onEdit={handleEditCategory}
-                  onDelete={setDeletingCategory}
-                />
+                  );
+                  if (categoriesLoading && sectionCategories.length === 0) {
+                    return (
+                      <HStack justify="center" py={6}>
+                        <Spinner size="sm" />
+                      </HStack>
+                    );
+                  }
+                  return (
+                    <>
+                      <CategoryTable
+                        categories={sectionCategories}
+                        onEdit={handleEditCategory}
+                        onDelete={setDeletingCategory}
+                      />
+                      <CategoryCard
+                        categories={sectionCategories}
+                        onEdit={handleEditCategory}
+                        onDelete={setDeletingCategory}
+                      />
+                    </>
+                  );
+                })()}
               </Card.Body>
             </Card.Root>
           ))}
