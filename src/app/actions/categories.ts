@@ -81,6 +81,7 @@ export async function updateCategoryAction(
     const useCase = new UpdateCategoryUseCase(
       categoryRepository,
       sectionRepository,
+      productRepository,
     );
     const category = await useCase.execute(input);
 
