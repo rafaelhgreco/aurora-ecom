@@ -404,7 +404,7 @@ export function ProductForm({ product }: ProductFormProps) {
           subtitle: data.subtitle || undefined,
           description: data.description,
           price: data.price,
-          category: data.category || undefined,
+          category: data.category || "",
           shopCategory: data.shopCategory,
           imageUrl: colorVariants[0].images[0],
           images: flatImages.length > 0 ? flatImages : colorVariants[0].images,
