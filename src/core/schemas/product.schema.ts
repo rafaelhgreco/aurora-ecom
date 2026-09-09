@@ -106,6 +106,14 @@ function refineProductSizesConsistency(
   }
 }
 
+/** Subcategoria: string livre referenciada pelo nome (não id). `""` = sem subcategoria ("Nenhuma"). */
+export const productCategoryValueSchema = z
+  .string()
+  .min(2, "Categoria deve ter no mínimo 2 caracteres")
+  .max(50, "Categoria deve ter no máximo 50 caracteres")
+  .optional()
+  .or(z.literal(""));
+
 const productObjectSchema = z.object({
   /** IDs do Firestore não são UUID; aceita qualquer string não vazia */
   id: z.string().min(1, "ID inválido").optional(),
@@ -164,12 +172,7 @@ const productObjectSchema = z.object({
     .max(10, "Produto pode ter no máximo 10 imagens")
     .default([]),
 
-  category: z
-    .string()
-    .min(2, "Categoria deve ter no mínimo 2 caracteres")
-    .max(50, "Categoria deve ter no máximo 50 caracteres")
-    .optional()
-    .or(z.literal("")),
+  category: productCategoryValueSchema,
 
   /**
    * Seção do catálogo (id de `sections`). String livre — seções são

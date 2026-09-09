@@ -278,6 +278,40 @@ export class FirestoreProductRepository implements IProductRepository {
     return updated;
   }
 
+  async bulkUpdateCategory(
+    productIds: string[],
+    category: string,
+  ): Promise<{ updatedCount: number; failedIds: string[] }> {
+    const db = this.requireDb();
+    const collection = db.collection(this.collectionName);
+
+    // Chunks pequenos (bem abaixo do limite de 500 ops/batch do Firestore):
+    // se um id do meio já tiver sido apagado, `batch.update` rejeita o batch
+    // inteiro — chunks menores reduzem quantos produtos ficam de fora nesse caso.
+    const chunkSize = 100;
+    let updatedCount = 0;
+    const failedIds: string[] = [];
+
+    for (let i = 0; i < productIds.length; i += chunkSize) {
+      const chunk = productIds.slice(i, i + chunkSize);
+      const batch = db.batch();
+      for (const id of chunk) {
+        batch.update(collection.doc(id), {
+          category,
+          updatedAt: Timestamp.now(),
+        });
+      }
+      try {
+        await batch.commit();
+        updatedCount += chunk.length;
+      } catch {
+        failedIds.push(...chunk);
+      }
+    }
+
+    return { updatedCount, failedIds };
+  }
+
   async delete(id: string): Promise<void> {
     const db = this.requireDb();
     await db.collection(this.collectionName).doc(id).delete();

@@ -19,9 +19,11 @@ import {
   IconButton,
   Menu,
   Portal,
+  Spinner,
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { IoAdd, IoEllipsisVertical, IoPencil, IoTrash } from "react-icons/io5";
 import { CategoryCard } from "@/app/components/admin/category-card";
@@ -38,6 +40,7 @@ import type { Section } from "@/app/types/section";
 import { toaster } from "@/components/ui/toaster";
 
 export default function AdminCategoriesPage() {
+  const router = useRouter();
   const {
     sections,
     isLoading: sectionsLoading,
@@ -140,6 +143,10 @@ export default function AdminCategoriesPage() {
         duration: 5000,
       });
     }
+  };
+
+  const handleManageProducts = (category: Category) => {
+    router.push(`/admin/categorias/${category.id}/produtos`);
   };
 
   const handleAddCategory = (sectionId: string) => {
@@ -313,20 +320,34 @@ export default function AdminCategoriesPage() {
                 </HStack>
               </Card.Header>
               <Card.Body>
-                <CategoryTable
-                  categories={categories.filter(
+                {(() => {
+                  const sectionCategories = categories.filter(
                     (c) => c.sectionId === section.id,
-                  )}
-                  onEdit={handleEditCategory}
-                  onDelete={setDeletingCategory}
-                />
-                <CategoryCard
-                  categories={categories.filter(
-                    (c) => c.sectionId === section.id,
-                  )}
-                  onEdit={handleEditCategory}
-                  onDelete={setDeletingCategory}
-                />
+                  );
+                  if (categoriesLoading && sectionCategories.length === 0) {
+                    return (
+                      <HStack justify="center" py={6}>
+                        <Spinner size="sm" />
+                      </HStack>
+                    );
+                  }
+                  return (
+                    <>
+                      <CategoryTable
+                        categories={sectionCategories}
+                        onEdit={handleEditCategory}
+                        onDelete={setDeletingCategory}
+                        onManageProducts={handleManageProducts}
+                      />
+                      <CategoryCard
+                        categories={sectionCategories}
+                        onEdit={handleEditCategory}
+                        onDelete={setDeletingCategory}
+                        onManageProducts={handleManageProducts}
+                      />
+                    </>
+                  );
+                })()}
               </Card.Body>
             </Card.Root>
           ))}

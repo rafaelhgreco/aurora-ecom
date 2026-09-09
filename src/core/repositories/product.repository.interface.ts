@@ -36,6 +36,17 @@ export interface IProductRepository {
 
   update(id: string, product: Partial<Product>): Promise<Product>;
 
+  /**
+   * Atualiza `category` em lote para os produtos informados (mover para outra
+   * subcategoria, ou limpar enviando `""` — nunca `undefined`, ver `update()`).
+   * Não aborta o lote inteiro por causa de ids que falharem; retorna quais
+   * falharam em vez de lançar.
+   */
+  bulkUpdateCategory(
+    productIds: string[],
+    category: string,
+  ): Promise<{ updatedCount: number; failedIds: string[] }>;
+
   delete(id: string): Promise<void>;
 
   exists(id: string): Promise<boolean>;

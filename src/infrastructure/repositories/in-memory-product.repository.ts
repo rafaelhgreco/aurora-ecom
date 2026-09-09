@@ -237,6 +237,30 @@ export class InMemoryProductRepository implements IProductRepository {
     return this.products[index];
   }
 
+  async bulkUpdateCategory(
+    productIds: string[],
+    category: string,
+  ): Promise<{ updatedCount: number; failedIds: string[] }> {
+    let updatedCount = 0;
+    const failedIds: string[] = [];
+
+    for (const id of productIds) {
+      const index = this.products.findIndex((p) => p.id === id);
+      if (index === -1) {
+        failedIds.push(id);
+        continue;
+      }
+      this.products[index] = {
+        ...this.products[index],
+        category,
+        updatedAt: new Date(),
+      };
+      updatedCount += 1;
+    }
+
+    return { updatedCount, failedIds };
+  }
+
   async delete(id: string): Promise<void> {
     const index = this.products.findIndex((p) => p.id === id);
 
