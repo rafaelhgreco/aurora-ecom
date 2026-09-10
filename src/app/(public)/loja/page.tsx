@@ -17,7 +17,6 @@ import {
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { IoSwapVertical } from "react-icons/io5";
-import { Pagination } from "@/app/components/public/pagination";
 import { ProductGrid } from "@/app/components/public/product-grid";
 import { ProductGridSkeleton } from "@/app/components/public/product-grid-skeleton";
 import {
@@ -25,6 +24,7 @@ import {
   ShopHomeHero,
   ShopPageShell,
 } from "@/app/components/public/shop";
+import { Pagination } from "@/app/components/shared/pagination";
 import { EmptyState, ErrorState } from "@/app/components/states";
 import { useCategories } from "@/app/hooks/use-categories";
 import { useProducts } from "@/app/hooks/use-products";

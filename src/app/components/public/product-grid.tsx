@@ -1,6 +1,6 @@
 import { Box, SimpleGrid } from "@chakra-ui/react";
+import { Pagination } from "@/app/components/shared/pagination";
 import type { SerializedProduct } from "@/core/schemas/product.schema";
-import { Pagination } from "./pagination";
 import { ProductCard } from "./product-card";
 
 interface ProductGridProps {
