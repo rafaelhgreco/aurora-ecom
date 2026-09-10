@@ -13,15 +13,11 @@ import {
   SelectRoot,
   SelectTrigger,
   SelectValueText,
-  Text,
   VStack,
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  IoChevronBack,
-  IoChevronForward,
-  IoSwapVertical,
-} from "react-icons/io5";
+import { IoSwapVertical } from "react-icons/io5";
+import { Pagination } from "@/app/components/public/pagination";
 import { ProductGrid } from "@/app/components/public/product-grid";
 import { ProductGridSkeleton } from "@/app/components/public/product-grid-skeleton";
 import {
@@ -58,7 +54,7 @@ export default function LojaPage() {
   const { sections } = useSections();
   const { categories } = useCategories();
 
-  const { products, loading, error, totalPages } = useProducts({
+  const { products, loading, error, totalPages, totalCount } = useProducts({
     page,
     limitCount: limit,
     status: "ACTIVE",
@@ -306,29 +302,14 @@ export default function LojaPage() {
             ))}
 
             {totalPages && totalPages > 1 && (
-              <HStack justify="center" mt={8} gap={4}>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <IoChevronBack /> Anterior
-                </Button>
-
-                <Text fontSize="sm" fontWeight="medium">
-                  Página {page} de {totalPages}
-                </Text>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page === totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  Próxima <IoChevronForward />
-                </Button>
-              </HStack>
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                totalCount={totalCount}
+                pageSize={limit}
+                mt={8}
+              />
             )}
           </VStack>
         )}

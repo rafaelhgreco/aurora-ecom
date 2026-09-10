@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { listProductsAction } from "@/app/actions/products";
 import type { ProductFilter } from "@/core/schemas/product.schema";
 import { PUBLIC_GENERIC } from "@/shared/errors/client-error-messages";
@@ -27,6 +27,7 @@ export function useProducts(filter?: ProductFilter) {
       }
       return res.data;
     },
+    placeholderData: keepPreviousData,
   });
 
   const products = result?.data || [];
