@@ -12,6 +12,9 @@ import {
 export const toaster = createToaster({
   placement: "bottom-end",
   pauseOnPageIdle: true,
+  // Padrão para chamadas que não passam `duration` (item 5: toast compacto,
+  // sem bloquear o cadastro contínuo de produtos).
+  duration: 4000,
 });
 
 export const Toaster = () => {
@@ -19,16 +22,25 @@ export const Toaster = () => {
     <Portal>
       <ChakraToaster toaster={toaster} insetInline={{ mdDown: "4" }}>
         {(toast) => (
-          <Toast.Root width={{ md: "sm" }}>
+          <Toast.Root
+            width={{ base: "calc(100vw - 2rem)", sm: "sm" }}
+            maxW="sm"
+            px="3"
+            py="2"
+          >
             {toast.type === "loading" ? (
               <Spinner size="sm" color="blue.solid" />
             ) : (
               <Toast.Indicator />
             )}
-            <Stack gap="1" flex="1" maxWidth="100%">
-              {toast.title && <Toast.Title>{toast.title}</Toast.Title>}
+            <Stack gap="0.5" flex="1" maxWidth="100%">
+              {toast.title && (
+                <Toast.Title fontSize="sm">{toast.title}</Toast.Title>
+              )}
               {toast.description && (
-                <Toast.Description>{toast.description}</Toast.Description>
+                <Toast.Description fontSize="xs">
+                  {toast.description}
+                </Toast.Description>
               )}
             </Stack>
             {toast.action && (

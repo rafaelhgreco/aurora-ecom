@@ -9,17 +9,6 @@ export const formatPrice = (price: number): string => {
 };
 
 /**
- * Calcula e formata valor de parcela
- */
-export const calculateInstallment = (
-  price: number,
-  installments: number,
-): string => {
-  const installmentValue = price / installments;
-  return formatPrice(installmentValue);
-};
-
-/**
  * Formata data para formato brasileiro
  */
 export function formatDate(date: Date | string | undefined): string {

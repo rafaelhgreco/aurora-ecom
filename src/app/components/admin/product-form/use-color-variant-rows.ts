@@ -28,6 +28,9 @@ export function useColorVariantRows({
 }: UseColorVariantRowsArgs) {
   const [colorRows, setColorRows] = useState<ColorEditRow[]>(initialRows);
   const nextColorRowIdRef = useRef(initialRows.length);
+  /** URLs de fotos já salvas que o admin removeu nesta sessão — apagadas do
+   *  Cloudinary só depois do submit dar certo (ver product-form.tsx). */
+  const [removedExistingUrls, setRemovedExistingUrls] = useState<string[]>([]);
 
   useEffect(() => {
     setColorRows((prev) =>
@@ -49,6 +52,11 @@ export function useColorVariantRows({
   const resetRows = useCallback((rows: ColorEditRow[]) => {
     nextColorRowIdRef.current = rows.length;
     setColorRows(rows);
+    setRemovedExistingUrls([]);
+  }, []);
+
+  const clearRemovedUrls = useCallback(() => {
+    setRemovedExistingUrls([]);
   }, []);
 
   const addColorRow = useCallback(() => {
@@ -80,8 +88,12 @@ export function useColorVariantRows({
         }
         return prev.filter((_, i) => i !== rowIndex);
       });
+      setRemovedExistingUrls((prev) => [
+        ...prev,
+        ...colorRows[rowIndex].existingUrls,
+      ]);
     },
-    [colorRows.length],
+    [colorRows],
   );
 
   const setRowColor = useCallback((rowIndex: number, color: string) => {
@@ -114,6 +126,10 @@ export function useColorVariantRows({
 
   const removeExistingUrl = useCallback(
     (rowIndex: number, imageIndex: number) => {
+      const removed = colorRows[rowIndex]?.existingUrls[imageIndex];
+      if (removed) {
+        setRemovedExistingUrls((prev) => [...prev, removed]);
+      }
       setColorRows((prev) =>
         prev.map((r, i) =>
           i === rowIndex
@@ -125,7 +141,7 @@ export function useColorVariantRows({
         ),
       );
     },
-    [],
+    [colorRows],
   );
 
   const removeNewFile = useCallback((rowIndex: number, imageIndex: number) => {
@@ -142,20 +158,20 @@ export function useColorVariantRows({
     );
   }, []);
 
-  const adjustRowStock = useCallback(
-    (rowIndex: number, size: ProductSize, delta: number) => {
+  /** Define diretamente a quantidade de estoque de um tamanho nesta cor
+   *  (input numérico — ver item 1: substituição do stepper +/-). */
+  const setRowStock = useCallback(
+    (rowIndex: number, size: ProductSize, quantity: number) => {
+      const safeQuantity = Math.max(0, Math.floor(quantity) || 0);
       setColorRows((prev) =>
-        prev.map((r, i) => {
-          if (i !== rowIndex) return r;
-          const prevQty = r.stockBySize[size] ?? 0;
-          return {
-            ...r,
-            stockBySize: {
-              ...r.stockBySize,
-              [size]: Math.max(0, prevQty + delta),
-            },
-          };
-        }),
+        prev.map((r, i) =>
+          i === rowIndex
+            ? {
+                ...r,
+                stockBySize: { ...r.stockBySize, [size]: safeQuantity },
+              }
+            : r,
+        ),
       );
     },
     [],
@@ -170,6 +186,8 @@ export function useColorVariantRows({
     addRowImageFiles,
     removeExistingUrl,
     removeNewFile,
-    adjustRowStock,
+    setRowStock,
+    removedExistingUrls,
+    clearRemovedUrls,
   };
 }

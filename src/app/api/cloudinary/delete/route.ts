@@ -7,6 +7,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getSession } from "@/app/services/auth";
 import { logServerError } from "@/shared/errors/log-server-error";
 
@@ -16,30 +17,65 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+const deleteRequestSchema = z.object({
+  publicId: z.string().min(1, "publicId é obrigatório"),
+});
+
 export async function POST(request: Request) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth_token");
+  const session = await getSession(token);
+
+  if (!session || session.role !== "admin") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  let body: unknown;
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token");
-    const session = await getSession(token);
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Corpo da requisição inválido" },
+      { status: 400 },
+    );
+  }
 
-    if (!session || session.role !== "admin") {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-    }
+  const parsed = deleteRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "publicId é obrigatório" },
+      { status: 400 },
+    );
+  }
+  const { publicId } = parsed.data;
 
-    const { publicId } = await request.json();
+  // Só apaga assets na pasta que o próprio upload do admin usa — evita que
+  // um publicId arbitrário derrube outro recurso do Cloudinary.
+  if (!publicId.startsWith("products/")) {
+    return NextResponse.json({ error: "publicId inválido" }, { status: 400 });
+  }
 
-    if (!publicId) {
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+
+    // Cloudinary responde 200 com `{ result: "not found" }` para um publicId
+    // que já não existe — tratamos como sucesso (fim desejado: nada para
+    // apagar), mas qualquer outro resultado é reportado como falha real.
+    if (result.result !== "ok" && result.result !== "not found") {
+      logServerError(
+        "cloudinaryDelete",
+        new Error(`cloudinary.uploader.destroy retornou "${result.result}"`),
+        { publicId },
+      );
       return NextResponse.json(
-        { error: "publicId é obrigatório" },
-        { status: 400 },
+        { error: "Erro ao deletar imagem", result: result.result },
+        { status: 500 },
       );
     }
 
-    await cloudinary.uploader.destroy(publicId);
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, result: result.result });
   } catch (error) {
-    logServerError("cloudinaryDelete", error);
+    logServerError("cloudinaryDelete", error, { publicId });
     return NextResponse.json(
       { error: "Erro ao deletar imagem" },
       { status: 500 },
