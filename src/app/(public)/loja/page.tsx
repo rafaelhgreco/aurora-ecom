@@ -73,10 +73,36 @@ export default function LojaPage() {
     [sections],
   );
 
-  /** Subcategoria só mostra opções das seções filtradas (vazio = todas). */
+  /**
+   * Mesmo nome de subcategoria pode existir em seções distintas (ex.:
+   * "Shampoo" cadastrado em duas seções) — tratamos como uma única
+   * subcategoria lógica, mapeando o nome para o conjunto de seções que a
+   * contêm.
+   */
+  const sectionIdsByCategoryName = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const c of categories) {
+      const key = c.name.trim().toLowerCase();
+      if (!map.has(key)) map.set(key, new Set());
+      map.get(key)?.add(c.sectionId);
+    }
+    return map;
+  }, [categories]);
+
+  /** Subcategoria só mostra opções das seções filtradas (vazio = todas), sem duplicar por nome. */
   const availableCategories = useMemo(() => {
-    if (selectedIds.size === 0) return categories;
-    return categories.filter((c) => selectedIds.has(c.sectionId));
+    const list =
+      selectedIds.size === 0
+        ? categories
+        : categories.filter((c) => selectedIds.has(c.sectionId));
+
+    const seen = new Set<string>();
+    return list.filter((c) => {
+      const key = c.name.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [categories, selectedIds]);
 
   useEffect(() => {
@@ -99,10 +125,23 @@ export default function LojaPage() {
     [availableCategories],
   );
 
-  const handleCategoryFilterChange = useCallback((value: string) => {
-    setCategoryFilter(value);
-    setPage(1);
-  }, []);
+  const handleCategoryFilterChange = useCallback(
+    (value: string) => {
+      setCategoryFilter(value);
+      setPage(1);
+
+      if (!value) return;
+
+      /** Ao escolher uma subcategoria, soma ao filtro as seções que a contêm. */
+      const sectionIds = sectionIdsByCategoryName.get(
+        value.trim().toLowerCase(),
+      );
+      if (!sectionIds || sectionIds.size === 0) return;
+
+      setSelectedIds((prev) => new Set([...prev, ...sectionIds]));
+    },
+    [sectionIdsByCategoryName],
+  );
 
   const toggleSortDirection = useCallback(() => {
     setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
