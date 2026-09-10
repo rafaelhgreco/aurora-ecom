@@ -26,11 +26,12 @@ export default function LojaCategoryPage() {
     notFound();
   }
 
+  const PAGE_SIZE = 12;
   const [page, setPage] = useState(1);
-  const { products, loading, error, totalPages } = useProducts({
+  const { products, loading, error, totalPages, totalCount } = useProducts({
     shopCategory: section?.id,
     page,
-    limitCount: 12,
+    limitCount: PAGE_SIZE,
     status: "ACTIVE",
   });
 
@@ -81,6 +82,8 @@ export default function LojaCategoryPage() {
             page={page}
             totalPages={totalPages}
             onPageChange={setPage}
+            totalCount={totalCount}
+            limitCount={PAGE_SIZE}
           />
         )}
       </VStack>

@@ -3,11 +3,13 @@
 import { Box, Flex, Image } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { DrawerNav, type NavItem, NavMenu } from "storybook-react";
+import { DrawerNav, type NavItem } from "storybook-react";
+import { useScrollDirection } from "@/app/hooks/use-scroll-direction";
 import { useSections } from "@/app/hooks/use-sections";
 import { useCart } from "../../hooks/use-cart";
 import { CartDrawer } from "../cart/cart-drawer";
 import { CartIcon } from "../cart/cart-icon";
+import { DesktopNav } from "./desktop-nav";
 
 interface ProductPageHeaderProps {
   logoSrc: string;
@@ -67,6 +69,7 @@ function usePublicHeaderNavItems(): NavItem[] {
 
 export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
   const navItems = usePublicHeaderNavItems();
+  const hidden = useScrollDirection();
 
   const {
     isOpen,
@@ -88,10 +91,30 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
 
   const logoLink = <HeaderLogoLink logoSrc={logoSrc} />;
 
+  /**
+   * Aplicado diretamente em cada elemento position:fixed (nunca num
+   * ancestral comum) — um `transform` num ancestral vira o *containing
+   * block* dos descendentes fixed, prendendo o dropdown do Shop e o
+   * overlay/drawer mobile (do pacote externo) dentro de um contexto de
+   * empilhamento local em vez de escaparem para o topo da página.
+   */
+  const hideOnScrollCss = {
+    transform: hidden ? "translateY(-100%)" : "translateY(0)",
+    transition: "transform 0.3s ease",
+    willChange: "transform",
+  };
+
   return (
     <>
       <Box>
-        <Box position="fixed" top={0} left={0} right={0} zIndex={1000}>
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          zIndex={1000}
+          css={hideOnScrollCss}
+        >
           <Box
             position="relative"
             w="100%"
@@ -104,46 +127,6 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
               },
             }}
           >
-            <Box
-              aria-hidden
-              position="absolute"
-              top={0}
-              left={0}
-              right={0}
-              h={{ base: "50px", md: "60px" }}
-              zIndex={0}
-              pointerEvents="none"
-              borderBottomLeftRadius="24px"
-              borderBottomRightRadius="24px"
-              overflow="hidden"
-              bg="transparent"
-              css={{
-                "&::before": {
-                  content: '""',
-                  position: "absolute",
-                  top: "-60%",
-                  left: "-15%",
-                  width: "min(70vw, 520px)",
-                  height: "220%",
-                  background:
-                    "radial-gradient(ellipse 70% 50% at 50% 50%, rgba(89, 50, 230, 0.45) 0%, rgba(89, 50, 230, 0.08) 45%, transparent 72%)",
-                  filter: "blur(32px)",
-                  opacity: 0.85,
-                },
-                "&::after": {
-                  content: '""',
-                  position: "absolute",
-                  top: "-50%",
-                  right: "-20%",
-                  width: "min(55vw, 420px)",
-                  height: "200%",
-                  background:
-                    "radial-gradient(ellipse 65% 55% at 50% 50%, rgba(224, 50, 230, 0.28) 0%, rgba(134, 50, 230, 0.1) 40%, transparent 70%)",
-                  filter: "blur(28px)",
-                  opacity: 0.9,
-                },
-              }}
-            />
             <Box
               aria-hidden
               position="absolute"
@@ -175,17 +158,28 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
               boxSizing="border-box"
               bg="transparent"
               css={{
-                "& nav ul[data-dropdown-open]": {
-                  zIndex: 60,
+                "& .public-header-mobile-nav > button svg": {
+                  color: "#1a202c !important",
                 },
-                "& nav ul[data-dropdown-open='true']": {
-                  backgroundColor: "#ffffff",
-                  borderRadius: "14px",
-                  border: "1px solid #e2e8f0",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.12)",
-                  backdropFilter: "none",
-                  WebkitBackdropFilter: "none",
+                "& .public-header-mobile-nav > button:hover, & .public-header-mobile-nav > button:focus":
+                  {
+                    backgroundColor: "rgba(0, 0, 0, 0.06) !important",
+                  },
+                "& .public-header-mobile-nav > button:hover svg, & .public-header-mobile-nav > button:focus svg":
+                  {
+                    color: "#1a202c !important",
+                  },
+                "& .public-header-mobile-nav > div:nth-of-type(2) li": {
+                  color: "#1a202c !important",
                 },
+                "& .public-header-mobile-nav > div:nth-of-type(2) li:hover": {
+                  color: "#1a202c !important",
+                  backgroundColor: "rgba(0, 0, 0, 0.04) !important",
+                },
+                "& .public-header-mobile-nav > div:nth-of-type(2) button:hover svg, & .public-header-mobile-nav > div:nth-of-type(2) button:focus svg":
+                  {
+                    color: "#1a202c !important",
+                  },
                 "& .public-header-mobile-nav > div:nth-of-type(2)": {
                   backdropFilter: "blur(var(--header-blur))",
                   WebkitBackdropFilter: "blur(var(--header-blur))",
@@ -236,7 +230,7 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
                   <HeaderLogoLink logoSrc={logoSrc} />
                 </Box>
                 <Box flex="1" display="flex" justifyContent="center" minW={0}>
-                  <NavMenu items={navItems} />
+                  <DesktopNav items={navItems} />
                 </Box>
               </Flex>
             </Flex>
@@ -252,6 +246,7 @@ export function ProductPageHeader({ logoSrc }: ProductPageHeaderProps) {
           align="center"
           zIndex="1050"
           pointerEvents="none"
+          css={hideOnScrollCss}
         >
           <Box pointerEvents="auto">
             <CartIcon itemCount={itemCount} onClick={openCart} size="md" />

@@ -1,10 +1,8 @@
 import { VStack } from "@chakra-ui/react";
 import {
+  AboutAccordion,
   AboutCta,
-  AboutDivider,
   AboutHero,
-  AboutPillars,
-  AboutValuesGrid,
 } from "@/app/components/public/about";
 import { ShopPageShell } from "@/app/components/public/shop";
 
@@ -13,9 +11,7 @@ export default function Sobre() {
     <ShopPageShell containerMaxW="1100px">
       <VStack align="stretch" gap={{ base: 16, md: 20 }} w="full">
         <AboutHero />
-        <AboutPillars />
-        <AboutDivider />
-        <AboutValuesGrid />
+        <AboutAccordion />
         <AboutCta />
       </VStack>
     </ShopPageShell>

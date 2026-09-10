@@ -1,6 +1,6 @@
-import { Box, Button, HStack, SimpleGrid, Text } from "@chakra-ui/react";
-import { IoChevronBack, IoChevronForward } from "react-icons/io5";
+import { Box, SimpleGrid } from "@chakra-ui/react";
 import type { SerializedProduct } from "@/core/schemas/product.schema";
+import { Pagination } from "./pagination";
 import { ProductCard } from "./product-card";
 
 interface ProductGridProps {
@@ -13,6 +13,8 @@ interface ProductGridProps {
   page?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
+  totalCount?: number;
+  limitCount?: number;
 }
 
 export const ProductGrid = ({
@@ -21,6 +23,8 @@ export const ProductGrid = ({
   page,
   totalPages,
   onPageChange,
+  totalCount,
+  limitCount,
 }: ProductGridProps) => {
   return (
     <Box
@@ -43,29 +47,13 @@ export const ProductGrid = ({
       </SimpleGrid>
 
       {totalPages && totalPages > 1 && page && onPageChange && (
-        <HStack justify="center" mt={12} gap={4}>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === 1}
-            onClick={() => onPageChange(Math.max(1, page - 1))}
-          >
-            <IoChevronBack /> Anterior
-          </Button>
-
-          <Text fontSize="sm" fontWeight="medium">
-            Página {page} de {totalPages}
-          </Text>
-
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === totalPages}
-            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-          >
-            Próxima <IoChevronForward />
-          </Button>
-        </HStack>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          totalCount={totalCount}
+          pageSize={limitCount}
+        />
       )}
     </Box>
   );
