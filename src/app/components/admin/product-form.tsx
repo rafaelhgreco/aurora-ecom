@@ -37,6 +37,7 @@ import { Alert } from "@/components/ui/alert";
 import { toaster } from "@/components/ui/toaster";
 import {
   type CreateProductInput,
+  DRAFT_PLACEHOLDER_IMAGE_URL,
   inferSizePresetFromSizes,
   PRODUCT_SIZES_CLOTHING,
   PRODUCT_SIZES_VOLUME,
@@ -49,15 +50,21 @@ import {
   type SizePresetKind,
   type UpdateProductInput,
 } from "@/core/schemas/product.schema";
-import { uploadMultipleFiles } from "@/infrastructure/lib/cloudinary.service";
+import {
+  deleteCloudinaryImages,
+  UploadBatchError,
+  uploadMultipleFiles,
+} from "@/infrastructure/lib/cloudinary.service";
 import type { ActionResult } from "@/shared/action-result";
 import { buildVariantStockBySize } from "@/shared/admin-product-stock";
 import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
+import { SINGLE_COLOR_LABEL } from "@/shared/product-color-utils";
 import { slugify } from "@/shared/slugify";
 import { ProductBasicDataCard } from "./product-form/product-basic-data-card";
 import { ProductColorVariantsCard } from "./product-form/product-color-variants-card";
 import { ProductPriceStockCard } from "./product-form/product-price-stock-card";
 import { ProductSizesCard } from "./product-form/product-sizes-card";
+import { ProductTypeCard } from "./product-form/product-type-card";
 import {
   type ColorEditRow,
   useColorVariantRows,
@@ -65,6 +72,16 @@ import {
 
 /** Referência estável: evita `|| []` novo a cada render (loop em useEffect). */
 const EMPTY_SIZES: ProductSize[] = [];
+
+/** Campos de erro do server action que existem como input no formulário (viram `setError`). */
+const FORM_FIELD_NAMES = new Set([
+  "slug",
+  "title",
+  "price",
+  "description",
+  "category",
+  "stock",
+]);
 
 function createFormDefaults(): ProductFormValues {
   return {
@@ -131,18 +148,19 @@ function buildColorRowsFromProduct(product?: Product): ColorEditRow[] {
     return product.colorVariants.map((v, i) => ({
       id: String(i),
       color: v.color,
-      existingUrls: [...v.images],
+      existingUrls: v.images.filter((u) => u !== DRAFT_PLACEHOLDER_IMAGE_URL),
       files: [],
       previews: [],
       stockBySize: { ...(v.stockBySize ?? {}) },
     }));
   }
-  const urls =
+  const urls = (
     product.images?.length > 0
       ? [...product.images]
       : product.imageUrl
         ? [product.imageUrl]
-        : [];
+        : []
+  ).filter((u) => u !== DRAFT_PLACEHOLDER_IMAGE_URL);
   const sizes = product.sizes ?? [];
   const sb = product.stockBySize ?? {};
   const stockBySize: Partial<Record<ProductSize, number>> = {};
@@ -159,6 +177,25 @@ function buildColorRowsFromProduct(product?: Product): ColorEditRow[] {
       stockBySize,
     },
   ];
+}
+
+/** Ao desligar "tem variação de COR", junta todas as linhas de cor em uma só
+ *  (soma fotos e estoque por tamanho) — nada é descartado. */
+function mergeColorRowsForSingleColor(rows: ColorEditRow[]): ColorEditRow {
+  const stockBySize: Partial<Record<ProductSize, number>> = {};
+  for (const row of rows) {
+    for (const [size, qty] of Object.entries(row.stockBySize)) {
+      stockBySize[size] = (stockBySize[size] ?? 0) + (qty ?? 0);
+    }
+  }
+  return {
+    id: rows[0]?.id ?? "0",
+    color: SINGLE_COLOR_LABEL,
+    existingUrls: rows.flatMap((r) => r.existingUrls),
+    files: rows.flatMap((r) => r.files),
+    previews: rows.flatMap((r) => r.previews),
+    stockBySize,
+  };
 }
 
 interface ProductFormProps {
@@ -183,6 +220,17 @@ export function ProductForm({ product }: ProductFormProps) {
     inferSizePresetFromSizes(product?.sizes ?? []),
   );
   const [customSizeDraft, setCustomSizeDraft] = useState("");
+
+  /** Inferidos a partir dos dados (não persistidos) — mesmo princípio de
+   *  `inferSizePresetFromSizes`. Produto novo assume o comportamento atual
+   *  (cor e tamanho ligados); só produtos existentes sem variação começam
+   *  desligados. */
+  const [hasColorVariation, setHasColorVariation] = useState(
+    () => !product || (product.colorVariants?.length ?? 0) > 1,
+  );
+  const [hasSizeVariation, setHasSizeVariation] = useState(
+    () => !product || (product.sizes?.length ?? 0) > 0,
+  );
 
   const defaults = useMemo(
     () => (product ? productToFormDefaults(product) : createFormDefaults()),
@@ -235,7 +283,9 @@ export function ProductForm({ product }: ProductFormProps) {
     addRowImageFiles,
     removeExistingUrl,
     removeNewFile,
-    adjustRowStock,
+    setRowStock,
+    removedExistingUrls,
+    clearRemovedUrls,
   } = useColorVariantRows({
     initialRows: buildColorRowsFromProduct(product),
     selectedSizes,
@@ -254,6 +304,8 @@ export function ProductForm({ product }: ProductFormProps) {
     reset(defaults);
     resetRows(buildColorRowsFromProduct(product));
     setSizePreset(inferSizePresetFromSizes(product?.sizes ?? []));
+    setHasColorVariation(!product || (product.colorVariants?.length ?? 0) > 1);
+    setHasSizeVariation(!product || (product.sizes?.length ?? 0) > 0);
     slugTouchedRef.current = false;
   }, [product, defaults, reset, resetRows]);
 
@@ -302,6 +354,26 @@ export function ProductForm({ product }: ProductFormProps) {
     );
   };
 
+  const handleHasSizeVariationChange = (value: boolean) => {
+    setHasSizeVariation(value);
+    if (!value) {
+      setValue("sizes", []);
+      setCustomSizeDraft("");
+    }
+  };
+
+  const handleHasColorVariationChange = (value: boolean) => {
+    setHasColorVariation(value);
+    if (!value) {
+      resetRows([mergeColorRowsForSingleColor(colorRows)]);
+    } else if (
+      colorRows.length === 1 &&
+      colorRows[0].color === SINGLE_COLOR_LABEL
+    ) {
+      setRowColor(0, "");
+    }
+  };
+
   const uploadNewFilesBatch = async (files: File[]): Promise<string[]> => {
     if (files.length === 0) return [];
     setIsUploading(true);
@@ -328,7 +400,7 @@ export function ProductForm({ product }: ProductFormProps) {
     setSubmitStatus(null);
 
     for (const row of colorRows) {
-      if (!row.color.trim()) {
+      if (hasColorVariation && !row.color.trim()) {
         setSubmitStatus({
           type: "error",
           message: "Preencha o nome de cada cor.",
@@ -338,7 +410,9 @@ export function ProductForm({ product }: ProductFormProps) {
       if (row.existingUrls.length + row.files.length === 0) {
         setSubmitStatus({
           type: "error",
-          message: `A cor "${row.color.trim()}" precisa de pelo menos uma foto.`,
+          message: hasColorVariation
+            ? `A cor "${row.color.trim()}" precisa de pelo menos uma foto.`
+            : "Adicione pelo menos uma foto do produto.",
         });
         return;
       }
@@ -427,6 +501,12 @@ export function ProductForm({ product }: ProductFormProps) {
       }
 
       if (result.success) {
+        if (removedExistingUrls.length > 0) {
+          // Não bloqueia: o produto já foi salvo, apagar as imagens órfãs é
+          // best-effort (ver deleteCloudinaryImages).
+          void deleteCloudinaryImages(removedExistingUrls);
+        }
+        clearRemovedUrls();
         toaster.create({
           title: !product
             ? "Produto cadastrado"
@@ -439,30 +519,58 @@ export function ProductForm({ product }: ProductFormProps) {
               ? "O produto foi publicado e está visível na loja."
               : "As alterações foram salvas com sucesso.",
           type: "success",
-          duration: 4000,
         });
-        router.push("/admin");
-        router.refresh();
-      } else {
-        const slugError = result.details?.find((d) => d.field === "slug");
-        if (slugError) {
-          setError("slug", { message: slugError.message });
+        if (!product) {
+          // Cadastro contínuo (item 5): fica no formulário em vez de voltar
+          // para /admin, para cadastrar o próximo produto sem navegar.
+          reset(createFormDefaults());
+          resetRows(buildColorRowsFromProduct(undefined));
+          setSizePreset(inferSizePresetFromSizes([]));
+          setCustomSizeDraft("");
+          setUploadProgress({});
+          setHasColorVariation(true);
+          setHasSizeVariation(true);
+          slugTouchedRef.current = false;
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          router.refresh();
+        } else {
+          router.push("/admin");
+          router.refresh();
         }
+      } else {
+        const otherMessages: string[] = [];
+        for (const detail of result.details ?? []) {
+          if (FORM_FIELD_NAMES.has(detail.field)) {
+            setError(detail.field as keyof ProductFormInput, {
+              message: detail.message,
+            });
+          } else if (/images/.test(detail.field)) {
+            otherMessages.push(`Falha na imagem: ${detail.message}`);
+          } else {
+            otherMessages.push(detail.message);
+          }
+        }
+        const baseMessage =
+          result.error ||
+          (!product
+            ? "Erro ao cadastrar produto"
+            : product.status === "DRAFT"
+              ? "Erro ao publicar produto"
+              : "Erro ao atualizar produto");
         setSubmitStatus({
           type: "error",
-          message:
-            result.error ||
-            (!product
-              ? "Erro ao cadastrar produto"
-              : product.status === "DRAFT"
-                ? "Erro ao publicar produto"
-                : "Erro ao atualizar produto"),
+          message: [baseMessage, ...otherMessages].join(" "),
         });
       }
-    } catch {
+    } catch (error) {
       setSubmitStatus({
         type: "error",
-        message: ADMIN_GENERIC,
+        message:
+          error instanceof UploadBatchError
+            ? `Falha ao enviar ${error.failedFileNames.length} de ${
+                error.failedFileNames.length + error.successes.length
+              } fotos: ${error.failedFileNames.join(", ")}`
+            : ADMIN_GENERIC,
       });
     } finally {
       setIsSubmitting(false);
@@ -508,9 +616,32 @@ export function ProductForm({ product }: ProductFormProps) {
         <form noValidate onSubmit={handleSubmit(onSubmit)}>
           {isEdit && <Input type="hidden" {...register("id")} />}
           <VStack gap={6} align="stretch">
+            <ProductTypeCard
+              hasColorVariation={hasColorVariation}
+              onHasColorVariationChange={handleHasColorVariationChange}
+              hasSizeVariation={hasSizeVariation}
+              onHasSizeVariationChange={handleHasSizeVariationChange}
+            />
+
+            {hasSizeVariation && (
+              <ProductSizesCard
+                sizePreset={sizePreset}
+                applySizePreset={applySizePreset}
+                presetOptions={presetOptions}
+                selectedSizes={selectedSizes}
+                handleToggleSize={handleToggleSize}
+                customSizeDraft={customSizeDraft}
+                setCustomSizeDraft={setCustomSizeDraft}
+                handleAddCustomSize={handleAddCustomSize}
+                handleRemoveCustomSize={handleRemoveCustomSize}
+                errors={errors}
+              />
+            )}
+
             <ProductColorVariantsCard
               colorRows={colorRows}
               selectedSizes={selectedSizes}
+              hasColorVariation={hasColorVariation}
               isUploading={isUploading}
               uploadProgress={uploadProgress}
               addColorRow={addColorRow}
@@ -519,7 +650,7 @@ export function ProductForm({ product }: ProductFormProps) {
               addRowImageFiles={addRowImageFiles}
               removeExistingUrl={removeExistingUrl}
               removeNewFile={removeNewFile}
-              adjustRowStock={adjustRowStock}
+              setRowStock={setRowStock}
             />
 
             <ProductBasicDataCard
@@ -547,19 +678,6 @@ export function ProductForm({ product }: ProductFormProps) {
               register={register}
               errors={errors}
               selectedSizesLength={selectedSizes.length}
-            />
-
-            <ProductSizesCard
-              sizePreset={sizePreset}
-              applySizePreset={applySizePreset}
-              presetOptions={presetOptions}
-              selectedSizes={selectedSizes}
-              handleToggleSize={handleToggleSize}
-              customSizeDraft={customSizeDraft}
-              setCustomSizeDraft={setCustomSizeDraft}
-              handleAddCustomSize={handleAddCustomSize}
-              handleRemoveCustomSize={handleRemoveCustomSize}
-              errors={errors}
             />
 
             <Stack

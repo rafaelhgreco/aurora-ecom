@@ -34,6 +34,15 @@ function ProductDetailView({
 }) {
   const router = useRouter();
 
+  /** Sem histórico de navegação (acesso direto por link compartilhado), o
+   *  `router.back()` sairia do site — volta para a loja nesse caso. O App
+   *  Router marca a primeira entrada da sessão com `idx: 0` no history state. */
+  const [canGoBack, setCanGoBack] = useState(false);
+  useEffect(() => {
+    const historyIdx = (window.history.state as { idx?: number } | null)?.idx;
+    setCanGoBack((historyIdx ?? 0) > 0);
+  }, []);
+
   const productImagesFallback =
     product.images?.length > 0
       ? product.images
@@ -99,7 +108,7 @@ function ProductDetailView({
           <Container maxW="1200px" mt="8" p={{ base: "0", md: "4" }}>
             <Button
               variant="ghost"
-              onClick={() => router.back()}
+              onClick={() => (canGoBack ? router.back() : router.push("/loja"))}
               size="sm"
               mb="6"
             >

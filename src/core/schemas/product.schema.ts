@@ -9,6 +9,22 @@ export const DRAFT_PLACEHOLDER_DESCRIPTION =
   "Produto ainda não descrito. Preencha os detalhes para publicar.";
 
 /**
+ * URL de imagem de produto: aceita URL absoluta (Cloudinary) ou o placeholder
+ * relativo usado em rascunhos criados pelo scanner de código de barras
+ * (`DRAFT_PLACEHOLDER_IMAGE_URL`). Sem isso, um draft nunca sai do banco
+ * validado — `z.string().url()` sozinho rejeita o caminho relativo do
+ * placeholder assim que o produto é editado/publicado.
+ */
+export const productImageUrlSchema = z
+  .string()
+  .refine(
+    (v) =>
+      v === DRAFT_PLACEHOLDER_IMAGE_URL ||
+      z.string().url().safeParse(v).success,
+    "URL da imagem inválida",
+  );
+
+/**
  * Presets de variação (cadastro admin escolhe um tipo; também há modo personalizado).
  */
 export const PRODUCT_SIZES_CLOTHING = [
@@ -58,7 +74,7 @@ const stockBySizeRecordSchema = z.record(
 export const productColorVariantSchema = z.object({
   color: z.string().min(1).max(40).trim(),
   images: z
-    .array(z.string().url("URL da imagem inválida"))
+    .array(productImageUrlSchema)
     .min(1, "Cada cor precisa de pelo menos uma imagem")
     .max(10),
   /** Estoque por tamanho só desta cor (fonte de verdade quando `colorVariants` existe). */
@@ -170,13 +186,10 @@ const productObjectSchema = z.object({
     .finite("Preço deve ser um número válido")
     .multipleOf(0.01, "Preço deve ter no máximo 2 casas decimais"),
 
-  imageUrl: z
-    .string({ message: "Imagem principal é obrigatória" })
-    .url("URL da imagem inválida")
-    .min(1, "URL da imagem é obrigatória"),
+  imageUrl: productImageUrlSchema,
 
   images: z
-    .array(z.string().url("URL da imagem inválida"))
+    .array(productImageUrlSchema)
     .min(1, "Produto deve ter pelo menos uma imagem")
     .max(10, "Produto pode ter no máximo 10 imagens")
     .default([]),

@@ -7,6 +7,13 @@ type ProductLike = {
 };
 
 /**
+ * Rótulo usado quando um produto não tem variação de cor (uma única galeria
+ * de fotos). Compartilhado entre a leitura legada (`getEffectiveColorVariants`)
+ * e o cadastro admin (toggle "tem variação de COR" desligado).
+ */
+export const SINGLE_COLOR_LABEL = "Único";
+
+/**
  * Lista de cores com fotos: usa `colorVariants` ou um único bloco legado (`images`/`imageUrl`).
  */
 export function getEffectiveColorVariants(
@@ -22,7 +29,7 @@ export function getEffectiveColorVariants(
         ? [product.imageUrl]
         : [];
   if (imgs.length === 0) return [];
-  return [{ color: "Único", images: imgs }];
+  return [{ color: SINGLE_COLOR_LABEL, images: imgs }];
 }
 
 export function getImagesForColor(

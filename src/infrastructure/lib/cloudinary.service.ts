@@ -4,6 +4,7 @@
  * Serviço para upload de arquivos no Cloudinary
  */
 
+import { extractCloudinaryPublicId } from "@/shared/cloudinary-public-id";
 import { UPLOAD_GENERIC } from "@/shared/errors/client-error-messages";
 
 export interface UploadProgress {
@@ -103,20 +104,100 @@ export async function uploadFile(
 }
 
 /**
- * Faz upload de múltiplos arquivos
+ * Erro de lote: alguns arquivos falharam no upload. Carrega os nomes dos que
+ * falharam (para uma mensagem específica ao usuário) e os que tiveram sucesso
+ * (caso o chamador queira reaproveitá-los em vez de reenviar tudo).
+ */
+export class UploadBatchError extends Error {
+  constructor(
+    public readonly failedFileNames: string[],
+    public readonly successes: UploadResult[],
+  ) {
+    super(
+      `Falha ao enviar ${failedFileNames.length} arquivo(s): ${failedFileNames.join(", ")}`,
+    );
+    this.name = "UploadBatchError";
+  }
+}
+
+/**
+ * Faz upload de múltiplos arquivos.
+ *
+ * Usa `allSettled` (em vez de `Promise.all`) para que uma falha isolada não
+ * derrube o lote inteiro sem diagnóstico: em caso de falha parcial, lança
+ * `UploadBatchError` nomeando os arquivos problemáticos.
  */
 export async function uploadMultipleFiles(
   files: File[],
   folder: string,
   onProgress?: (fileIndex: number, progress: UploadProgress) => void,
 ): Promise<UploadResult[]> {
-  const uploadPromises = files.map((file, index) =>
-    uploadFile(file, folder, (progress) => {
-      if (onProgress) {
-        onProgress(index, progress);
+  const settled = await Promise.allSettled(
+    files.map((file, index) =>
+      uploadFile(file, folder, (progress) => {
+        if (onProgress) {
+          onProgress(index, progress);
+        }
+      }),
+    ),
+  );
+
+  const failedFileNames = settled
+    .map((result, index) =>
+      result.status === "rejected" ? files[index].name : null,
+    )
+    .filter((name): name is string => name !== null);
+
+  if (failedFileNames.length > 0) {
+    const successes = settled
+      .filter(
+        (result): result is PromiseFulfilledResult<UploadResult> =>
+          result.status === "fulfilled",
+      )
+      .map((result) => result.value);
+    throw new UploadBatchError(failedFileNames, successes);
+  }
+
+  return settled.map(
+    (result) => (result as PromiseFulfilledResult<UploadResult>).value,
+  );
+}
+
+/**
+ * Apaga imagens do Cloudinary a partir das `secure_url`s salvas no produto.
+ * Chamada só depois do produto já ter sido salvo com sucesso — nunca deve
+ * bloquear nem falhar o fluxo do admin; problemas aqui só vão para o console
+ * (a pior consequência é a imagem ficar órfã no Cloudinary, não perda de dados).
+ */
+export async function deleteCloudinaryImages(urls: string[]): Promise<void> {
+  const publicIds = urls
+    .map((url) => extractCloudinaryPublicId(url))
+    .filter((id): id is string => id !== null);
+
+  await Promise.allSettled(
+    publicIds.map(async (publicId) => {
+      try {
+        const res = await fetch("/api/cloudinary/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ publicId }),
+        });
+        if (!res.ok) {
+          // biome-ignore lint/suspicious/noConsole: sem serviço de log no cliente; falha aqui é silenciosa para o admin (best-effort, ver doc da função)
+          console.error(
+            "Falha ao apagar imagem órfã do Cloudinary",
+            publicId,
+            res.status,
+          );
+        }
+      } catch (error) {
+        // biome-ignore lint/suspicious/noConsole: sem serviço de log no cliente; falha aqui é silenciosa para o admin (best-effort, ver doc da função)
+        console.error(
+          "Falha ao apagar imagem órfã do Cloudinary",
+          publicId,
+          error,
+        );
       }
     }),
   );
-
-  return Promise.all(uploadPromises);
 }

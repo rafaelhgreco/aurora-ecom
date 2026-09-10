@@ -10,7 +10,7 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle, FiShoppingCart } from "react-icons/fi";
-import { calculateInstallment, formatPrice } from "@/app/utils/price-formatter";
+import { formatPrice } from "@/app/utils/price-formatter";
 import { toaster } from "@/components/ui/toaster";
 import type { ProductSize } from "@/core/entities";
 import type { ProductColorVariant } from "@/core/schemas/product.schema";
@@ -106,7 +106,6 @@ export const ProductInfo = ({
   }, [effectiveStock, quantity]);
 
   const formattedPrice = formatPrice(price);
-  const formattedInstallment = calculateInstallment(price, 6);
 
   /**
    * Valida se pode finalizar a compra
@@ -249,9 +248,6 @@ export const ProductInfo = ({
             {formattedPrice}
           </Text>
         </HStack>
-        <Text fontSize="sm" color="gray.600">
-          ou em até 6x de {formattedInstallment}
-        </Text>
       </Box>
 
       <Box w="full">
@@ -274,18 +270,20 @@ export const ProductInfo = ({
         />
       )}
 
-      <Box w="full">
-        <Text fontWeight="semibold" mb="3" textTransform="uppercase">
-          Tamanho
-        </Text>
-        <ProductSizeSelector
-          sizes={sizes}
-          selectedSize={selectedSize}
-          onSizeChange={handleSizeChange}
-          availableSizes={availableSizes}
-          disabled={isProductUnavailable}
-        />
-      </Box>
+      {sizes.length > 0 && (
+        <Box w="full">
+          <Text fontWeight="semibold" mb="3" textTransform="uppercase">
+            Tamanho
+          </Text>
+          <ProductSizeSelector
+            sizes={sizes}
+            selectedSize={selectedSize}
+            onSizeChange={handleSizeChange}
+            availableSizes={availableSizes}
+            disabled={isProductUnavailable}
+          />
+        </Box>
+      )}
 
       {!isProductUnavailable && (
         <Box w="full">

@@ -17,14 +17,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useId, useState } from "react";
-import {
-  IoAdd,
-  IoAddOutline,
-  IoCamera,
-  IoClose,
-  IoCloudUpload,
-  IoRemoveOutline,
-} from "react-icons/io5";
+import { IoAdd, IoCamera, IoClose, IoCloudUpload } from "react-icons/io5";
 import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import type { ProductSize } from "@/core/schemas/product.schema";
 import { CameraPhotoCapture } from "../camera-photo-capture";
@@ -37,6 +30,9 @@ import {
 interface ProductColorVariantsCardProps {
   colorRows: ColorEditRow[];
   selectedSizes: ProductSize[];
+  /** Quando falso, esconde nome/remoção/adição de cor — o card vira uma
+   *  galeria de fotos única (ver item 7: produto sem variação de cor). */
+  hasColorVariation: boolean;
   isUploading: boolean;
   uploadProgress: Record<number, number>;
   addColorRow: () => void;
@@ -45,12 +41,13 @@ interface ProductColorVariantsCardProps {
   addRowImageFiles: (rowIndex: number, files: File[]) => void;
   removeExistingUrl: (rowIndex: number, imageIndex: number) => void;
   removeNewFile: (rowIndex: number, imageIndex: number) => void;
-  adjustRowStock: (rowIndex: number, size: ProductSize, delta: number) => void;
+  setRowStock: (rowIndex: number, size: ProductSize, quantity: number) => void;
 }
 
 export function ProductColorVariantsCard({
   colorRows,
   selectedSizes,
+  hasColorVariation,
   isUploading,
   uploadProgress,
   addColorRow,
@@ -59,7 +56,7 @@ export function ProductColorVariantsCard({
   addRowImageFiles,
   removeExistingUrl,
   removeNewFile,
-  adjustRowStock,
+  setRowStock,
 }: ProductColorVariantsCardProps) {
   const colorFileInputId = useId();
   const [cameraCaptureRowIndex, setCameraCaptureRowIndex] = useState<
@@ -77,12 +74,13 @@ export function ProductColorVariantsCard({
   return (
     <Card.Root>
       <Card.Header>
-        <Heading size="lg">Cores e fotos</Heading>
+        <Heading size="lg">
+          {hasColorVariation ? "Cores e fotos" : "Fotos do produto"}
+        </Heading>
         <Text color="gray.600" fontSize="sm">
-          Cada cor tem nome e fotos próprias. A primeira foto de cada cor é a
-          capa dessa variante. Com tamanhos selecionados em
-          &quot;Tamanhos&quot;, informe o estoque por tamanho em cada bloco de
-          cor.
+          {hasColorVariation
+            ? 'Cada cor tem nome e fotos próprias. A primeira foto de cada cor é a capa dessa variante. Com tamanhos selecionados em "Tamanhos", informe o estoque por tamanho em cada bloco de cor.'
+            : 'A primeira foto é a capa do produto. Com tamanhos selecionados em "Tamanhos", informe o estoque por tamanho abaixo.'}
         </Text>
       </Card.Header>
       <Card.Body>
@@ -95,38 +93,40 @@ export function ProductColorVariantsCard({
               borderRadius="md"
               borderColor="gray.200"
             >
-              <Flex
-                direction={{ base: "column", sm: "row" }}
-                justify="space-between"
-                align={{ base: "stretch", sm: "flex-end" }}
-                gap={3}
-                mb={4}
-              >
-                <Box flex={1}>
-                  <Text fontWeight="medium" mb={1} fontSize="sm">
-                    Nome da cor
-                  </Text>
-                  <Input
-                    value={row.color}
-                    onChange={(e) => setRowColor(rowIndex, e.target.value)}
-                    placeholder="Ex.: Branco, Preto"
-                    size="md"
-                  />
-                </Box>
-                {colorRows.length > 1 && (
-                  <Button
-                    type="button"
-                    size="md"
-                    variant="outline"
-                    colorScheme="red"
-                    width={{ base: "full", sm: "auto" }}
-                    flexShrink={0}
-                    onClick={() => removeColorRow(rowIndex)}
-                  >
-                    Remover cor
-                  </Button>
-                )}
-              </Flex>
+              {hasColorVariation && (
+                <Flex
+                  direction={{ base: "column", sm: "row" }}
+                  justify="space-between"
+                  align={{ base: "stretch", sm: "flex-end" }}
+                  gap={3}
+                  mb={4}
+                >
+                  <Box flex={1}>
+                    <Text fontWeight="medium" mb={1} fontSize="sm">
+                      Nome da cor
+                    </Text>
+                    <Input
+                      value={row.color}
+                      onChange={(e) => setRowColor(rowIndex, e.target.value)}
+                      placeholder="Ex.: Branco, Preto"
+                      size="md"
+                    />
+                  </Box>
+                  {colorRows.length > 1 && (
+                    <Button
+                      type="button"
+                      size="md"
+                      variant="outline"
+                      colorScheme="red"
+                      width={{ base: "full", sm: "auto" }}
+                      flexShrink={0}
+                      onClick={() => removeColorRow(rowIndex)}
+                    >
+                      Remover cor
+                    </Button>
+                  )}
+                </Flex>
+              )}
 
               <Stack direction={{ base: "column", sm: "row" }} gap={2}>
                 <Input
@@ -144,6 +144,7 @@ export function ProductColorVariantsCard({
                   <Button
                     as="span"
                     size="md"
+                    minH="48px"
                     colorScheme="blue"
                     variant="outline"
                     width="full"
@@ -166,9 +167,10 @@ export function ProductColorVariantsCard({
                 </label>
 
                 <Button
-                  size="md"
+                  size="lg"
+                  minH="56px"
                   colorScheme="green"
-                  variant="outline"
+                  variant="solid"
                   flex={1}
                   width="full"
                   disabled={
@@ -177,10 +179,11 @@ export function ProductColorVariantsCard({
                   }
                   type="button"
                   onClick={() => setCameraCaptureRowIndex(rowIndex)}
+                  _active={{ transform: "scale(0.98)" }}
                 >
                   <HStack gap={2} justify="center">
-                    <IoCamera />
-                    <Text>Tirar foto</Text>
+                    <IoCamera size={22} />
+                    <Text fontSize="md">Tirar foto</Text>
                   </HStack>
                 </Button>
               </Stack>
@@ -304,27 +307,26 @@ export function ProductColorVariantsCard({
                         <Text fontWeight="semibold" minW="2rem">
                           {size}
                         </Text>
-                        <IconButton
-                          aria-label={`Menos ${size}`}
+                        <Input
+                          aria-label={`Quantidade em estoque para ${size}`}
+                          type="text"
+                          inputMode="numeric"
                           size="sm"
-                          variant="outline"
-                          type="button"
-                          onClick={() => adjustRowStock(rowIndex, size, -1)}
-                        >
-                          <IoRemoveOutline />
-                        </IconButton>
-                        <Text minW="2rem" textAlign="center">
-                          {row.stockBySize[size] ?? 0}
-                        </Text>
-                        <IconButton
-                          aria-label={`Mais ${size}`}
-                          size="sm"
-                          variant="outline"
-                          type="button"
-                          onClick={() => adjustRowStock(rowIndex, size, 1)}
-                        >
-                          <IoAddOutline />
-                        </IconButton>
+                          w="4.5rem"
+                          textAlign="center"
+                          bg="white"
+                          _dark={{ bg: "gray.900" }}
+                          value={row.stockBySize[size] ?? 0}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, "");
+                            setRowStock(
+                              rowIndex,
+                              size,
+                              digits === "" ? 0 : Number(digits),
+                            );
+                          }}
+                        />
                       </HStack>
                     ))}
                   </Flex>
@@ -333,17 +335,19 @@ export function ProductColorVariantsCard({
             </Box>
           ))}
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addColorRow}
-            disabled={colorRows.length >= MAX_COLORS || isUploading}
-          >
-            <HStack gap={2}>
-              <IoAdd />
-              <Text>Adicionar outra cor</Text>
-            </HStack>
-          </Button>
+          {hasColorVariation && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addColorRow}
+              disabled={colorRows.length >= MAX_COLORS || isUploading}
+            >
+              <HStack gap={2}>
+                <IoAdd />
+                <Text>Adicionar outra cor</Text>
+              </HStack>
+            </Button>
+          )}
         </VStack>
 
         <CameraPhotoCapture
