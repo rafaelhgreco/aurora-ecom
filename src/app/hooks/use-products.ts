@@ -10,7 +10,10 @@ import { listProductsAction } from "@/app/actions/products";
 import type { ProductFilter } from "@/core/schemas/product.schema";
 import { PUBLIC_GENERIC } from "@/shared/errors/client-error-messages";
 
-export function useProducts(filter?: ProductFilter) {
+export function useProducts(
+  filter?: ProductFilter,
+  queryKeyPrefix = "public-products",
+) {
   const limitCount = filter?.limitCount || 20;
 
   const {
@@ -19,7 +22,7 @@ export function useProducts(filter?: ProductFilter) {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: ["public-products", filter],
+    queryKey: [queryKeyPrefix, filter],
     queryFn: async () => {
       const res = await listProductsAction(filter);
       if (!res.success) {

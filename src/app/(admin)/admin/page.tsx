@@ -6,16 +6,19 @@
 
 "use client";
 
-import { Box, Button, Container, HStack, Text } from "@chakra-ui/react";
-import { useQuery } from "@tanstack/react-query";
+import { Box, Button, Container, HStack } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { IoBarcode, IoChevronBack, IoChevronForward } from "react-icons/io5";
-import { listProductsAction } from "@/app/actions/products";
+import { IoBarcode } from "react-icons/io5";
 import { DeleteConfirmDialog } from "@/app/components/admin/delete-confirm-dialog";
+import { ProductFiltersBar } from "@/app/components/admin/product-filters-bar";
 import { ProductList } from "@/app/components/admin/product-list";
 import { ProductViewDialog } from "@/app/components/admin/product-view-dialog";
+import { Pagination } from "@/app/components/shared/pagination";
+import { useAdminProducts } from "@/app/hooks/use-admin-products";
+import { useCategories } from "@/app/hooks/use-categories";
 import { useProductCRUD } from "@/app/hooks/use-product-crud";
+import { useSections } from "@/app/hooks/use-sections";
 import type { Product } from "@/app/types/product";
 import { toaster } from "@/components/ui/toaster";
 
@@ -23,27 +26,37 @@ export default function AdminProductsPage() {
   const router = useRouter();
   const { deleteProduct } = useProductCRUD();
 
+  const { sections } = useSections();
+  const { categories } = useCategories();
+
   const [page, setPage] = useState(1);
+  const [sectionId, setSectionId] = useState("");
+  const [categoryName, setCategoryName] = useState("");
   const limit = 20;
 
   const {
-    data: result,
-    isLoading,
+    products,
+    totalCount,
+    totalPages,
+    loading: isLoading,
     error: queryError,
     refetch,
-  } = useQuery({
-    queryKey: ["admin-products", page],
-    queryFn: async () => {
-      const res = await listProductsAction({ page, limitCount: limit });
-      if (!res.success)
-        throw new Error(res.error || "Erro ao carregar produtos");
-      return res.data;
-    },
+  } = useAdminProducts({
+    page,
+    limitCount: limit,
+    shopCategory: sectionId || undefined,
+    category: categoryName || undefined,
   });
 
-  const products = result?.data || [];
-  const totalCount = result?.totalCount || 0;
-  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+  const handleSectionChange = (value: string) => {
+    setSectionId(value);
+    setPage(1);
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setCategoryName(value);
+    setPage(1);
+  };
 
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
   const [deleteProductData, setDeleteProductData] = useState<Product | null>(
@@ -60,7 +73,7 @@ export default function AdminProductsPage() {
     if (queryError) {
       toaster.create({
         title: "Erro",
-        description: queryError.message || "Erro ao carregar produtos",
+        description: queryError || "Erro ao carregar produtos",
         type: "error",
         duration: 5000,
       });
@@ -119,6 +132,15 @@ export default function AdminProductsPage() {
       </HStack>
 
       <Box>
+        <ProductFiltersBar
+          sections={sections}
+          categories={categories}
+          sectionId={sectionId}
+          onSectionChange={handleSectionChange}
+          categoryName={categoryName}
+          onCategoryChange={handleCategoryChange}
+        />
+
         <ProductList
           products={products}
           isLoading={isLoading}
@@ -129,31 +151,13 @@ export default function AdminProductsPage() {
           onInventoryChange={() => refetch()}
         />
 
-        {totalPages > 1 && (
-          <HStack justify="center" mt={8} gap={4}>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page === 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              <IoChevronBack /> Anterior
-            </Button>
-
-            <Text fontSize="sm" fontWeight="medium">
-              Página {page} de {totalPages}
-            </Text>
-
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page === totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Próxima <IoChevronForward />
-            </Button>
-          </HStack>
-        )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalCount={totalCount}
+          pageSize={limit}
+        />
       </Box>
 
       <ProductViewDialog
