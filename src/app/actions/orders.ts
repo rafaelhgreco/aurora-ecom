@@ -9,9 +9,12 @@ import type {
   OrderWithStock,
 } from "@/core/schemas/order.schema";
 import type { ProductSize } from "@/core/schemas/product.schema";
+import { generateOrdersAuditXlsxBuffer } from "@/infrastructure/export/generate-orders-audit-xlsx";
 import { getAdminDb } from "@/infrastructure/lib/firebase-admin";
 import {
+  deleteAllOrders,
   getOrderById,
+  listAllOrders,
   listOrders,
   updateOrderStatus as repoUpdateStatus,
 } from "@/infrastructure/repositories/firestore-order.repository";
@@ -351,5 +354,52 @@ async function incrementStockForOrder(order: Order): Promise<void> {
         updatedAt: Timestamp.now(),
       });
     }
+  }
+}
+
+/**
+ * Gera uma planilha de auditoria com todos os pedidos e, em seguida,
+ * apaga todos os pedidos do sistema. A exportação acontece antes da
+ * exclusão e a partir do mesmo snapshot de dados: se a geração da
+ * planilha falhar, nenhum pedido é apagado.
+ */
+export async function clearAllOrdersAction(): Promise<
+  ActionResult<{ base64: string; fileName: string; deletedCount: number }>
+> {
+  const auth = await requireAdminSession();
+  if ("error" in auth) return { success: false, error: auth.error };
+
+  try {
+    const orders = await listAllOrders();
+    if (orders.length === 0) {
+      return { success: false, error: "Não há pedidos para limpar" };
+    }
+
+    const buffer = await generateOrdersAuditXlsxBuffer(orders);
+
+    const ids = orders.map((o) => o.id).filter((id): id is string => !!id);
+    const { deletedCount } = await deleteAllOrders(ids);
+
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, 19);
+    const fileName = `aurora-pedidos-backup-${timestamp}.xlsx`;
+
+    return {
+      success: true,
+      data: {
+        base64: buffer.toString("base64"),
+        fileName,
+        deletedCount,
+      },
+    };
+  } catch (error) {
+    const { message } = handleActionError(
+      "clearAllOrdersAction",
+      error,
+      "admin",
+    );
+    return { success: false, error: message };
   }
 }
