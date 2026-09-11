@@ -29,22 +29,10 @@ import {
 import { BulkImportErrors } from "@/app/components/admin/bulk-import/bulk-import-errors";
 import { BulkImportPreview } from "@/app/components/admin/bulk-import/bulk-import-preview";
 import { useBulkImport } from "@/app/hooks/use-bulk-import";
+import { downloadBase64File } from "@/app/utils/download-base64-file";
 import { Alert } from "@/components/ui/alert";
 import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
 import { toaster } from "@/components/ui/toaster";
-
-function downloadBase64File(base64: string, fileName: string) {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  const blob = new Blob([bytes], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 function downloadErrorCsv(errors: Array<{ sku_base: string; error: string }>) {
   const header = "sku_base,erro\n";
