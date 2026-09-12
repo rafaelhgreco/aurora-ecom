@@ -14,6 +14,7 @@ import {
   getEffectiveColorVariants,
   getImagesForColor,
 } from "@/shared/product-color-utils";
+import { sortSizes } from "@/shared/product-size-order";
 import {
   getAvailableSizes,
   getTotalStock,
@@ -71,6 +72,7 @@ function ProductDetailView({
   const productData = useMemo(() => {
     const fallbackColor = colorVariants[0]?.color ?? "";
     const colorForStock = selectedColor || fallbackColor;
+    const sortedSizes = sortSizes(product.sizes || []);
 
     return {
       id: product.id || slugParam,
@@ -79,8 +81,11 @@ function ProductDetailView({
       price: product.effectivePrice ?? product.price,
       originalPrice: product.originalPrice,
       description: product.description,
-      sizes: product.sizes || [],
-      availableSizes: getAvailableSizes(product, colorForStock || undefined),
+      sizes: sortedSizes,
+      availableSizes: getAvailableSizes(
+        { ...product, sizes: sortedSizes },
+        colorForStock || undefined,
+      ),
       images: productImages,
       stock: colorForStock
         ? getTotalStockForColor(product, colorForStock)
