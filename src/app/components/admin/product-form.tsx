@@ -59,6 +59,7 @@ import type { ActionResult } from "@/shared/action-result";
 import { buildVariantStockBySize } from "@/shared/admin-product-stock";
 import { ADMIN_GENERIC } from "@/shared/errors/client-error-messages";
 import { SINGLE_COLOR_LABEL } from "@/shared/product-color-utils";
+import { sortSizes } from "@/shared/product-size-order";
 import { slugify } from "@/shared/slugify";
 import { ProductBasicDataCard } from "./product-form/product-basic-data-card";
 import { ProductColorVariantsCard } from "./product-form/product-color-variants-card";
@@ -69,6 +70,13 @@ import {
   type ColorEditRow,
   useColorVariantRows,
 } from "./product-form/use-color-variant-rows";
+import {
+  clearDraft,
+  draftColorRowsToEditRows,
+  isDraftMeaningful,
+  loadDraftOnce,
+  useProductDraftAutoSave,
+} from "./product-form/use-product-draft";
 
 /** Referência estável: evita `|| []` novo a cada render (loop em useEffect). */
 const EMPTY_SIZES: ProductSize[] = [];
@@ -101,7 +109,7 @@ function createFormDefaults(): ProductFormValues {
 }
 
 function productToFormDefaults(product: Product): ProductFormValues {
-  const sizes = product.sizes ?? [];
+  const sizes = sortSizes(product.sizes ?? []);
   const hasPerColorStock = product.colorVariants?.some(
     (v) => v.stockBySize && Object.keys(v.stockBySize).length > 0,
   );
@@ -215,6 +223,7 @@ export function ProductForm({ product }: ProductFormProps) {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
 
   const [sizePreset, setSizePreset] = useState<SizePresetKind>(() =>
     inferSizePresetFromSizes(product?.sizes ?? []),
@@ -309,6 +318,57 @@ export function ProductForm({ product }: ProductFormProps) {
     slugTouchedRef.current = false;
   }, [product, defaults, reset, resetRows]);
 
+  /** Recupera rascunho salvo localmente — somente no cadastro de produto novo
+   *  (nunca em edição, para não sobrescrever dados reais com um rascunho
+   *  desatualizado). Roda depois do efeito acima para não ser sobrescrito. */
+  const draftHydratedRef = useRef(false);
+  useEffect(() => {
+    if (product || draftHydratedRef.current) return;
+    draftHydratedRef.current = true;
+    const draft = loadDraftOnce();
+    if (!draft) return;
+    if (!isDraftMeaningful(draft)) {
+      clearDraft();
+      return;
+    }
+    reset({ ...createFormDefaults(), ...draft.values });
+    resetRows(draftColorRowsToEditRows(draft.colorRows));
+    setHasColorVariation(draft.hasColorVariation);
+    setHasSizeVariation(draft.hasSizeVariation);
+    setSizePreset(draft.sizePreset);
+    setShowDraftBanner(true);
+    toaster.create({
+      title: "Rascunho recuperado",
+      description: draft.hadUnsavedLocalPhotos
+        ? "Continuamos de onde você parou. Fotos ainda não enviadas precisam ser adicionadas de novo."
+        : "Continuamos de onde você parou.",
+      type: "info",
+      duration: 6000,
+    });
+  }, [product, reset, resetRows]);
+
+  const formValuesForDraft = watch();
+  useProductDraftAutoSave({
+    enabled: !product,
+    values: formValuesForDraft,
+    colorRows,
+    hasColorVariation,
+    hasSizeVariation,
+    sizePreset,
+  });
+
+  const handleDiscardDraft = () => {
+    clearDraft();
+    reset(createFormDefaults());
+    resetRows(buildColorRowsFromProduct(undefined));
+    setSizePreset(inferSizePresetFromSizes([]));
+    setCustomSizeDraft("");
+    setHasColorVariation(true);
+    setHasSizeVariation(true);
+    setShowDraftBanner(false);
+    toaster.create({ title: "Rascunho descartado", type: "info" });
+  };
+
   const titleValue = watch("title");
 
   /** Sugere o slug a partir do título só no cadastro (nunca sobrescreve em edição/enriquecimento) e só antes do admin editar o campo manualmente. */
@@ -336,14 +396,14 @@ export function ProductForm({ product }: ProductFormProps) {
     const next = current.includes(size)
       ? current.filter((s) => s !== size)
       : [...current, size];
-    setValue("sizes", next);
+    setValue("sizes", sortSizes(next));
   };
 
   const handleAddCustomSize = () => {
     const t = customSizeDraft.trim();
     if (!t || t.length > 32) return;
     if (selectedSizes.includes(t)) return;
-    setValue("sizes", [...selectedSizes, t]);
+    setValue("sizes", sortSizes([...selectedSizes, t]));
     setCustomSizeDraft("");
   };
 
@@ -523,6 +583,7 @@ export function ProductForm({ product }: ProductFormProps) {
         if (!product) {
           // Cadastro contínuo (item 5): fica no formulário em vez de voltar
           // para /admin, para cadastrar o próximo produto sem navegar.
+          clearDraft();
           reset(createFormDefaults());
           resetRows(buildColorRowsFromProduct(undefined));
           setSizePreset(inferSizePresetFromSizes([]));
@@ -530,6 +591,7 @@ export function ProductForm({ product }: ProductFormProps) {
           setUploadProgress({});
           setHasColorVariation(true);
           setHasSizeVariation(true);
+          setShowDraftBanner(false);
           slugTouchedRef.current = false;
           window.scrollTo({ top: 0, behavior: "smooth" });
           router.refresh();
@@ -603,6 +665,18 @@ export function ProductForm({ product }: ProductFormProps) {
                 : "Atualize dados, imagens, estoque e disponibilidade na loja."}
           </Text>
         </Box>
+
+        {!product && showDraftBanner && (
+          <Alert
+            status="info"
+            title="Rascunho recuperado automaticamente"
+            endElement={
+              <Button size="sm" variant="outline" onClick={handleDiscardDraft}>
+                Descartar rascunho
+              </Button>
+            }
+          />
+        )}
 
         {submitStatus && (
           <Alert
