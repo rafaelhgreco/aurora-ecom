@@ -160,6 +160,7 @@ export function SectionCategoryFilterList({
         }))}
         selected={selectedCategories}
         onToggle={onToggleCategory}
+        collapsible
       />
       <FilterCheckboxGroup
         title="Tamanhos"

@@ -1,21 +1,6 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  createListCollection,
-  Flex,
-  Heading,
-  HStack,
-  Portal,
-  SelectContent,
-  SelectItem,
-  SelectPositioner,
-  SelectRoot,
-  SelectTrigger,
-  SelectValueText,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, HStack, VStack } from "@chakra-ui/react";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { FiFilter } from "react-icons/fi";
 import { IoSwapVertical } from "react-icons/io5";
@@ -41,23 +26,21 @@ import {
 } from "@/shared/shop-category-helpers";
 import { buildSizeOptions, filterProducts } from "@/shared/shop-filter-helpers";
 
-const ALL_CATEGORIES_VALUE = "";
 const PAGE_SIZE = 20;
 /** Busca única do catálogo ativo — seção, subcategoria, tamanho e paginação são
  *  resolvidos no client para a contagem e as opções de tamanho serem corretas. */
 const CATALOG_FETCH_LIMIT = 1000;
-
-const EMPTY_SET: ReadonlySet<string> = new Set();
 
 function sameName(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
 /**
- * Hub da loja: catálogo completo + filtro multisseleção por seção + filtro
- * simples por subcategoria, filtro por tamanho e ordenação A-Z. Produtos
- * agrupados por seção (dinâmica, cadastrada pelo admin) e ordenados A–Z em cada
- * grupo. Todos os filtros ficam na URL para poderem ser compartilhados.
+ * Hub da loja: catálogo completo. No topo ficam as seções (multisseleção) e a
+ * ordenação A-Z; subcategoria e tamanho ficam na coluna de filtros (mesmo layout
+ * da página de seção). Produtos agrupados por seção (dinâmica, cadastrada pelo
+ * admin) e ordenados A–Z em cada grupo. Todos os filtros ficam na URL para
+ * poderem ser compartilhados.
  */
 export default function LojaPage() {
   return (
@@ -80,7 +63,6 @@ function LojaHubContent() {
     selectedSectionIds,
     selectedCategoryNames,
     selectedSizeKeys,
-    toggleSection,
     toggleSize,
     applyFilters,
     setPage,
@@ -132,81 +114,98 @@ function LojaHubContent() {
     return new Set([...selectedSectionIds].filter((id) => valid.has(id)));
   }, [sections, selectedSectionIds]);
 
-  /** Subcategoria só mostra opções das seções filtradas (vazio = todas), sem duplicar por nome. */
-  const availableCategories = useMemo(() => {
-    const list =
-      activeSectionIds.size === 0
-        ? categories
-        : categories.filter((c) => activeSectionIds.has(c.sectionId));
-
-    const seen = new Set<string>();
-    return list.filter((c) => {
-      const key = c.name.trim().toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [categories, activeSectionIds]);
-
-  const categoryFilter = useMemo(() => {
-    const [name] = [...selectedCategoryNames];
-    if (!name) return ALL_CATEGORIES_VALUE;
-    return availableCategories.some((c) => sameName(c.name, name))
-      ? name
-      : ALL_CATEGORIES_VALUE;
-  }, [selectedCategoryNames, availableCategories]);
-
-  const categoryCollection = useMemo(
+  /** Produtos das seções filtradas (vazio = todas) — base das opções de subcategoria. */
+  const productsInSections = useMemo(
     () =>
-      createListCollection({
-        items: [
-          { label: "Todas as subcategorias", value: ALL_CATEGORIES_VALUE },
-          ...availableCategories.map((c) => ({ label: c.name, value: c.name })),
-        ],
-      }),
-    [availableCategories],
+      activeSectionIds.size === 0
+        ? catalog
+        : catalog.filter((p) =>
+            activeSectionIds.has(getEffectiveShopCategory(p)),
+          ),
+    [catalog, activeSectionIds],
   );
 
-  const handleCategoryFilterChange = useCallback(
-    (value: string) => {
-      if (!value) {
-        applyFilters({ categoryNames: [] });
+  /**
+   * Subcategorias com produtos nas seções filtradas, sem duplicar por nome
+   * (mesmo nome em seções distintas = uma opção), com contagem.
+   */
+  const categoryOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of productsInSections) {
+      const key = p.category?.trim().toLowerCase();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    const seen = new Set<string>();
+    const options: { name: string; count: number }[] = [];
+    for (const c of categories) {
+      const key = c.name.trim().toLowerCase();
+      const count = counts.get(key) ?? 0;
+      if (seen.has(key) || count === 0) continue;
+      seen.add(key);
+      options.push({ name: c.name, count });
+    }
+    return options.sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+    );
+  }, [productsInSections, categories]);
+
+  const activeCategoryNames = useMemo(
+    () =>
+      new Set(
+        categoryOptions
+          .filter((o) =>
+            [...selectedCategoryNames].some((n) => sameName(n, o.name)),
+          )
+          .map((o) => o.name),
+      ),
+    [categoryOptions, selectedCategoryNames],
+  );
+
+  const handleToggleCategory = useCallback(
+    (name: string) => {
+      if (activeCategoryNames.has(name)) {
+        applyFilters({
+          categoryNames: [...activeCategoryNames].filter((n) => n !== name),
+        });
         return;
       }
 
       /** Ao escolher uma subcategoria, soma ao filtro as seções que a contêm. */
       const sectionIds = sectionIdsByCategoryName.get(
-        value.trim().toLowerCase(),
+        name.trim().toLowerCase(),
       );
       applyFilters({
-        categoryNames: [value],
+        categoryNames: [...activeCategoryNames, name],
         sectionIds: [...new Set([...activeSectionIds, ...(sectionIds ?? [])])],
       });
     },
-    [applyFilters, sectionIdsByCategoryName, activeSectionIds],
+    [
+      applyFilters,
+      activeCategoryNames,
+      activeSectionIds,
+      sectionIdsByCategoryName,
+    ],
   );
 
-  /** Desmarcar uma seção descarta a subcategoria que deixou de existir no filtro. */
+  /** Desmarcar uma seção descarta as subcategorias que deixaram de existir no filtro. */
   const handleToggleSection = useCallback(
     (id: string) => {
       const next = new Set(activeSectionIds);
       if (next.has(id)) next.delete(id);
       else next.add(id);
 
-      const categoryStillValid =
-        !categoryFilter ||
-        next.size === 0 ||
-        categories.some(
-          (c) => next.has(c.sectionId) && sameName(c.name, categoryFilter),
-        );
-
-      if (categoryStillValid) {
-        toggleSection(id);
-      } else {
-        applyFilters({ sectionIds: [...next], categoryNames: [] });
-      }
+      const keptCategories = [...activeCategoryNames].filter(
+        (name) =>
+          next.size === 0 ||
+          categories.some(
+            (c) => next.has(c.sectionId) && sameName(c.name, name),
+          ),
+      );
+      applyFilters({ sectionIds: [...next], categoryNames: keptCategories });
     },
-    [activeSectionIds, categories, categoryFilter, toggleSection, applyFilters],
+    [activeSectionIds, activeCategoryNames, categories, applyFilters],
   );
 
   const clearSections = useCallback(
@@ -222,19 +221,12 @@ function LojaHubContent() {
   }, [applyFilters, sortDirection, page]);
 
   /** Produtos dentro de seção e subcategoria — base das opções de tamanho. */
-  const scopedProducts = useMemo(
-    () =>
-      catalog.filter((p) => {
-        if (
-          activeSectionIds.size > 0 &&
-          !activeSectionIds.has(getEffectiveShopCategory(p))
-        ) {
-          return false;
-        }
-        return !categoryFilter || sameName(p.category ?? "", categoryFilter);
-      }),
-    [catalog, activeSectionIds, categoryFilter],
-  );
+  const scopedProducts = useMemo(() => {
+    if (activeCategoryNames.size === 0) return productsInSections;
+    return productsInSections.filter((p) =>
+      [...activeCategoryNames].some((name) => sameName(p.category ?? "", name)),
+    );
+  }, [productsInSections, activeCategoryNames]);
 
   const sizeOptions = useMemo(
     () => buildSizeOptions(scopedProducts),
@@ -249,19 +241,19 @@ function LojaHubContent() {
   const filteredProducts = useMemo(
     () =>
       filterProducts(scopedProducts, {
-        categoryNames: EMPTY_SET as Set<string>,
+        categoryNames: new Set<string>(),
         sizeKeys: activeSizeKeys,
       }),
     [scopedProducts, activeSizeKeys],
   );
 
-  const clearSizes = useCallback(
-    () => applyFilters({ sizeKeys: [] }),
+  const clearSidebarFilters = useCallback(
+    () => applyFilters({ categoryNames: [], sizeKeys: [] }),
     [applyFilters],
   );
 
   const hasActiveFilter =
-    categoryFilter !== ALL_CATEGORIES_VALUE ||
+    activeCategoryNames.size > 0 ||
     activeSectionIds.size > 0 ||
     activeSizeKeys.size > 0;
 
@@ -312,7 +304,10 @@ function LojaHubContent() {
     [pageProducts, sections, sortDirection],
   );
 
-  const hasSizeFilter = sizeOptions.length > 0;
+  const hasSidebarFilters =
+    categoryOptions.length > 0 || sizeOptions.length > 0;
+  const activeSidebarFilterCount =
+    activeCategoryNames.size + activeSizeKeys.size;
 
   return (
     <ShopPageShell>
@@ -327,35 +322,7 @@ function LojaHubContent() {
             />
 
             <HStack gap={3} flexWrap="wrap">
-              <Box minW="200px">
-                <SelectRoot
-                  collection={categoryCollection}
-                  value={[categoryFilter]}
-                  onValueChange={(details) =>
-                    handleCategoryFilterChange(
-                      details.value[0] ?? ALL_CATEGORIES_VALUE,
-                    )
-                  }
-                  size="sm"
-                >
-                  <SelectTrigger>
-                    <SelectValueText placeholder="Tipo de produto" />
-                  </SelectTrigger>
-                  <Portal>
-                    <SelectPositioner>
-                      <SelectContent>
-                        {categoryCollection.items.map((item) => (
-                          <SelectItem key={item.value} item={item}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </SelectPositioner>
-                  </Portal>
-                </SelectRoot>
-              </Box>
-
-              {hasSizeFilter && (
+              {hasSidebarFilters && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -363,8 +330,10 @@ function LojaHubContent() {
                   onClick={() => setIsFilterDrawerOpen(true)}
                 >
                   <FiFilter style={{ marginRight: 6 }} />
-                  Tamanhos
-                  {activeSizeKeys.size > 0 ? ` (${activeSizeKeys.size})` : ""}
+                  Filtros
+                  {activeSidebarFilterCount > 0
+                    ? ` (${activeSidebarFilterCount})`
+                    : ""}
                 </Button>
               )}
 
@@ -377,20 +346,20 @@ function LojaHubContent() {
         </ShopHomeHero>
 
         <Flex align="flex-start" gap={8} w="full">
-          {hasSizeFilter && (
+          {hasSidebarFilters && (
             <Box
               display={{ base: "none", md: "block" }}
               w="240px"
               flexShrink={0}
             >
               <SectionCategoryFilterList
-                categoryOptions={[]}
-                selectedCategories={EMPTY_SET as Set<string>}
-                onToggleCategory={() => undefined}
+                categoryOptions={categoryOptions}
+                selectedCategories={activeCategoryNames}
+                onToggleCategory={handleToggleCategory}
                 sizeOptions={sizeOptions}
                 selectedSizes={activeSizeKeys}
                 onToggleSize={toggleSize}
-                onClear={clearSizes}
+                onClear={clearSidebarFilters}
               />
             </Box>
           )}
@@ -463,13 +432,13 @@ function LojaHubContent() {
       <SectionCategoryFilterDrawer
         isOpen={isFilterDrawerOpen}
         onClose={() => setIsFilterDrawerOpen(false)}
-        categoryOptions={[]}
-        selectedCategories={EMPTY_SET as Set<string>}
-        onToggleCategory={() => undefined}
+        categoryOptions={categoryOptions}
+        selectedCategories={activeCategoryNames}
+        onToggleCategory={handleToggleCategory}
         sizeOptions={sizeOptions}
         selectedSizes={activeSizeKeys}
         onToggleSize={toggleSize}
-        onClear={clearSizes}
+        onClear={clearSidebarFilters}
       />
     </ShopPageShell>
   );

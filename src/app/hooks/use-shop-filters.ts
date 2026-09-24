@@ -77,16 +77,6 @@ export function useShopFilters() {
     [state, update],
   );
 
-  const toggleSection = useCallback(
-    (id: string) =>
-      update({
-        ...state,
-        sectionIds: toggleValue(state.sectionIds, id),
-        page: 1,
-      }),
-    [state, update],
-  );
-
   /**
    * Aplica vários campos numa única navegação (evita corrida entre
    * `router.replace` sucessivos). Volta para a página 1 salvo se `page` vier no patch.
@@ -111,7 +101,6 @@ export function useShopFilters() {
     toggleCategory,
     toggleSize,
     clearFilters,
-    toggleSection,
     applyFilters,
     setPage,
   };
