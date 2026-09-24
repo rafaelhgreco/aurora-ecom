@@ -19,24 +19,31 @@ import { FiX } from "react-icons/fi";
 import {
   SectionCategoryFilterList,
   type SectionCategoryOption,
+  type SectionSizeOption,
 } from "./section-category-filter";
 
 interface SectionCategoryFilterDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  options: SectionCategoryOption[];
-  selected: Set<string>;
-  onToggle: (name: string) => void;
+  categoryOptions: SectionCategoryOption[];
+  selectedCategories: Set<string>;
+  onToggleCategory: (name: string) => void;
+  sizeOptions: SectionSizeOption[];
+  selectedSizes: Set<string>;
+  onToggleSize: (key: string) => void;
   onClear: () => void;
 }
 
-/** Drawer mobile de filtro por subcategoria (padrão de CartDrawer). */
+/** Drawer mobile dos filtros da seção — subcategoria e tamanho (padrão de CartDrawer). */
 export function SectionCategoryFilterDrawer({
   isOpen,
   onClose,
-  options,
-  selected,
-  onToggle,
+  categoryOptions,
+  selectedCategories,
+  onToggleCategory,
+  sizeOptions,
+  selectedSizes,
+  onToggleSize,
   onClear,
 }: SectionCategoryFilterDrawerProps) {
   return (
@@ -54,7 +61,7 @@ export function SectionCategoryFilterDrawer({
               <DrawerTitle>
                 <Flex align="center" justify="space-between" gap="3" w="full">
                   <Heading as="h2" size="lg">
-                    Filtrar por subcategoria
+                    Filtros
                   </Heading>
                   <IconButton
                     aria-label="Fechar filtros"
@@ -70,9 +77,12 @@ export function SectionCategoryFilterDrawer({
             </DrawerHeader>
             <DrawerBody>
               <SectionCategoryFilterList
-                options={options}
-                selected={selected}
-                onToggle={onToggle}
+                categoryOptions={categoryOptions}
+                selectedCategories={selectedCategories}
+                onToggleCategory={onToggleCategory}
+                sizeOptions={sizeOptions}
+                selectedSizes={selectedSizes}
+                onToggleSize={onToggleSize}
                 onClear={onClear}
               />
             </DrawerBody>

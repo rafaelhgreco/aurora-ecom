@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   createListCollection,
+  Flex,
   Heading,
   HStack,
   Portal,
@@ -15,11 +16,14 @@ import {
   SelectValueText,
   VStack,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { FiFilter } from "react-icons/fi";
 import { IoSwapVertical } from "react-icons/io5";
 import { ProductGrid } from "@/app/components/public/product-grid";
 import { ProductGridSkeleton } from "@/app/components/public/product-grid-skeleton";
 import {
+  SectionCategoryFilterDrawer,
+  SectionCategoryFilterList,
   ShopCategoryBreadcrumb,
   ShopHomeHero,
   ShopPageShell,
@@ -29,37 +33,74 @@ import { EmptyState, ErrorState } from "@/app/components/states";
 import { useCategories } from "@/app/hooks/use-categories";
 import { useProducts } from "@/app/hooks/use-products";
 import { useSections } from "@/app/hooks/use-sections";
+import { useShopFilters } from "@/app/hooks/use-shop-filters";
 import { toaster } from "@/components/ui/toaster";
 import {
   getEffectiveShopCategory,
   groupProductsByShopSectionSorted,
-  type SortDirection,
 } from "@/shared/shop-category-helpers";
+import { buildSizeOptions, filterProducts } from "@/shared/shop-filter-helpers";
 
 const ALL_CATEGORIES_VALUE = "";
+const PAGE_SIZE = 20;
+/** Busca única do catálogo ativo — seção, subcategoria, tamanho e paginação são
+ *  resolvidos no client para a contagem e as opções de tamanho serem corretas. */
+const CATALOG_FETCH_LIMIT = 1000;
+
+const EMPTY_SET: ReadonlySet<string> = new Set();
+
+function sameName(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
 
 /**
  * Hub da loja: catálogo completo + filtro multisseleção por seção + filtro
- * simples por subcategoria e ordenação A-Z. Produtos agrupados por seção
- * (dinâmica, cadastrada pelo admin) e ordenados A–Z em cada grupo.
+ * simples por subcategoria, filtro por tamanho e ordenação A-Z. Produtos
+ * agrupados por seção (dinâmica, cadastrada pelo admin) e ordenados A–Z em cada
+ * grupo. Todos os filtros ficam na URL para poderem ser compartilhados.
  */
 export default function LojaPage() {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES_VALUE);
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  return (
+    <Suspense
+      fallback={
+        <ShopPageShell>
+          <ProductGridSkeleton embed />
+        </ShopPageShell>
+      }
+    >
+      <LojaHubContent />
+    </Suspense>
+  );
+}
 
-  const [page, setPage] = useState(1);
-  const limit = 20;
-
-  const { sections } = useSections();
-  const { categories } = useCategories();
-
-  const { products, loading, error, totalPages, totalCount } = useProducts({
+function LojaHubContent() {
+  const {
     page,
-    limitCount: limit,
+    sortDirection,
+    selectedSectionIds,
+    selectedCategoryNames,
+    selectedSizeKeys,
+    toggleSection,
+    toggleSize,
+    applyFilters,
+    setPage,
+  } = useShopFilters();
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+
+  const { sections, loading: sectionsLoading } = useSections();
+  const { categories, loading: categoriesLoading } = useCategories();
+
+  const {
+    products: catalog,
+    loading: productsLoading,
+    error,
+  } = useProducts({
+    page: 1,
+    limitCount: CATALOG_FETCH_LIMIT,
     status: "ACTIVE",
-    category: categoryFilter || undefined,
   });
+
+  const loading = productsLoading || sectionsLoading || categoriesLoading;
 
   const breadcrumbRoutes = useMemo(
     () =>
@@ -85,12 +126,18 @@ export default function LojaPage() {
     return map;
   }, [categories]);
 
+  /** Valores da URL que não existem mais (link antigo) são ignorados. */
+  const activeSectionIds = useMemo(() => {
+    const valid = new Set(sections.map((s) => s.id));
+    return new Set([...selectedSectionIds].filter((id) => valid.has(id)));
+  }, [sections, selectedSectionIds]);
+
   /** Subcategoria só mostra opções das seções filtradas (vazio = todas), sem duplicar por nome. */
   const availableCategories = useMemo(() => {
     const list =
-      selectedIds.size === 0
+      activeSectionIds.size === 0
         ? categories
-        : categories.filter((c) => selectedIds.has(c.sectionId));
+        : categories.filter((c) => activeSectionIds.has(c.sectionId));
 
     const seen = new Set<string>();
     return list.filter((c) => {
@@ -99,16 +146,15 @@ export default function LojaPage() {
       seen.add(key);
       return true;
     });
-  }, [categories, selectedIds]);
+  }, [categories, activeSectionIds]);
 
-  useEffect(() => {
-    if (
-      categoryFilter &&
-      !availableCategories.some((c) => c.name === categoryFilter)
-    ) {
-      setCategoryFilter(ALL_CATEGORIES_VALUE);
-    }
-  }, [availableCategories, categoryFilter]);
+  const categoryFilter = useMemo(() => {
+    const [name] = [...selectedCategoryNames];
+    if (!name) return ALL_CATEGORIES_VALUE;
+    return availableCategories.some((c) => sameName(c.name, name))
+      ? name
+      : ALL_CATEGORIES_VALUE;
+  }, [selectedCategoryNames, availableCategories]);
 
   const categoryCollection = useMemo(
     () =>
@@ -123,48 +169,115 @@ export default function LojaPage() {
 
   const handleCategoryFilterChange = useCallback(
     (value: string) => {
-      setCategoryFilter(value);
-      setPage(1);
-
-      if (!value) return;
+      if (!value) {
+        applyFilters({ categoryNames: [] });
+        return;
+      }
 
       /** Ao escolher uma subcategoria, soma ao filtro as seções que a contêm. */
       const sectionIds = sectionIdsByCategoryName.get(
         value.trim().toLowerCase(),
       );
-      if (!sectionIds || sectionIds.size === 0) return;
-
-      setSelectedIds((prev) => new Set([...prev, ...sectionIds]));
+      applyFilters({
+        categoryNames: [value],
+        sectionIds: [...new Set([...activeSectionIds, ...(sectionIds ?? [])])],
+      });
     },
-    [sectionIdsByCategoryName],
+    [applyFilters, sectionIdsByCategoryName, activeSectionIds],
+  );
+
+  /** Desmarcar uma seção descarta a subcategoria que deixou de existir no filtro. */
+  const handleToggleSection = useCallback(
+    (id: string) => {
+      const next = new Set(activeSectionIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+
+      const categoryStillValid =
+        !categoryFilter ||
+        next.size === 0 ||
+        categories.some(
+          (c) => next.has(c.sectionId) && sameName(c.name, categoryFilter),
+        );
+
+      if (categoryStillValid) {
+        toggleSection(id);
+      } else {
+        applyFilters({ sectionIds: [...next], categoryNames: [] });
+      }
+    },
+    [activeSectionIds, categories, categoryFilter, toggleSection, applyFilters],
+  );
+
+  const clearSections = useCallback(
+    () => applyFilters({ sectionIds: [], categoryNames: [] }),
+    [applyFilters],
   );
 
   const toggleSortDirection = useCallback(() => {
-    setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-  }, []);
-
-  const toggleCategory = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+    applyFilters({
+      sortDirection: sortDirection === "asc" ? "desc" : "asc",
+      page,
     });
-    setPage(1);
-  }, []);
+  }, [applyFilters, sortDirection, page]);
 
-  const clearCategories = useCallback(() => {
-    setSelectedIds(new Set());
-    setPage(1);
-  }, []);
+  /** Produtos dentro de seção e subcategoria — base das opções de tamanho. */
+  const scopedProducts = useMemo(
+    () =>
+      catalog.filter((p) => {
+        if (
+          activeSectionIds.size > 0 &&
+          !activeSectionIds.has(getEffectiveShopCategory(p))
+        ) {
+          return false;
+        }
+        return !categoryFilter || sameName(p.category ?? "", categoryFilter);
+      }),
+    [catalog, activeSectionIds, categoryFilter],
+  );
 
-  const filteredProducts = useMemo(() => {
-    if (selectedIds.size === 0) return products;
-    return products.filter((p) => selectedIds.has(getEffectiveShopCategory(p)));
-  }, [products, selectedIds]);
+  const sizeOptions = useMemo(
+    () => buildSizeOptions(scopedProducts),
+    [scopedProducts],
+  );
+
+  const activeSizeKeys = useMemo(() => {
+    const valid = new Set(sizeOptions.map((o) => o.key));
+    return new Set([...selectedSizeKeys].filter((k) => valid.has(k)));
+  }, [sizeOptions, selectedSizeKeys]);
+
+  const filteredProducts = useMemo(
+    () =>
+      filterProducts(scopedProducts, {
+        categoryNames: EMPTY_SET as Set<string>,
+        sizeKeys: activeSizeKeys,
+      }),
+    [scopedProducts, activeSizeKeys],
+  );
+
+  const clearSizes = useCallback(
+    () => applyFilters({ sizeKeys: [] }),
+    [applyFilters],
+  );
 
   const hasActiveFilter =
-    categoryFilter !== ALL_CATEGORIES_VALUE || selectedIds.size > 0;
+    categoryFilter !== ALL_CATEGORIES_VALUE ||
+    activeSectionIds.size > 0 ||
+    activeSizeKeys.size > 0;
+
+  const totalCount = filteredProducts.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  // Só depois de carregar: com a lista vazia, totalPages = 1 e um link
+  // compartilhado com ?pagina=2 seria descartado antes de os produtos chegarem.
+  useEffect(() => {
+    if (!loading && page > totalPages) setPage(1);
+  }, [loading, page, totalPages, setPage]);
+
+  const pageProducts = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, page]);
 
   /**
    * Filtro sem nenhum produto (ou erro ao buscar com filtro ativo): avisa e
@@ -174,7 +287,7 @@ export default function LojaPage() {
    */
   useEffect(() => {
     if (loading || !hasActiveFilter) return;
-    if (error || products.length === 0 || filteredProducts.length === 0) {
+    if (error || catalog.length === 0 || filteredProducts.length === 0) {
       toaster.create({
         title: "Nenhum produto encontrado",
         description:
@@ -182,27 +295,24 @@ export default function LojaPage() {
         type: "warning",
         duration: 4000,
       });
-      setCategoryFilter(ALL_CATEGORIES_VALUE);
-      setSelectedIds(new Set());
-      setPage(1);
+      applyFilters({ sectionIds: [], categoryNames: [], sizeKeys: [] });
     }
   }, [
     loading,
     error,
     hasActiveFilter,
-    products.length,
+    catalog.length,
     filteredProducts.length,
+    applyFilters,
   ]);
 
   const groupedSections = useMemo(
     () =>
-      groupProductsByShopSectionSorted(
-        filteredProducts,
-        sections,
-        sortDirection,
-      ),
-    [filteredProducts, sections, sortDirection],
+      groupProductsByShopSectionSorted(pageProducts, sections, sortDirection),
+    [pageProducts, sections, sortDirection],
   );
+
+  const hasSizeFilter = sizeOptions.length > 0;
 
   return (
     <ShopPageShell>
@@ -211,9 +321,9 @@ export default function LojaPage() {
           <VStack align="stretch" gap={4} w="full">
             <ShopCategoryBreadcrumb
               routes={breadcrumbRoutes}
-              selectedIds={selectedIds}
-              onToggle={toggleCategory}
-              onClearAll={clearCategories}
+              selectedIds={activeSectionIds}
+              onToggle={handleToggleSection}
+              onClearAll={clearSections}
             />
 
             <HStack gap={3} flexWrap="wrap">
@@ -245,6 +355,19 @@ export default function LojaPage() {
                 </SelectRoot>
               </Box>
 
+              {hasSizeFilter && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  display={{ base: "inline-flex", md: "none" }}
+                  onClick={() => setIsFilterDrawerOpen(true)}
+                >
+                  <FiFilter style={{ marginRight: 6 }} />
+                  Tamanhos
+                  {activeSizeKeys.size > 0 ? ` (${activeSizeKeys.size})` : ""}
+                </Button>
+              )}
+
               <Button size="sm" variant="outline" onClick={toggleSortDirection}>
                 <IoSwapVertical style={{ marginRight: 6 }} />
                 {sortDirection === "asc" ? "A → Z" : "Z → A"}
@@ -253,67 +376,101 @@ export default function LojaPage() {
           </VStack>
         </ShopHomeHero>
 
-        {loading && <ProductGridSkeleton embed />}
-
-        {!loading && error && (
-          <ErrorState
-            title="Erro ao carregar produtos"
-            message={error}
-            onRetry={() => window.location.reload()}
-          />
-        )}
-
-        {!loading && !error && products.length === 0 && (
-          <EmptyState
-            title="Nenhum produto na loja"
-            description="Cadastre produtos no painel admin ou volte mais tarde."
-          />
-        )}
-
-        {!loading &&
-          !error &&
-          products.length > 0 &&
-          filteredProducts.length === 0 && (
-            <EmptyState
-              title="Nenhum produto nesta combinação"
-              description="Ajuste as categorias selecionadas ou use Todos para ver o catálogo completo."
-            />
+        <Flex align="flex-start" gap={8} w="full">
+          {hasSizeFilter && (
+            <Box
+              display={{ base: "none", md: "block" }}
+              w="240px"
+              flexShrink={0}
+            >
+              <SectionCategoryFilterList
+                categoryOptions={[]}
+                selectedCategories={EMPTY_SET as Set<string>}
+                onToggleCategory={() => undefined}
+                sizeOptions={sizeOptions}
+                selectedSizes={activeSizeKeys}
+                onToggleSize={toggleSize}
+                onClear={clearSizes}
+              />
+            </Box>
           )}
 
-        {!loading && !error && groupedSections.length > 0 && (
-          <VStack align="stretch" gap={{ base: 10, md: 12 }} w="full">
-            {groupedSections.map((section) => (
-              <VStack
-                key={section.shopCategory}
-                align="stretch"
-                gap={4}
-                w="full"
-              >
-                <Heading
-                  as="h2"
-                  size={{ base: "md", md: "lg" }}
-                  color="gray.900"
-                  fontWeight="semibold"
-                >
-                  {section.sectionTitle}
-                </Heading>
-                <ProductGrid products={section.products} embed />
-              </VStack>
-            ))}
+          <VStack align="stretch" gap={8} flex={1} minW={0}>
+            {loading && <ProductGridSkeleton embed />}
 
-            {totalPages && totalPages > 1 && (
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                totalCount={totalCount}
-                pageSize={limit}
-                mt={8}
+            {!loading && error && (
+              <ErrorState
+                title="Erro ao carregar produtos"
+                message={error}
+                onRetry={() => window.location.reload()}
               />
             )}
+
+            {!loading && !error && catalog.length === 0 && (
+              <EmptyState
+                title="Nenhum produto na loja"
+                description="Cadastre produtos no painel admin ou volte mais tarde."
+              />
+            )}
+
+            {!loading &&
+              !error &&
+              catalog.length > 0 &&
+              filteredProducts.length === 0 && (
+                <EmptyState
+                  title="Nenhum produto nesta combinação"
+                  description="Ajuste os filtros selecionados ou limpe-os para ver o catálogo completo."
+                />
+              )}
+
+            {!loading && !error && groupedSections.length > 0 && (
+              <VStack align="stretch" gap={{ base: 10, md: 12 }} w="full">
+                {groupedSections.map((section) => (
+                  <VStack
+                    key={section.shopCategory}
+                    align="stretch"
+                    gap={4}
+                    w="full"
+                  >
+                    <Heading
+                      as="h2"
+                      size={{ base: "md", md: "lg" }}
+                      color="gray.900"
+                      fontWeight="semibold"
+                    >
+                      {section.sectionTitle}
+                    </Heading>
+                    <ProductGrid products={section.products} embed />
+                  </VStack>
+                ))}
+
+                {totalPages > 1 && (
+                  <Pagination
+                    page={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    totalCount={totalCount}
+                    pageSize={PAGE_SIZE}
+                    mt={8}
+                  />
+                )}
+              </VStack>
+            )}
           </VStack>
-        )}
+        </Flex>
       </VStack>
+
+      <SectionCategoryFilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        categoryOptions={[]}
+        selectedCategories={EMPTY_SET as Set<string>}
+        onToggleCategory={() => undefined}
+        sizeOptions={sizeOptions}
+        selectedSizes={activeSizeKeys}
+        onToggleSize={toggleSize}
+        onClear={clearSizes}
+      />
     </ShopPageShell>
   );
 }

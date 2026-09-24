@@ -10,7 +10,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { notFound, useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { FiFilter } from "react-icons/fi";
 import { ProductGrid } from "@/app/components/public/product-grid";
 import { ProductGridSkeleton } from "@/app/components/public/product-grid-skeleton";
@@ -22,7 +22,9 @@ import {
 import { EmptyState, ErrorState } from "@/app/components/states";
 import { useProducts } from "@/app/hooks/use-products";
 import { useSections } from "@/app/hooks/use-sections";
+import { useShopFilters } from "@/app/hooks/use-shop-filters";
 import { sortProductsAlphabetically } from "@/shared/shop-category-helpers";
+import { buildSizeOptions, filterProducts } from "@/shared/shop-filter-helpers";
 
 const PAGE_SIZE = 12;
 /** Busca única de todos os ativos da seção — filtro/paginação de subcategoria
@@ -30,10 +32,25 @@ const PAGE_SIZE = 12;
 const SECTION_FETCH_LIMIT = 1000;
 
 /**
- * Catálogo filtrado por seção (dinâmica, cadastrada pelo admin), com filtro
- * opcional por subcategoria. Produtos em ordem alfabética pelo título.
+ * Catálogo filtrado por seção (dinâmica, cadastrada pelo admin), com filtros
+ * opcionais por subcategoria e tamanho, mantidos na URL para compartilhamento.
+ * Produtos em ordem alfabética pelo título.
  */
 export default function LojaCategoryPage() {
+  return (
+    <Suspense
+      fallback={
+        <ShopPageShell>
+          <ProductGridSkeleton embed />
+        </ShopPageShell>
+      }
+    >
+      <LojaCategoryContent />
+    </Suspense>
+  );
+}
+
+function LojaCategoryContent() {
   const params = useParams();
   const slug = typeof params.slug === "string" ? params.slug : params.slug?.[0];
 
@@ -44,10 +61,15 @@ export default function LojaCategoryPage() {
     notFound();
   }
 
-  const [page, setPage] = useState(1);
-  const [selectedCategoryNames, setSelectedCategoryNames] = useState<
-    Set<string>
-  >(() => new Set());
+  const {
+    page,
+    selectedCategoryNames,
+    selectedSizeKeys,
+    toggleCategory,
+    toggleSize,
+    clearFilters,
+    setPage,
+  } = useShopFilters();
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   const { products, loading, error } = useProducts({
@@ -71,30 +93,27 @@ export default function LojaCategoryPage() {
       );
   }, [products]);
 
-  const toggleCategory = useCallback((name: string) => {
-    setSelectedCategoryNames((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
-    setPage(1);
-  }, []);
+  const sizeOptions = useMemo(() => buildSizeOptions(products), [products]);
 
-  const clearCategoryFilters = useCallback(() => {
-    setSelectedCategoryNames(new Set());
-    setPage(1);
-  }, []);
+  // Valores da URL que não existem na seção (link antigo) são ignorados.
+  const activeCategoryNames = useMemo(() => {
+    const valid = new Set(categoryOptions.map((o) => o.name));
+    return new Set([...selectedCategoryNames].filter((n) => valid.has(n)));
+  }, [categoryOptions, selectedCategoryNames]);
 
-  const filteredProducts = useMemo(() => {
-    if (selectedCategoryNames.size === 0) return products;
-    return products.filter(
-      (p) => p.category && selectedCategoryNames.has(p.category),
-    );
-  }, [products, selectedCategoryNames]);
+  const activeSizeKeys = useMemo(() => {
+    const valid = new Set(sizeOptions.map((o) => o.key));
+    return new Set([...selectedSizeKeys].filter((k) => valid.has(k)));
+  }, [sizeOptions, selectedSizeKeys]);
+
+  const filteredProducts = useMemo(
+    () =>
+      filterProducts(products, {
+        categoryNames: activeCategoryNames,
+        sizeKeys: activeSizeKeys,
+      }),
+    [products, activeCategoryNames, activeSizeKeys],
+  );
 
   const sortedFilteredProducts = useMemo(
     () => sortProductsAlphabetically(filteredProducts),
@@ -104,17 +123,21 @@ export default function LojaCategoryPage() {
   const totalCount = sortedFilteredProducts.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
+  const isLoading = sectionsLoading || loading;
+
+  // Só depois de carregar: com a lista vazia, totalPages = 1 e um link
+  // compartilhado com ?pagina=2 seria descartado antes de os produtos chegarem.
   useEffect(() => {
-    if (page > totalPages) setPage(1);
-  }, [totalPages, page]);
+    if (!isLoading && page > totalPages) setPage(1);
+  }, [isLoading, totalPages, page, setPage]);
 
   const pageProducts = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return sortedFilteredProducts.slice(start, start + PAGE_SIZE);
   }, [sortedFilteredProducts, page]);
 
-  const isLoading = sectionsLoading || loading;
-  const hasFilters = categoryOptions.length > 0;
+  const hasFilters = categoryOptions.length > 0 || sizeOptions.length > 0;
+  const activeFilterCount = activeCategoryNames.size + activeSizeKeys.size;
 
   return (
     <ShopPageShell>
@@ -122,10 +145,13 @@ export default function LojaCategoryPage() {
         {hasFilters && (
           <Box display={{ base: "none", md: "block" }} w="240px" flexShrink={0}>
             <SectionCategoryFilterList
-              options={categoryOptions}
-              selected={selectedCategoryNames}
-              onToggle={toggleCategory}
-              onClear={clearCategoryFilters}
+              categoryOptions={categoryOptions}
+              selectedCategories={activeCategoryNames}
+              onToggleCategory={toggleCategory}
+              sizeOptions={sizeOptions}
+              selectedSizes={activeSizeKeys}
+              onToggleSize={toggleSize}
+              onClear={clearFilters}
             />
           </Box>
         )}
@@ -155,9 +181,7 @@ export default function LojaCategoryPage() {
                   <FiFilter />
                   <Text>
                     Filtros
-                    {selectedCategoryNames.size > 0
-                      ? ` (${selectedCategoryNames.size})`
-                      : ""}
+                    {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
                   </Text>
                 </HStack>
               </Button>
@@ -198,10 +222,13 @@ export default function LojaCategoryPage() {
       <SectionCategoryFilterDrawer
         isOpen={isFilterDrawerOpen}
         onClose={() => setIsFilterDrawerOpen(false)}
-        options={categoryOptions}
-        selected={selectedCategoryNames}
-        onToggle={toggleCategory}
-        onClear={clearCategoryFilters}
+        categoryOptions={categoryOptions}
+        selectedCategories={activeCategoryNames}
+        onToggleCategory={toggleCategory}
+        sizeOptions={sizeOptions}
+        selectedSizes={activeSizeKeys}
+        onToggleSize={toggleSize}
+        onClear={clearFilters}
       />
     </ShopPageShell>
   );
