@@ -22,6 +22,45 @@ function parseLeadingNumber(size: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const OPTION_GROUP_NUMERIC = 0;
+const OPTION_GROUP_CLOTHING = 1;
+const OPTION_GROUP_VOLUME = 2;
+const OPTION_GROUP_OTHER = 3;
+
+function sizeOptionGroup(size: string): number {
+  if (VOLUME_INDEX.has(size)) return OPTION_GROUP_VOLUME;
+  if (CLOTHING_INDEX.has(size)) return OPTION_GROUP_CLOTHING;
+  if (parseLeadingNumber(size) !== null) return OPTION_GROUP_NUMERIC;
+  return OPTION_GROUP_OTHER;
+}
+
+function compareSizeOptions(a: string, b: string): number {
+  const groupA = sizeOptionGroup(a);
+  const groupB = sizeOptionGroup(b);
+  if (groupA !== groupB) return groupA - groupB;
+
+  switch (groupA) {
+    case OPTION_GROUP_NUMERIC:
+      return (parseLeadingNumber(a) ?? 0) - (parseLeadingNumber(b) ?? 0);
+    case OPTION_GROUP_CLOTHING:
+      return (CLOTHING_INDEX.get(a) ?? 0) - (CLOTHING_INDEX.get(b) ?? 0);
+    case OPTION_GROUP_VOLUME:
+      return (VOLUME_INDEX.get(a) ?? 0) - (VOLUME_INDEX.get(b) ?? 0);
+    default:
+      return a.localeCompare(b, "pt-BR", { sensitivity: "base" });
+  }
+}
+
+/**
+ * Ordena a lista global de tamanhos (de produtos de tipos diferentes) por
+ * grupos: numéricos (35, 36…) → roupas (PP→XG) → volumes (100ml→1000ml) →
+ * demais (combo, "Único"…, alfabético). Diferente de `sortSizes`, que decide a
+ * ordem pelo conjunto inteiro e serve a um único produto. Não muta o array.
+ */
+export function sortSizeOptions(sizes: string[]): string[] {
+  return [...sizes].sort(compareSizeOptions);
+}
+
 /**
  * Ordena tamanhos de forma previsível para exibição/persistência:
  * preset de roupas (PP→XG) ou volumes (100ml→1000ml) quando aplicável,

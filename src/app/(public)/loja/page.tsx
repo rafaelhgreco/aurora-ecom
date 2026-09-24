@@ -1,25 +1,14 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  createListCollection,
-  Heading,
-  HStack,
-  Portal,
-  SelectContent,
-  SelectItem,
-  SelectPositioner,
-  SelectRoot,
-  SelectTrigger,
-  SelectValueText,
-  VStack,
-} from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Box, Button, Flex, Heading, HStack, VStack } from "@chakra-ui/react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { FiFilter } from "react-icons/fi";
 import { IoSwapVertical } from "react-icons/io5";
 import { ProductGrid } from "@/app/components/public/product-grid";
 import { ProductGridSkeleton } from "@/app/components/public/product-grid-skeleton";
 import {
+  SectionCategoryFilterDrawer,
+  SectionCategoryFilterList,
   ShopCategoryBreadcrumb,
   ShopHomeHero,
   ShopPageShell,
@@ -29,37 +18,71 @@ import { EmptyState, ErrorState } from "@/app/components/states";
 import { useCategories } from "@/app/hooks/use-categories";
 import { useProducts } from "@/app/hooks/use-products";
 import { useSections } from "@/app/hooks/use-sections";
+import { useShopFilters } from "@/app/hooks/use-shop-filters";
 import { toaster } from "@/components/ui/toaster";
 import {
   getEffectiveShopCategory,
   groupProductsByShopSectionSorted,
-  type SortDirection,
 } from "@/shared/shop-category-helpers";
+import { buildSizeOptions, filterProducts } from "@/shared/shop-filter-helpers";
 
-const ALL_CATEGORIES_VALUE = "";
+const PAGE_SIZE = 20;
+/** Busca única do catálogo ativo — seção, subcategoria, tamanho e paginação são
+ *  resolvidos no client para a contagem e as opções de tamanho serem corretas. */
+const CATALOG_FETCH_LIMIT = 1000;
+
+function sameName(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
 
 /**
- * Hub da loja: catálogo completo + filtro multisseleção por seção + filtro
- * simples por subcategoria e ordenação A-Z. Produtos agrupados por seção
- * (dinâmica, cadastrada pelo admin) e ordenados A–Z em cada grupo.
+ * Hub da loja: catálogo completo. No topo ficam as seções (multisseleção) e a
+ * ordenação A-Z; subcategoria e tamanho ficam na coluna de filtros (mesmo layout
+ * da página de seção). Produtos agrupados por seção (dinâmica, cadastrada pelo
+ * admin) e ordenados A–Z em cada grupo. Todos os filtros ficam na URL para
+ * poderem ser compartilhados.
  */
 export default function LojaPage() {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES_VALUE);
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  return (
+    <Suspense
+      fallback={
+        <ShopPageShell>
+          <ProductGridSkeleton embed />
+        </ShopPageShell>
+      }
+    >
+      <LojaHubContent />
+    </Suspense>
+  );
+}
 
-  const [page, setPage] = useState(1);
-  const limit = 20;
-
-  const { sections } = useSections();
-  const { categories } = useCategories();
-
-  const { products, loading, error, totalPages, totalCount } = useProducts({
+function LojaHubContent() {
+  const {
     page,
-    limitCount: limit,
+    sortDirection,
+    selectedSectionIds,
+    selectedCategoryNames,
+    selectedSizeKeys,
+    toggleSize,
+    applyFilters,
+    setPage,
+  } = useShopFilters();
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+
+  const { sections, loading: sectionsLoading } = useSections();
+  const { categories, loading: categoriesLoading } = useCategories();
+
+  const {
+    products: catalog,
+    loading: productsLoading,
+    error,
+  } = useProducts({
+    page: 1,
+    limitCount: CATALOG_FETCH_LIMIT,
     status: "ACTIVE",
-    category: categoryFilter || undefined,
   });
+
+  const loading = productsLoading || sectionsLoading || categoriesLoading;
 
   const breadcrumbRoutes = useMemo(
     () =>
@@ -85,86 +108,169 @@ export default function LojaPage() {
     return map;
   }, [categories]);
 
-  /** Subcategoria só mostra opções das seções filtradas (vazio = todas), sem duplicar por nome. */
-  const availableCategories = useMemo(() => {
-    const list =
-      selectedIds.size === 0
-        ? categories
-        : categories.filter((c) => selectedIds.has(c.sectionId));
+  /** Valores da URL que não existem mais (link antigo) são ignorados. */
+  const activeSectionIds = useMemo(() => {
+    const valid = new Set(sections.map((s) => s.id));
+    return new Set([...selectedSectionIds].filter((id) => valid.has(id)));
+  }, [sections, selectedSectionIds]);
 
-    const seen = new Set<string>();
-    return list.filter((c) => {
-      const key = c.name.trim().toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [categories, selectedIds]);
-
-  useEffect(() => {
-    if (
-      categoryFilter &&
-      !availableCategories.some((c) => c.name === categoryFilter)
-    ) {
-      setCategoryFilter(ALL_CATEGORIES_VALUE);
-    }
-  }, [availableCategories, categoryFilter]);
-
-  const categoryCollection = useMemo(
+  /** Produtos das seções filtradas (vazio = todas) — base das opções de subcategoria. */
+  const productsInSections = useMemo(
     () =>
-      createListCollection({
-        items: [
-          { label: "Todas as subcategorias", value: ALL_CATEGORIES_VALUE },
-          ...availableCategories.map((c) => ({ label: c.name, value: c.name })),
-        ],
-      }),
-    [availableCategories],
+      activeSectionIds.size === 0
+        ? catalog
+        : catalog.filter((p) =>
+            activeSectionIds.has(getEffectiveShopCategory(p)),
+          ),
+    [catalog, activeSectionIds],
   );
 
-  const handleCategoryFilterChange = useCallback(
-    (value: string) => {
-      setCategoryFilter(value);
-      setPage(1);
+  /**
+   * Subcategorias com produtos nas seções filtradas, sem duplicar por nome
+   * (mesmo nome em seções distintas = uma opção), com contagem.
+   */
+  const categoryOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of productsInSections) {
+      const key = p.category?.trim().toLowerCase();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
 
-      if (!value) return;
+    const seen = new Set<string>();
+    const options: { name: string; count: number }[] = [];
+    for (const c of categories) {
+      const key = c.name.trim().toLowerCase();
+      const count = counts.get(key) ?? 0;
+      if (seen.has(key) || count === 0) continue;
+      seen.add(key);
+      options.push({ name: c.name, count });
+    }
+    return options.sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+    );
+  }, [productsInSections, categories]);
+
+  const activeCategoryNames = useMemo(
+    () =>
+      new Set(
+        categoryOptions
+          .filter((o) =>
+            [...selectedCategoryNames].some((n) => sameName(n, o.name)),
+          )
+          .map((o) => o.name),
+      ),
+    [categoryOptions, selectedCategoryNames],
+  );
+
+  const handleToggleCategory = useCallback(
+    (name: string) => {
+      if (activeCategoryNames.has(name)) {
+        applyFilters({
+          categoryNames: [...activeCategoryNames].filter((n) => n !== name),
+        });
+        return;
+      }
 
       /** Ao escolher uma subcategoria, soma ao filtro as seções que a contêm. */
       const sectionIds = sectionIdsByCategoryName.get(
-        value.trim().toLowerCase(),
+        name.trim().toLowerCase(),
       );
-      if (!sectionIds || sectionIds.size === 0) return;
-
-      setSelectedIds((prev) => new Set([...prev, ...sectionIds]));
+      applyFilters({
+        categoryNames: [...activeCategoryNames, name],
+        sectionIds: [...new Set([...activeSectionIds, ...(sectionIds ?? [])])],
+      });
     },
-    [sectionIdsByCategoryName],
+    [
+      applyFilters,
+      activeCategoryNames,
+      activeSectionIds,
+      sectionIdsByCategoryName,
+    ],
+  );
+
+  /** Desmarcar uma seção descarta as subcategorias que deixaram de existir no filtro. */
+  const handleToggleSection = useCallback(
+    (id: string) => {
+      const next = new Set(activeSectionIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+
+      const keptCategories = [...activeCategoryNames].filter(
+        (name) =>
+          next.size === 0 ||
+          categories.some(
+            (c) => next.has(c.sectionId) && sameName(c.name, name),
+          ),
+      );
+      applyFilters({ sectionIds: [...next], categoryNames: keptCategories });
+    },
+    [activeSectionIds, activeCategoryNames, categories, applyFilters],
+  );
+
+  const clearSections = useCallback(
+    () => applyFilters({ sectionIds: [], categoryNames: [] }),
+    [applyFilters],
   );
 
   const toggleSortDirection = useCallback(() => {
-    setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-  }, []);
-
-  const toggleCategory = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+    applyFilters({
+      sortDirection: sortDirection === "asc" ? "desc" : "asc",
+      page,
     });
-    setPage(1);
-  }, []);
+  }, [applyFilters, sortDirection, page]);
 
-  const clearCategories = useCallback(() => {
-    setSelectedIds(new Set());
-    setPage(1);
-  }, []);
+  /** Produtos dentro de seção e subcategoria — base das opções de tamanho. */
+  const scopedProducts = useMemo(() => {
+    if (activeCategoryNames.size === 0) return productsInSections;
+    return productsInSections.filter((p) =>
+      [...activeCategoryNames].some((name) => sameName(p.category ?? "", name)),
+    );
+  }, [productsInSections, activeCategoryNames]);
 
-  const filteredProducts = useMemo(() => {
-    if (selectedIds.size === 0) return products;
-    return products.filter((p) => selectedIds.has(getEffectiveShopCategory(p)));
-  }, [products, selectedIds]);
+  const sizeOptions = useMemo(
+    () => buildSizeOptions(scopedProducts),
+    [scopedProducts],
+  );
+
+  const activeSizeKeys = useMemo(() => {
+    const valid = new Set(sizeOptions.map((o) => o.key));
+    return new Set([...selectedSizeKeys].filter((k) => valid.has(k)));
+  }, [sizeOptions, selectedSizeKeys]);
+
+  const filteredProducts = useMemo(
+    () =>
+      filterProducts(scopedProducts, {
+        categoryNames: new Set<string>(),
+        sizeKeys: activeSizeKeys,
+      }),
+    [scopedProducts, activeSizeKeys],
+  );
+
+  /** "Limpar filtros": remove tudo — seções, subcategorias e tamanhos. */
+  const clearAllFilters = useCallback(
+    () => applyFilters({ sectionIds: [], categoryNames: [], sizeKeys: [] }),
+    [applyFilters],
+  );
 
   const hasActiveFilter =
-    categoryFilter !== ALL_CATEGORIES_VALUE || selectedIds.size > 0;
+    activeCategoryNames.size > 0 ||
+    activeSectionIds.size > 0 ||
+    activeSizeKeys.size > 0;
+
+  const totalCount = filteredProducts.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  // Só depois de carregar: com a lista vazia, totalPages = 1 e um link
+  // compartilhado com ?pagina=2 seria descartado antes de os produtos chegarem.
+  useEffect(() => {
+    if (!loading && page > totalPages) setPage(1);
+  }, [loading, page, totalPages, setPage]);
+
+  const pageProducts = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, page]);
 
   /**
    * Filtro sem nenhum produto (ou erro ao buscar com filtro ativo): avisa e
@@ -174,7 +280,7 @@ export default function LojaPage() {
    */
   useEffect(() => {
     if (loading || !hasActiveFilter) return;
-    if (error || products.length === 0 || filteredProducts.length === 0) {
+    if (error || catalog.length === 0 || filteredProducts.length === 0) {
       toaster.create({
         title: "Nenhum produto encontrado",
         description:
@@ -182,27 +288,27 @@ export default function LojaPage() {
         type: "warning",
         duration: 4000,
       });
-      setCategoryFilter(ALL_CATEGORIES_VALUE);
-      setSelectedIds(new Set());
-      setPage(1);
+      applyFilters({ sectionIds: [], categoryNames: [], sizeKeys: [] });
     }
   }, [
     loading,
     error,
     hasActiveFilter,
-    products.length,
+    catalog.length,
     filteredProducts.length,
+    applyFilters,
   ]);
 
   const groupedSections = useMemo(
     () =>
-      groupProductsByShopSectionSorted(
-        filteredProducts,
-        sections,
-        sortDirection,
-      ),
-    [filteredProducts, sections, sortDirection],
+      groupProductsByShopSectionSorted(pageProducts, sections, sortDirection),
+    [pageProducts, sections, sortDirection],
   );
+
+  const hasSidebarFilters =
+    categoryOptions.length > 0 || sizeOptions.length > 0;
+  const activeSidebarFilterCount =
+    activeCategoryNames.size + activeSizeKeys.size;
 
   return (
     <ShopPageShell>
@@ -211,39 +317,26 @@ export default function LojaPage() {
           <VStack align="stretch" gap={4} w="full">
             <ShopCategoryBreadcrumb
               routes={breadcrumbRoutes}
-              selectedIds={selectedIds}
-              onToggle={toggleCategory}
-              onClearAll={clearCategories}
+              selectedIds={activeSectionIds}
+              onToggle={handleToggleSection}
+              onClearAll={clearSections}
             />
 
             <HStack gap={3} flexWrap="wrap">
-              <Box minW="200px">
-                <SelectRoot
-                  collection={categoryCollection}
-                  value={[categoryFilter]}
-                  onValueChange={(details) =>
-                    handleCategoryFilterChange(
-                      details.value[0] ?? ALL_CATEGORIES_VALUE,
-                    )
-                  }
+              {hasSidebarFilters && (
+                <Button
                   size="sm"
+                  variant="outline"
+                  display={{ base: "inline-flex", md: "none" }}
+                  onClick={() => setIsFilterDrawerOpen(true)}
                 >
-                  <SelectTrigger>
-                    <SelectValueText placeholder="Tipo de produto" />
-                  </SelectTrigger>
-                  <Portal>
-                    <SelectPositioner>
-                      <SelectContent>
-                        {categoryCollection.items.map((item) => (
-                          <SelectItem key={item.value} item={item}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </SelectPositioner>
-                  </Portal>
-                </SelectRoot>
-              </Box>
+                  <FiFilter style={{ marginRight: 6 }} />
+                  Filtros
+                  {activeSidebarFilterCount > 0
+                    ? ` (${activeSidebarFilterCount})`
+                    : ""}
+                </Button>
+              )}
 
               <Button size="sm" variant="outline" onClick={toggleSortDirection}>
                 <IoSwapVertical style={{ marginRight: 6 }} />
@@ -253,67 +346,103 @@ export default function LojaPage() {
           </VStack>
         </ShopHomeHero>
 
-        {loading && <ProductGridSkeleton embed />}
-
-        {!loading && error && (
-          <ErrorState
-            title="Erro ao carregar produtos"
-            message={error}
-            onRetry={() => window.location.reload()}
-          />
-        )}
-
-        {!loading && !error && products.length === 0 && (
-          <EmptyState
-            title="Nenhum produto na loja"
-            description="Cadastre produtos no painel admin ou volte mais tarde."
-          />
-        )}
-
-        {!loading &&
-          !error &&
-          products.length > 0 &&
-          filteredProducts.length === 0 && (
-            <EmptyState
-              title="Nenhum produto nesta combinação"
-              description="Ajuste as categorias selecionadas ou use Todos para ver o catálogo completo."
-            />
+        <Flex align="flex-start" gap={8} w="full">
+          {hasSidebarFilters && (
+            <Box
+              display={{ base: "none", md: "block" }}
+              w="240px"
+              flexShrink={0}
+            >
+              <SectionCategoryFilterList
+                categoryOptions={categoryOptions}
+                selectedCategories={activeCategoryNames}
+                onToggleCategory={handleToggleCategory}
+                sizeOptions={sizeOptions}
+                selectedSizes={activeSizeKeys}
+                onToggleSize={toggleSize}
+                onClear={clearAllFilters}
+                hasExternalSelection={activeSectionIds.size > 0}
+              />
+            </Box>
           )}
 
-        {!loading && !error && groupedSections.length > 0 && (
-          <VStack align="stretch" gap={{ base: 10, md: 12 }} w="full">
-            {groupedSections.map((section) => (
-              <VStack
-                key={section.shopCategory}
-                align="stretch"
-                gap={4}
-                w="full"
-              >
-                <Heading
-                  as="h2"
-                  size={{ base: "md", md: "lg" }}
-                  color="gray.900"
-                  fontWeight="semibold"
-                >
-                  {section.sectionTitle}
-                </Heading>
-                <ProductGrid products={section.products} embed />
-              </VStack>
-            ))}
+          <VStack align="stretch" gap={8} flex={1} minW={0}>
+            {loading && <ProductGridSkeleton embed />}
 
-            {totalPages && totalPages > 1 && (
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                totalCount={totalCount}
-                pageSize={limit}
-                mt={8}
+            {!loading && error && (
+              <ErrorState
+                title="Erro ao carregar produtos"
+                message={error}
+                onRetry={() => window.location.reload()}
               />
             )}
+
+            {!loading && !error && catalog.length === 0 && (
+              <EmptyState
+                title="Nenhum produto na loja"
+                description="Cadastre produtos no painel admin ou volte mais tarde."
+              />
+            )}
+
+            {!loading &&
+              !error &&
+              catalog.length > 0 &&
+              filteredProducts.length === 0 && (
+                <EmptyState
+                  title="Nenhum produto nesta combinação"
+                  description="Ajuste os filtros selecionados ou limpe-os para ver o catálogo completo."
+                />
+              )}
+
+            {!loading && !error && groupedSections.length > 0 && (
+              <VStack align="stretch" gap={{ base: 10, md: 12 }} w="full">
+                {groupedSections.map((section) => (
+                  <VStack
+                    key={section.shopCategory}
+                    align="stretch"
+                    gap={4}
+                    w="full"
+                  >
+                    <Heading
+                      as="h2"
+                      size={{ base: "md", md: "lg" }}
+                      color="gray.900"
+                      fontWeight="semibold"
+                    >
+                      {section.sectionTitle}
+                    </Heading>
+                    <ProductGrid products={section.products} embed />
+                  </VStack>
+                ))}
+
+                {totalPages > 1 && (
+                  <Pagination
+                    page={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    totalCount={totalCount}
+                    pageSize={PAGE_SIZE}
+                    mt={8}
+                  />
+                )}
+              </VStack>
+            )}
           </VStack>
-        )}
+        </Flex>
       </VStack>
+
+      <SectionCategoryFilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        categoryOptions={categoryOptions}
+        selectedCategories={activeCategoryNames}
+        onToggleCategory={handleToggleCategory}
+        sizeOptions={sizeOptions}
+        selectedSizes={activeSizeKeys}
+        onToggleSize={toggleSize}
+        onClear={clearAllFilters}
+        hasExternalSelection={activeSectionIds.size > 0}
+      />
     </ShopPageShell>
   );
 }
