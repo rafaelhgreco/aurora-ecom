@@ -247,8 +247,9 @@ function LojaHubContent() {
     [scopedProducts, activeSizeKeys],
   );
 
-  const clearSidebarFilters = useCallback(
-    () => applyFilters({ categoryNames: [], sizeKeys: [] }),
+  /** "Limpar filtros": remove tudo — seções, subcategorias e tamanhos. */
+  const clearAllFilters = useCallback(
+    () => applyFilters({ sectionIds: [], categoryNames: [], sizeKeys: [] }),
     [applyFilters],
   );
 
@@ -359,7 +360,8 @@ function LojaHubContent() {
                 sizeOptions={sizeOptions}
                 selectedSizes={activeSizeKeys}
                 onToggleSize={toggleSize}
-                onClear={clearSidebarFilters}
+                onClear={clearAllFilters}
+                hasExternalSelection={activeSectionIds.size > 0}
               />
             </Box>
           )}
@@ -438,7 +440,8 @@ function LojaHubContent() {
         sizeOptions={sizeOptions}
         selectedSizes={activeSizeKeys}
         onToggleSize={toggleSize}
-        onClear={clearSidebarFilters}
+        onClear={clearAllFilters}
+        hasExternalSelection={activeSectionIds.size > 0}
       />
     </ShopPageShell>
   );

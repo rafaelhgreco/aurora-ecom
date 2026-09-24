@@ -109,6 +109,8 @@ interface SectionCategoryFilterListProps {
   selectedSizes: Set<string>;
   onToggleSize: (key: string) => void;
   onClear: () => void;
+  /** Há filtro ativo fora desta lista (ex.: seções no hub) que `onClear` também remove. */
+  hasExternalSelection?: boolean;
 }
 
 /** Filtros da seção (subcategorias e tamanhos, com contagem) — usados na sidebar (desktop) e no drawer (mobile). */
@@ -120,8 +122,10 @@ export function SectionCategoryFilterList({
   selectedSizes,
   onToggleSize,
   onClear,
+  hasExternalSelection = false,
 }: SectionCategoryFilterListProps) {
-  const hasSelection = selectedCategories.size + selectedSizes.size > 0;
+  const hasSelection =
+    hasExternalSelection || selectedCategories.size + selectedSizes.size > 0;
 
   return (
     <VStack align="stretch" gap={5}>

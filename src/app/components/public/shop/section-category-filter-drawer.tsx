@@ -32,6 +32,7 @@ interface SectionCategoryFilterDrawerProps {
   selectedSizes: Set<string>;
   onToggleSize: (key: string) => void;
   onClear: () => void;
+  hasExternalSelection?: boolean;
 }
 
 /** Drawer mobile dos filtros da seção — subcategoria e tamanho (padrão de CartDrawer). */
@@ -45,6 +46,7 @@ export function SectionCategoryFilterDrawer({
   selectedSizes,
   onToggleSize,
   onClear,
+  hasExternalSelection,
 }: SectionCategoryFilterDrawerProps) {
   return (
     <DrawerRoot
@@ -84,6 +86,7 @@ export function SectionCategoryFilterDrawer({
                 selectedSizes={selectedSizes}
                 onToggleSize={onToggleSize}
                 onClear={onClear}
+                hasExternalSelection={hasExternalSelection}
               />
             </DrawerBody>
             <DrawerFooter>
